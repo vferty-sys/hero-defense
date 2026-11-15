@@ -1,0 +1,358 @@
+<title>왕국 수호자 그림 프롬프트</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 한 줄 목록 시트 — 위에 도구 선택·진행도, 아래에 분류별 그림 목록 (행마다 복사 버튼) */
+:root {
+  --bg: #e9ece6;          /* 성벽 돌 같은 서늘한 회색 */
+  --surface: #f8f9f5;
+  --line: #cfd5cb;
+  --ink: #1c2420;
+  --muted: #5a6660;
+  --brass: #8a5d0d;       /* 놋쇠 강조 */
+  --brass-soft: #f1e3c2;
+  --forest: #2c6447;      /* 완료 */
+  --forest-soft: #d9ecdf;
+  --code-bg: #eef1ea;
+  --f-display: "Black Han Sans", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131714; --surface: #1b211d; --line: #2f3832; --ink: #e5eae4; --muted: #9aa69e;
+    --brass: #e2b04e; --brass-soft: #3a2f17; --forest: #77c79a; --forest-soft: #1f3a2b; --code-bg: #222a25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131714; --surface: #1b211d; --line: #2f3832; --ink: #e5eae4; --muted: #9aa69e;
+  --brass: #e2b04e; --brass-soft: #3a2f17; --forest: #77c79a; --forest-soft: #1f3a2b; --code-bg: #222a25;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px; display: grid; gap: 22px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; color: var(--brass); font-weight: 700; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 6vw, 44px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 0; }
+h3 { font-size: 15px; margin: 0; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  padding-block: 10px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+}
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--muted); padding: 6px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.progress { display: flex; align-items: center; gap: 10px; flex: 1 1 200px; min-width: 0; }
+.track { flex: 1; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.track i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .3s; }
+.count { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); white-space: nowrap; }
+label.toggle { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.step b { font-size: 12px; color: var(--brass); letter-spacing: .04em; }
+.step p { margin: 0; font-size: 14px; }
+.tip { background: var(--brass-soft); border-radius: 10px; padding: 12px 16px; font-size: 14px; display: grid; gap: 6px; }
+.tip p { margin: 0; }
+code, .mono { font-family: var(--f-mono); font-size: 12.5px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; }
+summary { cursor: pointer; font-weight: 500; font-size: 14px; }
+.styles { display: grid; gap: 8px; margin-top: 10px; }
+.styles div { font-size: 13px; }
+.styles code { display: block; background: var(--code-bg); padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; margin-top: 3px; }
+.neg { display: grid; gap: 6px; }
+.neg code { background: var(--code-bg); padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+
+section.group { display: grid; gap: 4px; }
+.ghead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+.ghead .gcount { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ghead .gnote { font-size: 13px; color: var(--muted); flex-basis: 100%; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+li.item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+li.item.done .name, li.item.done .subject { color: var(--muted); }
+li.item.done .name { text-decoration: line-through; text-decoration-color: var(--forest); }
+.check { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--forest); cursor: pointer; }
+.body { min-width: 0; display: grid; gap: 4px; }
+.top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.name { font-weight: 700; }
+.file { font-family: var(--f-mono); font-size: 12px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; }
+.prio { font-size: 11px; font-weight: 700; letter-spacing: .04em; border-radius: 999px; padding: 1px 8px; }
+.prio.p1 { background: var(--brass-soft); color: var(--brass); }
+.prio.p2 { background: var(--code-bg); color: var(--muted); }
+.subject { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.fallback { width: 100%; min-height: 110px; font-family: var(--f-mono); font-size: 12px; border: 1px solid var(--brass); border-radius: 6px; padding: 8px; background: var(--surface); color: var(--ink); }
+.copy {
+  font: inherit; font-size: 13px; font-weight: 500; border: 1px solid var(--ink); background: var(--surface); color: var(--ink);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap;
+}
+.copy:hover { background: var(--ink); color: var(--surface); }
+.copy.ok { border-color: var(--forest); background: var(--forest); color: var(--surface); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+footer { color: var(--muted); font-size: 13px; }
+@media (max-width: 520px) {
+  li.item { grid-template-columns: auto minmax(0, 1fr); }
+  .copy { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .track i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">왕국 수호자 · 그림 교체용</div>
+    <h1>그림 프롬프트 모음</h1>
+    <p class="lede">AI 이미지 생성기에 붙여 넣을 프롬프트입니다. 복사 버튼을 누르면 그림체 문구까지 붙은 완성 프롬프트가 복사됩니다. 만든 그림은 표시된 파일 이름 그대로 저장해 주세요.</p>
+  </header>
+
+  <div class="bar" role="region" aria-label="도구와 진행도">
+    <div class="seg" role="group" aria-label="쓰는 AI 도구">
+      <button type="button" data-tool="gpt" id="tool-gpt">ChatGPT · Gemini</button>
+      <button type="button" data-tool="mj" id="tool-mj">Midjourney</button>
+      <button type="button" data-tool="sd" id="tool-sd">Stable Diffusion</button>
+    </div>
+    <div class="progress"><div class="track" aria-hidden="true"><i id="prog"></i></div><span class="count" id="count">0 / 0 완료</span></div>
+    <label class="toggle"><input type="checkbox" id="only-left"> 남은 것만</label>
+  </div>
+
+  <div class="guide">
+    <div class="step"><b>1 · 그림체 정하기</b><p><code>hero_knight</code>(기사 영웅)부터 만들고, 마음에 드는 그림이 나올 때까지 여러 번 다시 생성하세요.</p></div>
+    <div class="step"><b>2 · 같은 그림체로 나머지</b><p>마음에 든 기사 그림을 <em>그림체 참고 이미지</em>로 함께 넣고 나머지를 만들면 전체 느낌이 맞춰집니다.</p></div>
+    <div class="step"><b>3 · 배경 없이 저장</b><p>배경이 투명한 PNG가 가장 좋습니다. 흰 배경으로 나왔다면 배경 지우기 도구로 지운 뒤 1024×1024 PNG로 저장하세요.</p></div>
+    <div class="step"><b>4 · 게임에 넣기</b><p>GitHub 저장소 <code>hero-defense</code>에 <code>images</code> 폴더를 만들어 올리고 알려 주시면 게임에 연결하겠습니다. 일부만 올려도 됩니다.</p></div>
+  </div>
+
+  <div class="tip" id="tip" aria-live="polite"></div>
+  <div class="tip neg" id="neg" hidden>
+    <p><b>Stable Diffusion 네거티브 프롬프트</b> — 모든 그림에 같이 넣어 주세요 (지형 질감은 마지막 항목 제외).</p>
+    <code id="neg-text"></code>
+    <div><button type="button" class="copy" id="neg-copy">네거티브 복사</button></div>
+  </div>
+
+  <details>
+    <summary>프롬프트 뒤에 자동으로 붙는 그림체 문구 보기</summary>
+    <div class="styles" id="styles"></div>
+  </details>
+
+  <main id="groups" style="display:grid;gap:30px"></main>
+
+  <footer>
+    <p>모든 캐릭터는 <b>오른쪽을 바라보는</b> 모습으로 만들어 주세요. 왼쪽으로 갈 때는 게임이 좌우를 뒤집고, 걷기·공격 같은 움직임도 게임이 붙입니다. 프롬프트는 특정 게임 이름이나 그림체를 따라 하지 않도록 이 게임만의 설명으로 썼습니다. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  // 분류별 그림체 문구 (모든 그림을 같은 느낌으로)
+  const STYLES = {
+    char: '2D fantasy game character sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, full body, facing right, centered and filling most of the frame, isolated on a transparent background, no ground, no shadow, no text',
+    fly:  '2D fantasy game creature sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, flying with wings spread, facing right, centered and filling most of the frame, isolated on a transparent background, no ground, no shadow, no text',
+    build:'2D fantasy game building asset, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole structure visible, centered, isolated on a transparent background, no text',
+    prop: '2D fantasy game environment prop, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich colors, seen from a 3/4 top-down view, single object centered, isolated on a transparent background, no text',
+    tex:  'seamless tileable ground texture viewed straight from above, hand-painted cartoon game texture, soft painterly detail, even flat lighting, no objects, no shadows, no text, square',
+    fx:   '2D fantasy game projectile sprite, hand-painted cartoon style, bold outlines, glowing, pointing right, centered, isolated on a transparent background, no text',
+    icon: 'fantasy RPG inventory item icon, hand-painted cartoon style, bold clean outlines, soft shading, rich colors, single object centered, isolated on a transparent background, no text, no frame',
+  };
+  const STYLE_NAMES = { char: '캐릭터', fly: '날아다니는 캐릭터', build: '건물', prop: '나무·장식', tex: '지형 질감', fx: '투사체', icon: '아이템 아이콘' };
+  const NEG = 'photo, realistic, 3d render, blurry, low quality, jpeg artifacts, text, letters, watermark, signature, frame, border, cropped, cut off, multiple characters, background scenery, ground shadow';
+
+  // 그림 목록: [파일 이름, 한글 이름, 분류, 우선순위(1 먼저 / 2 다음 / 3 나중), 설명]
+  const GROUPS = [
+    { title: '영웅', note: '가장 먼저 만들 그림입니다. 기사 그림이 전체 그림체의 기준이 됩니다.', items: [
+      ['hero_knight', '기사 영웅', 'char', 1, 'a heroic human knight hero in shining steel plate armor with a royal blue tabard and gold trim, red plume on the helmet, a large kite shield with a golden cross, longsword held ready, sturdy confident stance'],
+      ['hero_archer', '궁사 영웅', 'char', 1, 'an agile elven ranger hero in a green hooded cloak over brown leather armor, drawing a tall elegant longbow, a quiver of arrows on the back, focused expression'],
+      ['hero_mage', '마법사 영웅', 'char', 1, 'an old wise wizard hero in a deep blue robe with silver star embroidery and a tall pointed hat, long white beard, holding a wooden staff topped with a glowing blue crystal, casting a spell with sparkling magic'],
+    ]},
+    { title: '병사', note: '시설 레벨에 따라 겉모습이 3단계로 바뀝니다 (_1: 1~3레벨, _2: 4~6레벨, _3: 7~10레벨).', items: [
+      ['unit_footman_1', '보병 1단계', 'char', 1, 'a young human foot soldier recruit with a short sword and a small wooden round shield, leather cap and padded tunic'],
+      ['unit_footman_2', '보병 2단계', 'char', 2, 'a veteran human foot soldier with a short sword and a steel round shield, chainmail and a blue tabard, iron helmet'],
+      ['unit_footman_3', '보병 3단계', 'char', 2, 'an elite human foot soldier with a fine sword and a blue and gold round shield, polished plate armor with gold trim, crested helmet'],
+      ['unit_archer_1', '궁수 1단계', 'char', 1, 'a young human archer recruit with a simple short bow, a brown hood and a leather vest, a quiver on the back'],
+      ['unit_archer_2', '궁수 2단계', 'char', 2, 'a veteran human archer with a recurve bow, a green hooded cloak and studded leather armor'],
+      ['unit_archer_3', '궁수 3단계', 'char', 2, 'an elite human marksman with an ornate longbow, a dark green cloak with a gold clasp, fine leather armor, a glowing arrow nocked'],
+      ['unit_knight_1', '기사 1단계', 'char', 1, 'a mounted human knight riding a brown war horse, holding a lance and a red heater shield, simple steel armor'],
+      ['unit_knight_2', '기사 2단계', 'char', 2, 'a mounted human knight riding a dark war horse with a red caparison, steel plate armor, a lance and a red shield'],
+      ['unit_knight_3', '기사 3단계', 'char', 2, 'an elite paladin knight riding a white war horse with a golden caparison, gleaming gold-trimmed plate armor, a long lance and an ornate shield'],
+      ['unit_mage_1', '마법사 1단계', 'char', 1, 'a young apprentice battle mage in a simple purple robe and pointed hat, holding a wooden staff with a small violet orb'],
+      ['unit_mage_2', '마법사 2단계', 'char', 2, 'a battle mage in a blue embroidered robe and pointed hat, holding a staff with a glowing violet orb'],
+      ['unit_mage_3', '마법사 3단계', 'char', 2, 'a powerful battle mage in a deep indigo robe with golden runes, holding a staff with a large radiant orb, swirling arcane energy'],
+      ['unit_cleric_1', '성직자 1단계', 'char', 1, 'a gentle human priest healer in a plain white wool robe with a hood, holding a wooden staff with a small golden holy symbol'],
+      ['unit_cleric_2', '성직자 2단계', 'char', 2, 'a human cleric in a white robe with gold trim and a hood, holding a staff topped with a golden sun symbol, soft holy glow'],
+      ['unit_cleric_3', '성직자 3단계', 'char', 2, 'a high priest in radiant white and gold vestments, holding an ornate golden staff with a shining holy symbol, a warm halo of light'],
+      ['unit_wall_archer', '성벽 궁수', 'char', 2, 'a castle guard crossbowman in a blue tabard and an iron helmet, aiming a crossbow'],
+      ['unit_carpenter', '목수', 'char', 3, 'a cheerful castle carpenter with a hammer and a wooden plank, a brown apron and a cloth cap'],
+    ]},
+    { title: '몬스터', items: [
+      ['enemy_spider', '거미', 'char', 1, 'a giant black forest spider monster with red markings on its back and glowing red eyes, eight long legs'],
+      ['enemy_bat', '박쥐', 'fly', 1, 'a purple cave bat monster with large leathery wings and yellow eyes'],
+      ['enemy_goblin', '고블린', 'char', 1, 'a small green goblin raider with big pointy ears, a rusty dagger and a ragged brown leather vest, a sneaky grin'],
+      ['enemy_goblin_archer', '고블린 궁수', 'char', 1, 'a small green goblin archer with big pointy ears, a crude wooden short bow and a dark green hood'],
+      ['enemy_orc', '오크', 'char', 1, 'a muscular green orc warrior with tusks, metal shoulder pauldrons, a crude iron helmet and a big battle axe'],
+      ['enemy_troll', '트롤', 'char', 1, 'a huge hunched grey-green troll with a spiked wooden club, mossy fur on its back, small angry eyes'],
+      ['enemy_wolf', '늑대', 'char', 1, 'a grey dire wolf monster running, bared fangs, yellow eyes, shaggy fur'],
+      ['enemy_slime', '슬라임', 'char', 1, 'a green slime monster blob, glossy translucent jelly with two dark eyes, cute but dangerous (also used, smaller, for the little slimes)'],
+      ['enemy_skeleton', '해골 병사', 'char', 1, 'an undead skeleton warrior with a rusty sword and a broken wooden shield, glowing violet eye sockets'],
+      ['enemy_skeleton_mage', '해골 마법사', 'char', 1, 'an undead skeleton sorcerer in a tattered dark purple robe, holding a bone staff with a glowing violet orb'],
+      ['enemy_ghost', '유령', 'char', 1, 'a translucent pale blue ghost spirit with a wispy tail and dark hollow eyes, floating in the air'],
+      ['enemy_golem', '골렘', 'char', 1, 'a hulking stone golem made of grey boulders and moss, glowing cyan rune eyes, heavy fists'],
+      ['enemy_bomber', '폭탄 고블린', 'char', 1, 'a crazy green goblin sapper running with a big black round bomb with a lit sparking fuse, goggles on its head'],
+      ['enemy_harpy', '하피', 'fly', 1, 'a harpy monster with brown feathered wings, a fierce woman\'s face with wild red hair and sharp bird talons'],
+    ]},
+    { title: '보스', note: '보스는 크게 그려지니 디테일을 많이 넣어도 좋습니다.', items: [
+      ['boss_spider_queen', '거미 여왕', 'char', 1, 'a gigantic purple spider queen boss with a small golden crown, a pale egg sac on her abdomen, menacing red eyes'],
+      ['boss_goblin_shaman', '고블린 주술사', 'char', 1, 'a goblin shaman boss in a ragged purple robe wearing a bone skull mask, holding a skull-topped staff crackling with green magic'],
+      ['boss_orc_chief', '오크 족장', 'char', 1, 'a massive orc warlord chieftain boss with a horned iron helmet, a red cape, bone trophies and a huge double-bladed axe'],
+      ['boss_wolf_king', '늑대 왕', 'char', 1, 'a giant silver-white alpha wolf king boss with glowing red eyes, a thick mane and a golden crown'],
+      ['boss_slime_king', '슬라임 왕', 'char', 1, 'a giant purple slime king boss with a tiny golden crown sitting on top, a glossy gooey body with smaller slimes dripping off'],
+      ['boss_lich', '리치', 'char', 1, 'an undead lich king boss in dark purple robes and a golden crown, a skeletal face with glowing violet eyes, holding a dark magic staff, purple aura'],
+      ['boss_stone_giant', '바위 거인', 'char', 1, 'an enormous stone giant boss made of moss-covered boulders, glowing orange eyes, cracks filled with molten light'],
+      ['boss_dragon', '드래곤', 'fly', 1, 'a fearsome red fire dragon boss with huge wings, golden belly scales, curved horns, smoke rising from its nostrils'],
+    ]},
+    { title: '적 기지', note: '기지마다 평소 모습과 파괴된 모습 두 장이 필요합니다.', items: [
+      ['base_cave', '동굴', 'build', 1, 'a monster cave lair entrance in a rocky hill covered with moss, a dark mouth shaped with jagged stone teeth, faint red eyes inside'],
+      ['base_cave_ruin', '동굴 (파괴)', 'build', 2, 'a collapsed monster cave in a rocky hill, the entrance sealed by fallen boulders, dust and rubble'],
+      ['base_goblin', '고블린 부락', 'build', 1, 'a goblin camp village with round straw-roofed huts, a wooden stake palisade, a campfire and a tribal totem'],
+      ['base_goblin_ruin', '고블린 부락 (파괴)', 'build', 2, 'a burned and destroyed goblin camp, collapsed huts, broken palisade stakes, smoke and ash'],
+      ['base_orc', '오크 요새', 'build', 1, 'a dark orc fortress with spiked wooden and stone walls, red war banners, a heavy iron-bound gate and watchtowers'],
+      ['base_orc_ruin', '오크 요새 (파괴)', 'build', 2, 'a ruined orc fortress with broken walls, fallen banners and smoke rising from the rubble'],
+      ['base_graveyard', '묘지', 'build', 1, 'a haunted graveyard with an old stone crypt glowing purple inside, tombstones, a rusty iron fence, a dead tree and purple mist'],
+      ['base_graveyard_ruin', '묘지 (파괴)', 'build', 2, 'a destroyed haunted graveyard with a collapsed crypt, broken tombstones and fading mist'],
+    ]},
+    { title: '성', items: [
+      ['castle_gate', '성문', 'build', 2, 'a sturdy wooden castle gate reinforced with iron bands, set in a grey stone wall'],
+      ['castle_tower', '성벽 탑', 'build', 2, 'a round grey stone castle tower with crenellations and a blue flag on top'],
+      ['castle_house', '성 안 집', 'build', 3, 'a small medieval house with a red tiled roof and a stone chimney'],
+      ['tex_castle_wall', '성벽 돌바닥', 'tex', 3, 'grey stone castle wall walkway made of fitted stone blocks'],
+    ]},
+    { title: '지형 질감', note: '바둑판처럼 이어 붙여 쓰는 바닥 그림입니다. 스테이지 분위기마다 하나씩.', items: [
+      ['tex_grass_spring', '봄 풀밭 (1스테이지)', 'tex', 2, 'lush green spring grass with tiny white and yellow flowers'],
+      ['tex_grass_dry', '메마른 풀밭 (2스테이지)', 'tex', 2, 'dry olive green grassland with patches of bare dirt'],
+      ['tex_grass_autumn', '가을 풀밭 (3스테이지)', 'tex', 2, 'golden autumn grass with fallen orange and red leaves'],
+      ['tex_grass_swamp', '늪 바닥 (4스테이지)', 'tex', 2, 'murky swamp ground with dark green moss and small puddles'],
+      ['tex_grass_dark', '어두운 숲 바닥 (5·8스테이지)', 'tex', 2, 'dark green forest floor grass with moss and roots'],
+      ['tex_waste', '황무지 (6스테이지)', 'tex', 2, 'grey-brown barren wasteland soil with small stones and dry cracks'],
+      ['tex_snow', '눈밭 (7스테이지)', 'tex', 2, 'fresh white snow with soft blue shadows and sparkles'],
+      ['tex_ash', '화산재 (9·10스테이지)', 'tex', 2, 'dark volcanic ash ground with glowing orange ember cracks'],
+      ['tex_path_dirt', '흙길', 'tex', 2, 'packed brown dirt road with wheel ruts and small pebbles'],
+      ['tex_water', '강물', 'tex', 2, 'clear blue river water with gentle ripples and light reflections'],
+      ['tex_water_swamp', '늪 물', 'tex', 3, 'murky green swamp water with ripples and floating algae'],
+      ['tex_lava', '용암', 'tex', 3, 'bright flowing orange lava with a dark cooling crust'],
+      ['prop_bridge', '나무다리', 'prop', 2, 'a wooden plank bridge with rope railings, seen from directly above, lying horizontally'],
+    ]},
+    { title: '나무·장식', items: [
+      ['tree_round', '둥근 나무', 'prop', 2, 'a round leafy green deciduous tree seen from above'],
+      ['tree_pine', '소나무', 'prop', 2, 'a dark green pine tree seen from above'],
+      ['tree_autumn', '단풍나무', 'prop', 2, 'a round tree with orange and red autumn leaves seen from above'],
+      ['tree_snow_pine', '눈 덮인 소나무', 'prop', 3, 'a snow-covered pine tree seen from above'],
+      ['tree_dead', '죽은 나무', 'prop', 3, 'a dead leafless grey tree with twisted branches'],
+      ['tree_willow', '늪 버드나무', 'prop', 3, 'a drooping swamp willow tree with dark green leaves'],
+      ['tree_charred', '불탄 나무', 'prop', 3, 'a charred burnt black tree with glowing embers'],
+      ['prop_rock', '바위', 'prop', 3, 'a grey boulder rock with a little moss'],
+      ['prop_bush', '덤불', 'prop', 3, 'a small round green bush'],
+    ]},
+    { title: '투사체', items: [
+      ['fx_arrow', '화살', 'fx', 3, 'a wooden arrow with white feather fletching, lying horizontally'],
+      ['fx_magic_bolt', '마법탄 (파랑)', 'fx', 3, 'a glowing blue magic energy bolt with a sparkling trail'],
+      ['fx_dark_bolt', '마법탄 (보라)', 'fx', 3, 'a glowing purple dark magic orb with a wispy trail'],
+      ['fx_fireball', '화염구', 'fx', 3, 'a blazing fireball with a flame trail'],
+      ['fx_meteor', '메테오', 'fx', 3, 'a huge flaming meteor rock with a long fire trail'],
+      ['fx_boulder', '바위 (던지는 돌)', 'fx', 3, 'a rough round grey boulder'],
+    ]},
+    { title: '아이템 아이콘', note: '등급 색(일반·희귀·전설)은 게임이 테두리로 표시하니 아이템만 그리면 됩니다.', items: [
+      ['item_knight_weapon', '기사 · 성검', 'icon', 3, 'a holy longsword with a golden hilt and a glowing blade'],
+      ['item_knight_armor', '기사 · 미스릴 갑옷', 'icon', 3, 'a shining silver mithril chest armor'],
+      ['item_knight_accessory', '기사 · 왕의 반지', 'icon', 3, 'a golden royal ring with a red gem'],
+      ['item_archer_weapon', '궁사 · 엘프의 장궁', 'icon', 3, 'an elegant elven longbow made of pale wood with leaf carvings'],
+      ['item_archer_armor', '궁사 · 바람의 망토', 'icon', 3, 'a flowing green wind cloak with a silver clasp'],
+      ['item_archer_accessory', '궁사 · 매의 눈 반지', 'icon', 3, 'a silver ring set with a golden hawk-eye gem'],
+      ['item_mage_weapon', '마법사 · 대마법사의 지팡이', 'icon', 3, 'an archmage staff with a large glowing blue crystal'],
+      ['item_mage_armor', '마법사 · 별빛 로브', 'icon', 3, 'a deep blue starlight robe embroidered with silver stars'],
+      ['item_mage_accessory', '마법사 · 마나 수정', 'icon', 3, 'a glowing blue mana crystal pendant'],
+    ]},
+  ];
+  const PRIO = { 1: ['먼저', 'p1'], 2: ['다음', 'p2'], 3: ['나중', 'p2'] };
+  const TIPS = {
+    gpt: ['<p><b>ChatGPT · Gemini</b> — 프롬프트를 그대로 붙여 넣으면 됩니다. 배경이 투명하게 안 나오면 "make the background transparent"라고 한 번 더 요청하세요.</p>',
+          '<p>두 번째 그림부터는 마음에 든 기사 그림을 첨부하고 맨 앞에 <code>Same art style as the attached image:</code>를 붙이면 그림체가 잘 맞습니다.</p>'],
+    mj: ['<p><b>Midjourney</b> — 투명 배경이 안 되니 흰 배경으로 만든 뒤 배경 지우기 도구로 지우세요. 정사각형(<code>--ar 1:1</code>)과 지형 질감용 <code>--tile</code>은 자동으로 붙습니다.</p>',
+         '<p>마음에 든 기사 그림의 주소를 <code>--sref 그림주소</code>로 붙이면 같은 그림체로 나옵니다.</p>'],
+    sd: ['<p><b>Stable Diffusion · Leonardo</b> — 흰 배경으로 만든 뒤 배경을 지우세요. 아래 네거티브 프롬프트를 항상 함께 넣고, 1024×1024로 생성하세요.</p>',
+         '<p>마음에 든 기사 그림을 IP-Adapter(이미지 참고) 등에 넣으면 그림체를 맞추기 쉽습니다.</p>'],
+  };
+
+  const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
+                  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} } };
+  let tool = store.get('art-tool', 'gpt');
+  const done = new Set(store.get('art-done', []));
+  let onlyLeft = false;
+  const all = GROUPS.flatMap(g => g.items);
+
+  function fullPrompt(it) {
+    const [, , cat, , subject] = it;
+    let style = STYLES[cat];
+    if (tool !== 'gpt') style = style.replace('isolated on a transparent background', 'isolated on a plain white background');
+    let p = subject + ', ' + style;
+    if (tool === 'mj') p += cat === 'tex' ? ' --ar 1:1 --tile' : ' --ar 1:1 --no text, watermark, scenery';
+    return p;
+  }
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function render() {
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
+    document.getElementById('tip').innerHTML = TIPS[tool].join('');
+    document.getElementById('neg').hidden = tool !== 'sd';
+    document.getElementById('neg-text').textContent = NEG;
+    document.getElementById('styles').innerHTML = Object.keys(STYLES).map(k => `<div><b>${STYLE_NAMES[k]}</b><code>${esc(STYLES[k])}</code></div>`).join('');
+    document.getElementById('groups').innerHTML = GROUPS.map((g, gi) => {
+      const n = g.items.filter(it => done.has(it[0])).length;
+      const rows = g.items.filter(it => !(onlyLeft && done.has(it[0]))).map(it => {
+        const [id, name, , prio, subject] = it, d = done.has(id);
+        return `<li class="item${d ? ' done' : ''}" data-id="${id}">
+          <input type="checkbox" class="check" id="chk-${id}" ${d ? 'checked' : ''} aria-label="${esc(name)} 완료">
+          <div class="body">
+            <div class="top"><label class="name" for="chk-${id}">${esc(name)}</label><span class="file">${id}.png</span><span class="prio ${PRIO[prio][1]}">${PRIO[prio][0]}</span></div>
+            <div class="subject">${esc(subject)}</div>
+            <textarea class="fallback" id="fb-${id}" readonly hidden></textarea>
+          </div>
+          <button type="button" class="copy" data-copy="${id}">복사</button>
+        </li>`;
+      }).join('');
+      return `<section class="group" aria-labelledby="g${gi}"><div class="ghead"><h2 id="g${gi}">${g.title}</h2><span class="gcount">${n} / ${g.items.length}</span>${g.note ? `<span class="gnote">${g.note}</span>` : ''}</div><ul class="items">${rows || '<li class="item"><span></span><span class="subject">모두 완료했어요.</span></li>'}</ul></section>`;
+    }).join('');
+    const total = all.length, dn = all.filter(it => done.has(it[0])).length;
+    document.getElementById('count').textContent = `${dn} / ${total} 완료`;
+    document.getElementById('prog').style.width = (dn / total * 100) + '%';
+  }
+
+  function copyText(text, btn, fb) {
+    const ok = () => { btn.classList.add('ok'); btn.textContent = '복사됨'; setTimeout(() => { btn.classList.remove('ok'); btn.textContent = btn.dataset.label || '복사'; }, 1500); };
+    const fail = () => { if (fb) { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); } btn.textContent = '아래 글을 직접 복사하세요'; };
+    try { navigator.clipboard.writeText(text).then(ok, fail); } catch (_) { fail(); }
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-tool]');
+    if (t) { tool = t.dataset.tool; store.set('art-tool', tool); render(); return; }
+    const c = e.target.closest('[data-copy]');
+    if (c) { const it = all.find(x => x[0] === c.dataset.copy); copyText(fullPrompt(it), c, document.getElementById('fb-' + it[0])); return; }
+    if (e.target.id === 'neg-copy') { e.target.dataset.label = '네거티브 복사'; copyText(NEG, e.target, null); }
+  });
+  document.addEventListener('change', e => {
+    if (e.target.classList.contains('check')) {
+      const id = e.target.closest('li').dataset.id;
+      if (e.target.checked) done.add(id); else done.delete(id);
+      store.set('art-done', [...done]); render();
+    } else if (e.target.id === 'only-left') { onlyLeft = e.target.checked; render(); }
+  });
+  render();
+})();
+</script>
