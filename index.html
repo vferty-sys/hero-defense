@@ -789,16 +789,33 @@ function loadImages() {
 // 아래 목록에 있는 그림만 불러오고, 그림이 없는 캐릭터는 지금처럼 도형으로 그립니다.
 // 그림은 오른쪽을 바라보는 모습 (왼쪽으로 갈 때는 뒤집어 그림). 병사는 unit_<종류>_<단계>, 없는 단계는 낮은 단계 그림을 씀
 const SPRITE_NAMES = ['hero_knight', 'hero_archer', 'hero_mage', 'unit_footman_1', 'unit_archer_1'];
+// 동작 시트 (12자세: 1줄 서 있기·숨쉬기·맞음·스킬 / 2줄 걷기 4장 / 3줄 공격 4장). 있으면 한 장 그림 대신 사용
+const ANIM_NAMES = [];
+const ANIM_COLS = 4, ANIM_ROWS = 3, ANIM_FOOT = 8 / 330;   // 칸 아래 여백 비율 (tools/prepare_images.py 와 맞춤)
 const SPRITE_DIR = 'images/web/';
 const Sprites = {
-  list: {},
+  list: {}, anims: {},
   load() {
     for (const n of SPRITE_NAMES) {
       const im = new Image();
       im.onload = () => this.prepare(n, im);
       im.src = SPRITE_DIR + n + '.png';
     }
+    for (const n of ANIM_NAMES) {
+      const im = new Image();
+      im.onload = () => this.prepareAnim(n, im);
+      im.src = SPRITE_DIR + n + '_anim.png';
+    }
   },
+  prepareAnim(n, im) {
+    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+    const half = mk(Math.round(im.width / 2), Math.round(im.height / 2)), hg = half.getContext('2d');
+    hg.imageSmoothingQuality = 'high'; hg.drawImage(im, 0, 0, half.width, half.height);
+    const flash = mk(im.width, im.height), fg = flash.getContext('2d');
+    fg.drawImage(im, 0, 0); fg.globalCompositeOperation = 'source-in'; fg.fillStyle = '#ffffff'; fg.fillRect(0, 0, flash.width, flash.height);
+    this.anims[n] = { img: im, half, flash, cw: im.width / ANIM_COLS, ch: im.height / ANIM_ROWS };
+  },
+  anim(n) { return this.anims[n] || null; },
   prepare(n, im) {
     const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
     const half = mk(Math.round(im.width / 2), Math.round(im.height / 2)), hg = half.getContext('2d');
@@ -850,6 +867,23 @@ const Art = {
     ctx.drawImage(im, -W / 2, -H, W, H);
     if (o.flash > 0) { ctx.globalAlpha = Math.min(0.75, o.flash * 7); ctx.drawImage(sp.flash, -W / 2, -H, W, H); }
     ctx.restore();
+  },
+  // 동작 시트로 그리기: 상황에 맞는 자세(칸)를 골라 그림. (x, y) = 발 위치, H = 칸 높이(지도 px)
+  animSprite(ctx, an, u, x, y, H, rt) {
+    const c = Math.cos(u.face); if (c < -0.25) u.flipX = true; else if (c > 0.25) u.flipX = false;
+    let f;
+    if (u.attackAnim > 0) f = 8 + Math.min(3, Math.floor((1 - u.attackAnim / 0.25) * 4));            // 공격 4장
+    else if (u.castAnim > 0) f = 3;                                                                  // 스킬
+    else if (u.flash > 0.04) f = 2;                                                                  // 맞음
+    else if (u.moving || u.dash) f = 4 + (Math.floor(u.walkAnim * 8) % 4);                           // 걷기 4장
+    else f = Math.floor(rt * 1.5 + (u.x % 2)) % 2;                                                   // 서 있기 2장
+    const fx = (f % ANIM_COLS) * an.cw, fy = Math.floor(f / ANIM_COLS) * an.ch, W = H * an.cw / an.ch;
+    const small = H * pixelRatio * Camera.zoom < 170, src = small ? an.half : an.img, k = small ? 0.5 : 1;
+    ctx.save(); ctx.translate(x, y + H * ANIM_FOOT); if (u.flipX) ctx.scale(-1, 1);
+    ctx.drawImage(src, fx * k, fy * k, an.cw * k, an.ch * k, -W / 2, -H, W, H);
+    if (u.flash > 0) { ctx.globalAlpha = Math.min(0.6, u.flash * 6); ctx.drawImage(an.flash, fx, fy, an.cw, an.ch, -W / 2, -H, W, H); }
+    ctx.restore();
+    return y + H * ANIM_FOOT - H + H * 0.06;                                                       // 머리 위치 (체력바용)
   },
   // 걷기(통통 튀기·좌우 흔들림) / 공격(앞으로 숙이기) / 가만히(숨쉬기) / 기절(흔들흔들) / 방향(좌우 뒤집기)
   spriteMotion(u, rt, atkDur = 0.25) {
@@ -1701,6 +1735,8 @@ const Art = {
     }
     ctx.strokeStyle = 'rgba(255,215,90,0.85)'; ctx.lineWidth = 2; ellipse(ctx, x, y + 9, 23, 10); ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, x + 2, y + 9, 19, 8); ctx.fill();
+    const an = Sprites.anim('hero_' + h.type);
+    if (an) { h._top = this.animSprite(ctx, an, h, x, y + 9, 82, t); return; }                // 동작 시트가 있으면 실제 동작으로
     const sp = Sprites.get('hero_' + h.type);
     if (sp) { const H = 74; this.sprite(ctx, sp, x, y + 9, H, this.spriteMotion(h, t)); h._top = y + 9 - H; return; }
     h._top = null;
@@ -3955,6 +3991,7 @@ class Hero {
     this.dash = null; this.burst = null; this.moving = false; this.walkAnim = 0; this.retarget = 0;
     this.stun = 0; this.root = 0; this.push = null;      // 보스 스킬: 기절 / 묶임 / 밀려남
     this.sup = newSup();                                 // 성직자 강화 효과
+    this.castAnim = 0;                                   // 스킬 쓰는 자세 (동작 시트)
     this.mana = this.maxMana;
   }
   // 능력치 = 기본 + 레벨 성장 + 장착 아이템
@@ -4068,6 +4105,7 @@ class Hero {
     }[sk.id];
     if (!fn || fn() === false) return false;                      // false = 쓸 수 없음 (쿨타임·마나 소모 안 함)
     this.cooldowns[i] = sk.cooldown * (1 - this.cdr);            // 왕의 반지: 쿨타임 감소
+    this.castAnim = 0.45;
     this.mana -= sk.mana || 0;
     return true;
   }
@@ -4259,6 +4297,7 @@ class Hero {
   update(dt) {
     for (let i = 0; i < this.cooldowns.length; i++) if (this.cooldowns[i] > 0) this.cooldowns[i] = Math.max(0, this.cooldowns[i] - dt);
     tickSup(this, dt);
+    if (this.castAnim > 0) this.castAnim -= dt;
     if (this.buffs.warcry > 0) this.buffs.warcry -= dt;
     if (this.attackAnim > 0) this.attackAnim -= dt;
     if (this.flash > 0) this.flash -= dt;
