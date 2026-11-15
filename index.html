@@ -72,10 +72,11 @@ const CONFIG = {
 
   // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
+  // (선택) spawnMul: 적 생산 간격 배율 / groupMul: 적 무리 크기 배율
   difficulty: {
-    easy:   { name: '쉬움',   enemyHp: 0.75, enemyDmg: 0.75, baseHp: 0.8, startGold: 400 },
-    normal: { name: '보통',   enemyHp: 1.0,  enemyDmg: 1.0,  baseHp: 1.0, startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.25, enemyDmg: 1.2,  baseHp: 1.2, startGold: 300 },
+    easy:   { name: '쉬움',   enemyHp: 0.85, enemyDmg: 0.85, baseHp: 1.5, startGold: 450 },
+    normal: { name: '보통',   enemyHp: 1.1,  enemyDmg: 1.1,  baseHp: 2.0, startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.45, enemyDmg: 1.35, baseHp: 2.4, startGold: 300 },   // 보통을 모두 깨면 열림
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
@@ -298,43 +299,43 @@ const CONFIG = {
   // mid: 중간보스 — first초부터 interval초마다, 남은 기지 중 한 곳에서 그 기지의 보스(byBase) 등장
   // final: 최종보스 — base 체력이 triggerHpRatio 이하가 되면 type 보스가 나와 기지를 지킴 (hpMul: 체력 배율, protectBase: 살아 있는 동안 기지 무적)
   stages: [
-    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.25, spawnMul: 0.7, startGold: 0,
+    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.05, spawnMul: 0.8, startGold: 0,
       desc: '기지 2곳 · 고블린 주술사', extraSpawns: { cave: [{ type: 'wolf', count: 3, weight: 3 }] },
       mid: { first: 150, interval: 170, byBase: { cave: 'spiderQueen' } },
       final: { base: 'goblin', type: 'goblinShaman', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.1, spawnMul: 1.3, startGold: 50,
+    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.05, spawnMul: 1.25, startGold: 100,
       desc: '기지 3곳 · 오크 족장', extraSpawns: { goblin: [{ type: 'bomber', count: 2, weight: 2 }], cave: [{ type: 'wolf', count: 3, weight: 2 }] },
       mid: { first: 160, interval: 170, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'orcChief', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '늑대 언덕', map: 'forestM', bases: ['cave', 'goblin'], power: 1.45, spawnMul: 0.7, startGold: 50,
+    { name: '늑대 언덕', map: 'forestM', bases: ['cave', 'goblin'], power: 1.25, spawnMul: 0.8, startGold: 150,
       desc: '기지 2곳 · 늑대 왕', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 6 }, { type: 'harpy', count: 2, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { goblin: 'goblinShaman', cave: 'spiderQueen' } },
       final: { base: 'cave', type: 'wolfKing', triggerHpRatio: 0.5, hpMul: 2.4, protectBase: true } },
-    { name: '안개 늪', map: 'marsh', bases: ['cave', 'goblin', 'orc'], power: 1.25, spawnMul: 1.3, startGold: 80,
+    { name: '안개 늪', map: 'marsh', bases: ['cave', 'goblin', 'orc'], power: 1.26, spawnMul: 1.3, startGold: 200,
       desc: '기지 3곳 · 슬라임 왕', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 4 }], orc: [{ type: 'slime', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'slimeKing', triggerHpRatio: 0.5, hpMul: 2.0, protectBase: true } },
-    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.3, spawnMul: 1.3, startGold: 100,
+    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.32, spawnMul: 1.35, startGold: 250,
       desc: '기지 3곳 · 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 2, weight: 3 }], goblin: [{ type: 'wolf', count: 3, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1, protectBase: true } },
-    { name: '잊힌 묘지', map: 'crypt', bases: ['goblin', 'graveyard', 'cave'], power: 1.35, spawnMul: 1.3, startGold: 100,
+    { name: '잊힌 묘지', map: 'crypt', bases: ['goblin', 'graveyard', 'cave'], power: 1.36, spawnMul: 1.35, startGold: 300,
       desc: '기지 3곳 · 리치', extraSpawns: { cave: [{ type: 'ghost', count: 2, weight: 3 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.0, protectBase: true } },
-    { name: '얼어붙은 고개', map: 'canyonM', bases: ['goblin', 'cave', 'orc'], power: 1.45, spawnMul: 1.3, startGold: 120,
+    { name: '얼어붙은 고개', map: 'canyonM', bases: ['goblin', 'cave', 'orc'], power: 1.4, spawnMul: 1.35, startGold: 350,
       desc: '기지 3곳 · 바위 거인', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 4 }], orc: [{ type: 'golem', count: 1, weight: 3 }], goblin: [{ type: 'harpy', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 1.6, protectBase: true } },
-    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.4, spawnMul: 1.6, startGold: 150,
+    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.36, spawnMul: 1.75, startGold: 400,
       desc: '기지 4곳 · 리치', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 150, byBase: { cave: 'slimeKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.5, spawnMul: 1.6, startGold: 150,
+    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.46, spawnMul: 1.75, startGold: 450,
       desc: '기지 4곳 · 바위 거인', extraSpawns: { orc: [{ type: 'golem', count: 1, weight: 3 }], cave: [{ type: 'harpy', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 3, weight: 2 }] },
       mid: { first: 140, interval: 150, byBase: { graveyard: 'lich', cave: 'wolfKing', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.6, spawnMul: 1.55, startGold: 200,
+    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.52, spawnMul: 1.7, startGold: 500,
       desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
@@ -370,7 +371,7 @@ const CONFIG = {
   },
 
   // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.07, damageMul: 1.04, spawnIntervalMul: 0.94, minSpawnInterval: 2.5 },
+  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.09, damageMul: 1.05, spawnIntervalMul: 0.93, minSpawnInterval: 2.5, groupGrowth: 0.1 },   // groupGrowth: 위협 레벨당 적 무리 크기 +10%
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -4174,7 +4175,7 @@ class EnemyBase {
   }
   get spawnInterval() {
     const e = CONFIG.escalation;
-    return Math.max(e.minSpawnInterval, this.cfg.spawnInterval * (G.stage.spawnMul || 1) * Math.pow(e.spawnIntervalMul, G.threat - 1));
+    return Math.max(e.minSpawnInterval, this.cfg.spawnInterval * (G.stage.spawnMul || 1) * (G.diff.spawnMul || 1) * Math.pow(e.spawnIntervalMul, G.threat - 1));
   }
   update(dt) {
     if (this.flash > 0) this.flash -= dt;
@@ -4190,9 +4191,10 @@ class EnemyBase {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.spawns.length) {
       this.spawnTimer += this.spawnInterval * rand(0.85, 1.15);
-      const g = weightedPick(this.spawns);
-      for (let i = 0; i < g.count; i++) {
-        const lane = g.count === 1 ? rand(-10, 10) : lerp(-13, 13, i / (g.count - 1)) + rand(-3, 3);
+      const grow = 1 + (CONFIG.escalation.groupGrowth || 0) * (G.threat - 1);            // 위협 레벨이 오를수록 무리가 커짐
+      const g = weightedPick(this.spawns), n = Math.max(1, Math.round(g.count * (G.diff.groupMul || 1) * grow));   // 난이도에 따라 무리 크기
+      for (let i = 0; i < n; i++) {
+        const lane = n === 1 ? rand(-10, 10) : lerp(-13, 13, i / (n - 1)) + rand(-3, 3);
         this.queue.push({ type: g.type, delay: i * this.cfg.groupGap, lane });
       }
     }
