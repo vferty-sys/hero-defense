@@ -74,9 +74,9 @@ const CONFIG = {
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
   // (선택) spawnMul: 적 생산 간격 배율 / groupMul: 적 무리 크기 배율
   difficulty: {
-    easy:   { name: '쉬움',   enemyHp: 0.85, enemyDmg: 0.85, baseHp: 1.5, startGold: 450 },
-    normal: { name: '보통',   enemyHp: 1.1,  enemyDmg: 1.1,  baseHp: 2.0, startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.45, enemyDmg: 1.35, baseHp: 2.4, startGold: 300 },   // 보통을 모두 깨면 열림
+    easy:   { name: '쉬움',   enemyHp: 0.85, enemyDmg: 0.85, baseHp: 1.25, startGold: 450 },
+    normal: { name: '보통',   enemyHp: 1.1,  enemyDmg: 1.1,  baseHp: 1.6, startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.45, enemyDmg: 1.35, baseHp: 2.0, startGold: 300 },   // 보통을 모두 깨면 열림
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
@@ -91,33 +91,33 @@ const CONFIG = {
     order: ['footman', 'archer', 'knight', 'mage'],
     // skill: 최고 레벨(5)이 되면 생기는 자동 스킬 (cooldown초마다 저절로 사용)
     footman: { facility: '병영', pop: 1, desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
-      skill: { id: 'bash', name: '방패 강타', cooldown: 7, radius: 46, damageMul: 2.5, stun: 1.2, desc: '7초마다 주변 적을 방패로 쳐서 기절' },
+      skill: { id: 'bash', name: '방패 강타', cooldown: 12, radius: 46, damageMul: 2.5, stun: 1.2, desc: '12초마다 주변 적을 방패로 쳐서 기절' },
       levels: [ { cost: 0,   spawnTime: 3.5, hp: 130, damage: 10, armor: 0.20 },
                 { cost: 120, spawnTime: 3.0, hp: 175, damage: 14, armor: 0.25 },
                 { cost: 200, spawnTime: 2.6, hp: 230, damage: 19, armor: 0.30 },
                 { cost: 320, spawnTime: 2.3, hp: 290, damage: 25, armor: 0.34 },
                 { cost: 450, spawnTime: 2.0, hp: 360, damage: 32, armor: 0.38 } ] },
     archer:  { facility: '궁술장', pop: 1, desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격 · 강화하면 사거리 증가',
-      skill: { id: 'volley', name: '연속 사격', cooldown: 6, arrows: 4, damageMul: 1.2, desc: '6초마다 화살 4발을 여러 적에게' },
+      skill: { id: 'volley', name: '연속 사격', cooldown: 10, arrows: 2, damageMul: 1.2, desc: '10초마다 화살 2발을 가까운 적에게' },
       levels: [ { cost: 120, spawnTime: 5.0, hp: 75,  damage: 11, armor: 0.05, range: 170 },
-                { cost: 140, spawnTime: 4.6, hp: 95,  damage: 16, armor: 0.08, range: 190 },
-                { cost: 210, spawnTime: 4.2, hp: 120, damage: 22, armor: 0.10, range: 210 },
-                { cost: 330, spawnTime: 3.8, hp: 150, damage: 29, armor: 0.12, range: 230 },
-                { cost: 460, spawnTime: 3.4, hp: 185, damage: 37, armor: 0.14, range: 250 } ] },
+                { cost: 140, spawnTime: 4.6, hp: 95,  damage: 16, armor: 0.08, range: 178 },
+                { cost: 210, spawnTime: 4.2, hp: 120, damage: 22, armor: 0.10, range: 186 },
+                { cost: 330, spawnTime: 3.8, hp: 150, damage: 29, armor: 0.12, range: 194 },
+                { cost: 460, spawnTime: 3.4, hp: 185, damage: 37, armor: 0.14, range: 200 } ] },
     knight:  { facility: '기사단', pop: 4, desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
-      skill: { id: 'charge', name: '돌격', cooldown: 9, range: 230, speed: 440, damageMul: 2.5, knock: 70, desc: '9초마다 적에게 돌진해 길 위의 적을 밀쳐냄' },
+      skill: { id: 'charge', name: '돌격', cooldown: 14, range: 230, speed: 440, damageMul: 2.5, knock: 70, desc: '14초마다 적에게 돌진해 길 위의 적을 밀쳐냄' },
       levels: [ { cost: 220, spawnTime: 9,   hp: 360, damage: 22, armor: 0.35 },
                 { cost: 200, spawnTime: 8,   hp: 450, damage: 30, armor: 0.40 },
                 { cost: 280, spawnTime: 7,   hp: 560, damage: 39, armor: 0.45 },
                 { cost: 400, spawnTime: 6.2, hp: 690, damage: 49, armor: 0.48 },
                 { cost: 560, spawnTime: 5.5, hp: 850, damage: 61, armor: 0.50 } ] },
     mage:    { facility: '마법학교', pop: 3, desc: '마법 공격(방어력 무시) · 범위 피해 · 공중 공격 가능 · 강화하면 사거리 증가',
-      skill: { id: 'fireball', name: '화염구', cooldown: 8, radius: 72, damageMul: 3, desc: '8초마다 적이 많은 곳에 화염구' },
+      skill: { id: 'fireball', name: '화염구', cooldown: 15, radius: 50, damageMul: 1.3, splash: 0.6, desc: '15초마다 적이 많은 곳에 작은 화염구 (영웅 화염구보다 약함)' },
       levels: [ { cost: 260, spawnTime: 9,   hp: 85,  damage: 24, armor: 0.05, range: 165 },
-                { cost: 220, spawnTime: 8.2, hp: 105, damage: 34, armor: 0.07, range: 185 },
-                { cost: 300, spawnTime: 7.4, hp: 130, damage: 46, armor: 0.10, range: 205, slow: 0.35, slowTime: 1.2 },   // 3레벨부터: 맞은 적 둔화
-                { cost: 420, spawnTime: 6.6, hp: 160, damage: 60, armor: 0.12, range: 225, slow: 0.40, slowTime: 1.4 },
-                { cost: 580, spawnTime: 6.0, hp: 195, damage: 76, armor: 0.14, range: 245, slow: 0.45, slowTime: 1.6 } ] },
+                { cost: 220, spawnTime: 8.2, hp: 105, damage: 34, armor: 0.07, range: 172 },
+                { cost: 300, spawnTime: 7.4, hp: 130, damage: 46, armor: 0.10, range: 180, slow: 0.35, slowTime: 1.2 },   // 3레벨부터: 맞은 적 둔화
+                { cost: 420, spawnTime: 6.6, hp: 160, damage: 60, armor: 0.12, range: 188, slow: 0.40, slowTime: 1.4 },
+                { cost: 580, spawnTime: 6.0, hp: 195, damage: 76, armor: 0.14, range: 195, slow: 0.45, slowTime: 1.6 } ] },
   },
 
   // ---------------- 병사 ----------------
@@ -323,19 +323,19 @@ const CONFIG = {
       desc: '기지 3곳 · 리치', extraSpawns: { cave: [{ type: 'ghost', count: 2, weight: 3 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.0, protectBase: true } },
-    { name: '얼어붙은 고개', map: 'canyonM', bases: ['goblin', 'cave', 'orc'], power: 1.4, spawnMul: 1.35, startGold: 350,
+    { name: '얼어붙은 고개', map: 'canyonM', bases: ['goblin', 'cave', 'orc'], power: 1.3, spawnMul: 1.35, startGold: 350,
       desc: '기지 3곳 · 바위 거인', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 4 }], orc: [{ type: 'golem', count: 1, weight: 3 }], goblin: [{ type: 'harpy', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 1.6, protectBase: true } },
-    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.36, spawnMul: 1.75, startGold: 400,
+    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.2, spawnMul: 2.0, startGold: 400,
       desc: '기지 4곳 · 리치', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 150, byBase: { cave: 'slimeKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.46, spawnMul: 1.75, startGold: 450,
+    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.22, spawnMul: 2.0, startGold: 450,
       desc: '기지 4곳 · 바위 거인', extraSpawns: { orc: [{ type: 'golem', count: 1, weight: 3 }], cave: [{ type: 'harpy', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 3, weight: 2 }] },
       mid: { first: 140, interval: 150, byBase: { graveyard: 'lich', cave: 'wolfKing', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.52, spawnMul: 1.7, startGold: 500,
+    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.32, spawnMul: 1.95, startGold: 500,
       desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
@@ -2749,7 +2749,7 @@ class Soldier {
     this.engaged = new Set(); this.target = null; this.retarget = 0; this.fIdx = 0;
     this.atkTimer = rand(0, 0.5); this.attackAnim = 0; this.flash = 0;
     this.stun = 0; this.root = 0; this.push = null;      // 보스 스킬: 기절 / 묶임 / 밀려남
-    this.rush = null; this.skillT = 2 + Math.random() * 2;   // 최고 레벨 자동 스킬 (기사 돌격 중 / 다음 사용까지)
+    this.rush = null; this.skillT = 3 + Math.random() * 5;   // 최고 레벨 자동 스킬 (기사 돌격 중 / 다음 사용까지)
     this.lastHit = -999; this.dead = false; this.moving = false; this.walkAnim = Math.random() * 3;
   }
   applyStats(level, s, fresh) {
@@ -2833,7 +2833,7 @@ class Soldier {
     const a = this.anchorCenter();
     if (this.maxLevel && CONFIG.army[this.kind].skill) {            // 최고 레벨: 자동 스킬
       this.skillT -= dt;
-      if (this.skillT <= 0) this.skillT = this.useSkill(CONFIG.army[this.kind].skill) ? CONFIG.army[this.kind].skill.cooldown : 0.5;
+      if (this.skillT <= 0) this.skillT = this.useSkill(CONFIG.army[this.kind].skill) ? CONFIG.army[this.kind].skill.cooldown * rand(0.9, 1.15) : 0.5;   // 병사마다 조금씩 다르게
       if (this.rush) return;
     }
 
@@ -2904,7 +2904,7 @@ Soldier.prototype.useSkill = function (sk) {
         if (n > bn) { bn = n; t = e; }
       }
       if (!t) return false;
-      G.projectiles.push(new MagicBolt(this.x, this.y - 8, t, { damage: this.damage * sk.damageMul, splash: sk.radius, burst: true }, { boltSpeed: 420 }, this, 'fire'));
+      G.projectiles.push(new MagicBolt(this.x, this.y - 8, t, { damage: this.damage * sk.damageMul, splash: sk.radius, burst: true, splashRatio: sk.splash }, { boltSpeed: 420 }, this, 'fire'));
       this.attackAnim = 0.25; Sound.play('fireCast', this.x, this.y, 0.3);
       return true;
     }
@@ -3116,9 +3116,9 @@ class MagicBolt {
         if (this.s.slow && this.target.applySlow) this.target.applySlow(this.s.slow, this.s.slowTime);
       }
       if (this.s.splash) {                                      // 범위 피해: 주변 적에게 60% (화염구는 100%)
-        const r = this.s.burst ? 1 : 0.6;
+        const r = this.s.splashRatio || 0.6;
         for (const e of G.enemies) if (e.alive && e !== this.target && dist(e.x, e.y - (e.air ? AIR_HEIGHT : 0), this.tx, this.ty) <= this.s.splash + e.radius) e.takeDamage(this.s.damage * r, this.source, true);
-        if (this.s.burst) { FX.explosion(this.tx, this.ty, 0.4); Sound.play('boom', this.tx, this.ty, 0.45); }
+        if (this.s.burst) { FX.explosion(this.tx, this.ty, 0.28); Sound.play('boom', this.tx, this.ty, 0.35); }
         else FX.ring(this.tx, this.ty, this.s.splash, '190,150,255', 0.3);
       }
       FX.spark(this.tx, this.ty, '#d6b8ff', 5); FX.ring(this.tx, this.ty, 16, '190,150,255', 0.25);
