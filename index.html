@@ -67,14 +67,28 @@ const CONFIG = {
       { cost: 220, maxHp: 1500, carpenters: 3, repairPerCarpenter: 7,  archers: 3, archerDamage: 15, archerInterval: 0.9, archerRange: 310 },
       { cost: 380, maxHp: 2200, carpenters: 3, repairPerCarpenter: 10, archers: 4, archerDamage: 20, archerInterval: 0.8, archerRange: 330,
         oilDamage: 60, oilInterval: 6, oilRadius: 120 },   // 3레벨: 성문에 붙은 적에게 oilInterval초마다 끓는 기름
+      { cost: 650, maxHp: 3000, carpenters: 4, repairPerCarpenter: 12, archers: 4, archerDamage: 27, archerInterval: 0.7, archerRange: 345,
+        oilDamage: 90, oilInterval: 5, oilRadius: 130 },   // 4~5레벨: 후반 골드 사용처
+      { cost: 950, maxHp: 4000, carpenters: 4, repairPerCarpenter: 15, archers: 4, archerDamage: 34, archerInterval: 0.6, archerRange: 360,
+        oilDamage: 130, oilInterval: 4, oilRadius: 140 },
     ],
   },
   wallArcher: { arrowSpeed: 700 },
 
+  // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
+  // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
+  difficulty: {
+    easy:   { name: '쉬움',   enemyHp: 0.75, enemyDmg: 0.75, baseHp: 0.8, startGold: 400 },
+    normal: { name: '보통',   enemyHp: 1.0,  enemyDmg: 1.0,  baseHp: 1.0, startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.3,  enemyDmg: 1.25, baseHp: 1.2, startGold: 250 },
+  },
+
+  // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
+  effects: { damageNumbers: true, screenShake: true },
+
   // ---------------- 경제 ----------------
   economy: {
-    startGold: 300,               // 시작 골드
-    sellRefund: 0.6,              // 건물 판매 시 투자 비용 환급 비율
+    sellRefund: 0.6,              // 건물 판매 시 투자 비용 환급 비율 (시작 골드는 난이도별)
   },
 
   // ---------------- 방어타워 ----------------
@@ -278,7 +292,7 @@ const CONFIG = {
       { id: 'rare',      name: '희귀', prefix: '빛나는', color: '#5aa8ff', mul: 1.8, weight: 30, sell: 90 },
       { id: 'legendary', name: '전설', prefix: '전설의', color: '#ff9a2a', mul: 2.6, weight: 10, sell: 200 },
     ],
-    dropChance: { boss: 1.0, base: 0.8 },     // 보스 처치 / 기지 파괴 시 드랍 확률
+    dropChance: { midBoss: 0.3, finalBoss: 0.5, base: 0.2 },   // 드랍 확률: 중간보스 30% / 드래곤 50% / 기지 파괴 20% (한 판에 평균 2개 안팎)
     finalBossLegendaryWeight: 45,             // 최종보스는 전설이 더 잘 나옴
     // 선택한 직업 전용 아이템만 드랍. stats는 '일반' 기준 (등급 배율 적용)
     heroes: {
@@ -504,6 +518,13 @@ function bar(ctx, x, y, w, h, ratio, color, o = {}) {
   }
   rr(ctx, x, y, w, h, r); ctx.strokeStyle = o.border || 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1; ctx.stroke();
 }
+// 효과 설정 (CONFIG.effects 기본값 + 브라우저에 저장된 선택)
+const SETTINGS = (() => { const st = { ...CONFIG.effects }; try { Object.assign(st, JSON.parse(localStorage.getItem('kg.settings') || '{}')); } catch (_) {} return st; })();
+function saveSettings() { try { localStorage.setItem('kg.settings', JSON.stringify(SETTINGS)); } catch (_) {} }
+function addGold(n) { G.gold += n; G.stats.goldEarned += n; }
+function shake(mag, dur) { if (mag >= G.shakeMag * (G.shakeT / G.shakeDur || 0)) { G.shakeMag = mag; G.shakeT = dur; G.shakeDur = dur; } }
+function dmgText(x, y, n, color, size) { FX.dmg(x, y, n, color, size); }
+
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 const hpColor = r => (r > 0.6 ? '#5cc24a' : r > 0.3 ? '#e2b33a' : '#dd4a3a');
 
@@ -512,10 +533,13 @@ const hpColor = r => (r > 0.6 ? '#5cc24a' : r > 0.3 ? '#e2b33a' : '#dd4a3a');
 //    IMAGE_SOURCES 에 경로를 넣으면 해당 대상은 도형 대신 이미지로 그려집니다.
 //    크기는 Art.SIZES 참고. 이미지는 오른쪽(→)을 바라보는 방향으로 준비하면 됩니다.
 // ==========================================================================
+// 사용할 수 있는 키 (오른쪽을 바라보는 그림으로 준비, 없으면 도형으로 그림):
+//   적: spider, bat, goblin, goblinArcher, orc, troll / 보스: spiderQueen, goblinShaman, orcChief, dragon
+//   영웅: knight, archerHero, mageHero / 병사: footman1~3, archer1~3, knight1~3 (숫자 = 막사 레벨)
+//   건물: archerTower1~3, catapult1~3, mage1~3, infantry1~3, archers1~3, knights1~3
+//   기지: base_cave, base_goblin, base_orc / 기타: gate, carpenter, wallArcher, arrow, boulder
 const IMAGE_SOURCES = {
-  // spider: 'images/spider.png', bat: 'images/bat.png', carpenter: 'images/carpenter.png',
-  // wallArcher: 'images/wall_archer.png', arrow: 'images/arrow.png',
-  // cave: 'images/cave.png', goblin: 'images/goblin_village.png', orc: 'images/orc_fortress.png',
+  // spider: 'images/spider.png', dragon: 'images/dragon.png', base_cave: 'images/cave.png',
 };
 const Images = {};
 function loadImages() {
@@ -842,7 +866,7 @@ const Art = {
     ctx.save(); ctx.translate(b.x + sx, b.y);
     if (!b.enabled) ctx.globalAlpha = 0.55;
     const S = this.SIZES[b.key];
-    if (!this.img(ctx, b.key, 0, 0, S[0], S[1])) {
+    if (!this.img(ctx, 'base_' + b.key, 0, 0, S[0], S[1])) {
       if (b.key === 'cave') this.cave(ctx, b, t, rt);
       else if (b.key === 'goblin') this.goblinVillage(ctx, b, t, rt);
       else this.orcFortress(ctx, b, t, rt);
@@ -986,17 +1010,19 @@ const Art = {
     const r = e.radius, lunge = e.lunge > 0 ? Math.sin((e.lunge / 0.15) * Math.PI) * 4 : 0;
     const x = e.x + Math.cos(e.face) * lunge, y = e.y + Math.sin(e.face) * lunge;
     ctx.fillStyle = 'rgba(0,0,0,0.28)'; ellipse(ctx, x, y + 3, r * 1.25, r * 0.7); ctx.fill();
-    if (this.img(ctx, 'spider', x, y, this.SIZES.spider, this.SIZES.spider, e.face)) return;
+    if (this.img(ctx, e.type, x, y, r * 2.8, r * 2.8, e.face)) return;
     ctx.save(); ctx.translate(x, y); ctx.rotate(e.face);
     const ph = e.anim * (e.state === 'attack' ? 6 : 18);
     ctx.strokeStyle = '#1e1622'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath();                                                     // 다리 8개를 한 번에 그림 (성능)
     for (let side = -1; side <= 1; side += 2) for (let i = 0; i < 4; i++) {
       const wig = Math.sin(ph + i * 1.6 + (side > 0 ? 0 : Math.PI)) * 0.22;
       const a = side * (0.65 + i * 0.55) + wig;
       const kx = Math.cos(a) * r * 1.05, ky = Math.sin(a) * r * 1.05;
       const fa = a + side * (i < 2 ? -0.45 : 0.45);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(kx, ky); ctx.lineTo(kx + Math.cos(fa) * r * 0.85, ky + Math.sin(fa) * r * 0.85); ctx.stroke();
+      ctx.moveTo(0, 0); ctx.lineTo(kx, ky); ctx.lineTo(kx + Math.cos(fa) * r * 0.85, ky + Math.sin(fa) * r * 0.85);
     }
+    ctx.stroke();
     const fl = e.flash > 0;
     const queen = e.type === 'spiderQueen';
     ctx.fillStyle = fl ? '#ffffff' : queen ? '#4a2a5a' : '#2d2333'; ellipse(ctx, -r * 0.55, 0, r * 0.82, r * 0.66); ctx.fill();
@@ -1858,6 +1884,7 @@ const Icon = {
 const FX = {
   add(p) { G.fx.push(p); if (G.fx.length > 600) G.fx.splice(0, G.fx.length - 600); return p; },
   text(x, y, str, color = '#fff', size = 20, life = 0.9) { this.add({ k: 'text', x, y, vx: 0, vy: -38, g: 0, life, max: life, str, color, size }); },
+  dmg(x, y, str, color, size) { this.add({ k: 'text', x: x + rand(-8, 8), y, vx: rand(-10, 10), vy: -55, g: 60, life: 0.7, max: 0.7, str: String(str), color, size }); },
   spark(x, y, color = '#ffe9a0', n = 5) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU, s = rand(60, 160);
@@ -2006,7 +2033,7 @@ class Gate {
     if (Math.random() < 0.35) FX.dust(MAP.castle.wallX + MAP.castle.wallW + 4, MAP.gate.y + rand(-30, 30));
     if (this.hp <= 0) {
       this.hp = 0; this.destroyed = true;
-      FX.explosion(MAP.gate.x + 10, MAP.gate.y, 0.9);
+      FX.explosion(MAP.gate.x + 10, MAP.gate.y, 0.9); shake(10, 0.6);
       showBanner('성문이 무너졌습니다!', '#ff6a55', 3);
       if (!G.pendingResult) { G.pendingResult = 'lost'; G.endTimer = 1.8; }
     }
@@ -2143,7 +2170,7 @@ class Arrow {
     const dx = this.tx - this.x, dy = this.ty - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
     if (d <= step + 2) {
       this.done = true;
-      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source); FX.spark(this.tx, this.ty, '#fff3b0', 4); }
+      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source, false, this.crit); FX.spark(this.tx, this.ty, '#fff3b0', 4); }
       return;
     }
     this.x += (dx / d) * step; this.y += (dy / d) * step; this.traveled += step;
@@ -2327,7 +2354,7 @@ class Soldier {
     } else if (isBase) {
       const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d);
       FX.spark(this.x + Math.cos(this.face) * 16, this.y + Math.sin(this.face) * 16, '#ffe08a', 2);
-    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 2); }
+    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 2); FX.arc(t.x, t.y, this.face, 11, 1.2, '255,255,255', 0.12); }
   }
 
   update(dt, idx) {
@@ -2384,6 +2411,7 @@ function spawnBoss(type, base) {
   showBanner(fin ? (CONFIG.bosses.final.protectBase ? `최종 보스 ${e.cfg.name} 출현! 드래곤을 쓰러뜨려야 ${base.cfg.name}를 부술 수 있어요` : `최종 보스 ${e.cfg.name} 출현!`) : `중간보스 등장: ${e.cfg.name} (${base.cfg.name})`, fin ? '#ff6a4a' : '#ffae5a', 4);
   G.banner.warn = true;
   if (fin) G.redFlash = 0.7;
+  shake(fin ? 10 : 5, fin ? 0.8 : 0.4);
   return e;
 }
 
@@ -2423,7 +2451,7 @@ class Drop {
 function pickupDrop(d) {
   const h = G.hero, it = d.item, cur = h.items[it.slot];
   if (!cur) {
-    h.equip(it); d.done = true;
+    h.equip(it); d.done = true; G.stats.itemsFound++;
     FX.text(h.x, h.y - 50, `획득: ${it.name}`, rarityOf(it).color, 18, 1.8);
     return;
   }
@@ -2433,7 +2461,7 @@ function resolveItemPrompt(take) {
   const P = G.itemPrompt; if (!P) return;
   const h = G.hero, sold = take ? P.cur : P.item, gold = rarityOf(sold).sell;
   if (take) h.equip(P.item);
-  G.gold += gold; P.drop.done = true; G.itemPrompt = null;
+  addGold(gold); P.drop.done = true; G.itemPrompt = null; G.stats.itemsFound++;
   FX.text(h.x, h.y - 50, take ? `장착: ${P.item.name}  (+${gold} 골드)` : `+${gold} 골드`, take ? rarityOf(P.item).color : '#ffd84a', 17, 1.8);
 }
 
@@ -2582,8 +2610,9 @@ class Enemy {
   constructor(type, base, lane, threat) {
     const cfg = CONFIG.enemies[type], esc = CONFIG.escalation, lv = cfg.final ? 0 : threat - 1;   // 최종보스는 위협 레벨 영향 없음
     this.id = G.nextId++; this.type = type; this.cfg = cfg; this.base = base; this.route = base.route;
-    this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv)); this.hp = this.maxHp;
-    this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv);
+    const D = G.diff || CONFIG.difficulty.normal;                  // 난이도 배율
+    this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv) * D.enemyHp); this.hp = this.maxHp;
+    this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv) * D.enemyDmg;
     this.speed = cfg.speed * rand(0.92, 1.08);
     this.armor = cfg.armor || 0; this.slowAmt = 0; this.slowTimer = 0;
     this.root = 0; this.dot = null;         // 덫: 속박(이동 불가) 시간 / 지속 피해 {dps, t, src}
@@ -2592,7 +2621,8 @@ class Enemy {
     this.breathT = cfg.breath ? 2.5 : 0; this.breathAnim = 0; this.breathTo = null; this.auraTick = 0;
     this.auraT = 0; this.auraMul = 1; this.auraSpd = 1;           // 오크 족장 오라를 받는 중
     this.radius = cfg.radius; this.air = cfg.air;
-    this.damage = cfg.damage * Math.pow(esc.damageMul, lv);
+    this.damage = cfg.damage * Math.pow(esc.damageMul, lv) * D.enemyDmg;
+    this.dmgPop = 0; this.dmgPopT = 0; this.dmgMagic = false;       // 데미지 숫자 모으기
     this.xp = cfg.xp * (1 + 0.1 * lv);
     this.lane = lane; this.dist = 0;
     // 상태: walk(길 따라 이동) / fight(영웅과 교전) / rejoin(길로 복귀) / toGate(성문 앞 자리로) / attack(성문 공격)
@@ -2653,11 +2683,16 @@ class Enemy {
     this.stun = Math.max(this.stun, stun);
   }
 
+  flushDmg() {
+    if (this.dmgPop >= 1) dmgText(this.x, this.y - (this.air ? AIR_HEIGHT * (this.cfg.final ? 1.6 : 1) : 0) - this.radius - 12, Math.round(this.dmgPop), this.dmgMagic ? '#9fd4ff' : '#ffffff', this.boss ? 19 : 16);
+    this.dmgPop = 0; this.dmgPopT = 0.3;
+  }
   update(dt) {
     this.anim += dt;
     if (this.flash > 0) this.flash -= dt;
     if (this.lunge > 0) this.lunge -= dt;
     if (this.taunt > 0) this.taunt -= dt;
+    this.dmgPopT -= dt; if (this.dmgPop > 0 && this.dmgPopT <= 0) this.flushDmg();
     if (this.slowTimer > 0) this.slowTimer -= dt;
     if (this.root > 0) this.root -= dt;
     if (this.auraT > 0) this.auraT -= dt;
@@ -2853,24 +2888,31 @@ class Enemy {
   }
 
   // magic = true 이면 방어력 무시 (마법탑, 끓는 기름)
-  takeDamage(amount, src, magic) {
+  takeDamage(amount, src, magic, crit) {
     if (!this.alive) return;
-    this.hp -= magic ? amount : amount * (1 - this.armor); this.flash = 0.12;
+    const d = magic ? amount : amount * (1 - this.armor);
+    this.hp -= d; this.flash = 0.12;
+    if (SETTINGS.damageNumbers) {                                  // 데미지 숫자: 치명타는 바로 크게, 나머지는 0.3초씩 모아서
+      if (crit) dmgText(this.x, this.y - (this.air ? AIR_HEIGHT : 0) - this.radius - 14, Math.round(d), '#ffdd44', 20);
+      else { this.dmgPop += d; this.dmgMagic = !!magic; }
+    }
     if (this.hp <= 0) this.die(src || true);
   }
   die(killer) {
     this.alive = false;
+    if (this.dmgPop > 0) this.flushDmg();
     if (this.slot) { this.slot[this.air ? 'air' : 'ground'] = null; this.slot = null; }
     if (this.foe) { this.foe.engaged.delete(this); this.foe = null; }
     FX.poof(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.radius);
     if (this.boss) {
-      showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6);
+      if (killer) G.stats.bossKills++;
+      showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6); shake(this.cfg.final ? 9 : 5, 0.5);
       FX.explosion(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.cfg.final ? 1.2 : 0.7);
-      if (Math.random() < CONFIG.items.dropChance.boss) dropItem(this.x, this.y, this.cfg.final);
+      if (Math.random() < CONFIG.items.dropChance[this.cfg.final ? 'finalBoss' : 'midBoss']) dropItem(this.x, this.y, this.cfg.final);
     }
     if (killer) {
       G.stats.kills++;
-      G.gold += this.cfg.gold || 0;
+      addGold(this.cfg.gold || 0);
       const h = G.hero;
       if (h && !h.dead) h.gainXp(killer === h ? this.xp : this.xp * CONFIG.heroLevels.sharedXp);
     }
@@ -3018,10 +3060,11 @@ class Hero {
     let d = amount * (1 - this.armor);
     if (this.buffs.warcry > 0) d *= 1 - this.buffs.warcryRed;
     this.hp -= d; this.lastHit = G.time; this.flash = 0.1;
+    if (SETTINGS.damageNumbers) { this.dmgTaken = (this.dmgTaken || 0) + d; if (G.time - (this.dmgTakenT || -9) > 0.4) { dmgText(this.x, this.y - 46, '-' + Math.round(this.dmgTaken), '#ff7a6a', 15); this.dmgTaken = 0; this.dmgTakenT = G.time; } }
     if (this.hp <= 0) this.die();
   }
   die() {
-    this.hp = 0; this.dead = true; this.respawnTimer = this.cfg.respawn;
+    this.hp = 0; this.dead = true; this.respawnTimer = this.cfg.respawn; G.stats.heroDeaths++; shake(4, 0.3);
     this.deathX = this.x; this.deathY = this.y; this.dash = null; this.burst = null; this.path = []; this.target = null; this.baseTarget = null;
     for (const e of [...this.engaged]) e.release();
     this.engaged.clear();
@@ -3273,7 +3316,7 @@ class Hero {
       const dmg = (isBase ? Math.round(this.damage * this.cfg.baseDamageMul) : this.damage) * (crit ? 2 : 1);
       const sx = this.x + Math.cos(this.face) * 12, sy = this.y + Math.sin(this.face) * 12 - 4;
       if (A.magic) G.projectiles.push(new MagicBolt(sx, sy, t, { damage: dmg }, { boltSpeed: A.projectileSpeed }, this, '#7fd0ff'));
-      else G.projectiles.push(new Arrow(sx, sy, t, dmg, A.projectileSpeed, this));
+      else { const ar = new Arrow(sx, sy, t, dmg, A.projectileSpeed, this); ar.crit = crit; G.projectiles.push(ar); }
       return;
     }
     if (isBase) {
@@ -3281,7 +3324,10 @@ class Hero {
       t.takeDamage(d);
       const hx = this.x + Math.cos(this.face) * 30, hy = this.y + Math.sin(this.face) * 30;
       FX.spark(hx, hy, '#ffe08a', 4); FX.text(hx, hy - 16, '-' + d, '#ffd36b', 16, 0.7);
-    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 3); }
+    } else {
+      t.takeDamage(this.damage * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3);
+      FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, 16, 1.4, '255,255,255', 0.14);   // 베기 효과
+    }
   }
 }
 
@@ -3332,7 +3378,7 @@ class EnemyBase {
   constructor(key) {
     this.key = key; this.cfg = CONFIG.bases[key]; this.m = MAP.bases[key];
     this.x = this.m.x; this.y = this.m.y; this.enabled = this.cfg.enabled;
-    this.maxHp = this.cfg.maxHp; this.hp = this.maxHp; this.alive = true;
+    this.maxHp = Math.round(this.cfg.maxHp * (G.diff || CONFIG.difficulty.normal).baseHp); this.hp = this.maxHp; this.alive = true;
     this.route = MAPDATA.routes[key];
     this.spawnTimer = this.cfg.firstSpawn; this.queue = [];
     this.lastHit = -999; this.flash = 0; this.shake = 0; this.smokeTimer = 0;
@@ -3414,12 +3460,12 @@ class EnemyBase {
       e.post = null; e.guardCfg = null; e.hunt = null;
       if (e.state !== 'fight') { e.dist = e.route.nearestDist(e.x, e.y, 0, 1e9); e.state = 'rejoin'; }
     }
-    FX.explosion(this.x, this.y, 1.5);
+    FX.explosion(this.x, this.y, 1.5); shake(8, 0.6);
     const left = G.bases.filter(b => b.enabled && b.alive).length;
     showBanner(left ? `${this.cfg.name} 파괴!  남은 기지들이 분노합니다 (위협 +${CONFIG.escalation.baseLostBonus || 0})` : `${this.cfg.name} 파괴!`, '#ffd36b', 3);
     if (G.hero && !G.hero.dead) G.hero.gainXp(this.cfg.xp || 0);
     if (Math.random() < CONFIG.items.dropChance.base) dropItem(this.x, this.y + 40, false);
-    if (this.cfg.gold) { G.gold += this.cfg.gold; FX.text(this.x, this.y - 70, `+${this.cfg.gold} 골드`, '#ffd84a', 26, 2); }
+    if (this.cfg.gold) { addGold(this.cfg.gold); FX.text(this.x, this.y - 70, `+${this.cfg.gold} 골드`, '#ffd84a', 26, 2); }
     if (!G.pendingResult && G.bases.every(b => !b.enabled || !b.alive)) { G.pendingResult = 'won'; G.endTimer = 2; }
   }
 }
@@ -3446,11 +3492,21 @@ const Camera = {
   },
   // 화면 좌표 (sx, sy) 아래의 지도 지점을 고정한 채 확대/축소
   zoomAt(z, sx, sy) {
+    this.goal = null;
     const w = this.toWorld(sx, sy);
     this.zoom = clamp(z, this.minZoom(), CONFIG.view.maxZoom);
     this.x = w.x - sx / this.zoom; this.y = w.y - sy / this.zoom; this.clamp();
   },
-  centerOn(wx, wy) { this.x = wx - this.viewW() / 2; this.y = wy - this.viewH() / 2; this.clamp(); },
+  centerOn(wx, wy) { this.goal = null; this.x = wx - this.viewW() / 2; this.y = wy - this.viewH() / 2; this.clamp(); },
+  // 부드럽게 이동 (메뉴가 대상을 가리지 않도록 화면을 옮길 때)
+  goal: null,
+  glideTo(x, y) { this.goal = { x, y }; },
+  glide(dt) {
+    if (!this.goal) return;
+    const k = Math.min(1, dt * 8), ox = this.x, oy = this.y;
+    this.x += (this.goal.x - this.x) * k; this.y += (this.goal.y - this.y) * k; this.clamp();
+    if (Math.abs(this.x - ox) < 0.3 && Math.abs(this.y - oy) < 0.3) this.goal = null;   // 도착(또는 가장자리에 막힘)
+  },
   toWorld(sx, sy) { return { x: sx / this.zoom + this.x, y: sy / this.zoom + this.y }; },
 };
 
@@ -3516,6 +3572,7 @@ const Input = {
       return;
     }
     if (p.moved && !p.item && free.length === 1 && Camera.canPan()) {      // 드래그로 화면 이동
+      Camera.goal = null;
       Camera.x -= (v.x - p.lx) / Camera.zoom; Camera.y -= (v.y - p.ly) / Camera.zoom; Camera.clamp();
     }
     p.lx = v.x; p.ly = v.y;
@@ -3630,7 +3687,7 @@ function buildBuilding(spot, type) {
   if (G.gold < cost) { notEnoughGold(spot.x, spot.y); return; }
   G.gold -= cost;
   const bd = CONFIG.towers[type] ? new Tower(type, spot) : new Barracks(type, spot);
-  spot.tower = bd; G.buildings.push(bd);
+  spot.tower = bd; G.buildings.push(bd); G.stats.built++;
   for (let i = 0; i < 4; i++) FX.dust(spot.x + rand(-18, 18), spot.y + rand(-12, 14));
   FX.text(spot.x, spot.y - 40, `-${cost}`, '#ffd84a', 18);
   G.sel = { kind: 'building', ref: bd, confirmSell: 0 };
@@ -3876,7 +3933,19 @@ function drawSelectionPanel(ctx) {
   const a = worldToScreen(anchor.x, anchor.y), gap = 44 * Camera.zoom;
   const top = (10 + 58 + 10) * UI.kt, bottom = VH - (BOTTOM_HUD_H + 20) * k;
   let px, py;
-  if (s.kind === 'gate') { px = a.x + 70 * Camera.zoom; py = a.y - h / 2; }
+  if (UI.k >= 1.3) {
+    // 작은 화면: 메뉴를 대상 반대쪽 가장자리에 붙이고, 대상이 남은 공간 가운데 오도록 화면을 옮김
+    if (!s.dock) s.dock = a.x > VW / 2 ? 'left' : 'right';
+    px = s.dock === 'left' ? 10 : VW - 10 - w;
+    py = clamp(top + (bottom - top - h) / 2, top, Math.max(top, bottom - h));
+    if (!s.panned) {
+      s.panned = true;
+      const freeL = s.dock === 'left' ? px + w + 20 * k : 20 * k, freeR = s.dock === 'left' ? VW - 90 * k : px - 20 * k;
+      const wantX = (freeL + freeR) / 2, wantY = (top + bottom) / 2;
+      if (a.x < freeL + 40 * k || a.x > freeR - 40 * k || a.y < top + 40 * k || a.y > bottom - 40 * k)
+        Camera.glideTo(Camera.x + (a.x - wantX) / Camera.zoom, Camera.y + (a.y - wantY) / Camera.zoom);
+    }
+  } else if (s.kind === 'gate') { px = a.x + 70 * Camera.zoom; py = a.y - h / 2; }
   else { px = a.x - w / 2; py = a.y - gap - h; if (py < top) py = a.y + gap; }
   px = clamp(px, 10, VW - 10 - w); py = clamp(py, top, Math.max(top, bottom - h));
   UI.block(px, py, w, h);
@@ -4186,9 +4255,9 @@ function drawOverlay(ctx) {
   ctx.fillStyle = 'rgba(8,6,4,0.62)'; ctx.fillRect(0, 0, VW, VH);
   UI.block(0, 0, VW, VH);
   if (G.state === 'title') drawTitle(ctx, Math.min(UI.k, (VW - 40) / 780, (VH - 40) / 590));
-  else if (G.state === 'select') drawSelect(ctx, Math.min(UI.k, (VW - 30) / 1120, (VH - 30) / 650));
-  else if (G.state === 'won' || G.state === 'lost') drawResult(ctx, Math.min(UI.k, (VW - 40) / 640, (VH - 40) / 420));
-  else drawPause(ctx, Math.min(UI.k, (VW - 40) / 540, (VH - 40) / 360));
+  else if (G.state === 'select') drawSelect(ctx, Math.min(UI.k, (VW - 30) / 1120, (VH - 30) / 700));
+  else if (G.state === 'won' || G.state === 'lost') drawResult(ctx, Math.min(UI.k, (VW - 40) / 700, (VH - 40) / 520));
+  else drawPause(ctx, Math.min(UI.k, (VW - 40) / 760, (VH - 40) / 560));
 }
 
 function drawTitle(ctx, k) {
@@ -4197,7 +4266,7 @@ function drawTitle(ctx, k) {
   txt(ctx, '성문을 지키고, 적의 기지를 무너뜨려라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
-    ['7단계 테스트 버전 — 보스와 아이템', '#ffcf6a'],
+    ['게임 방법', '#ffcf6a'],
     ['· 적 기지 3곳: 동굴(거미·박쥐) · 고블린 부락(고블린·궁수) · 오크 요새(오크·트롤)'],
     ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (기지마다 수비병이 있고, 공격받으면 더 불러와요)'],
     ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
@@ -4217,12 +4286,28 @@ function drawTitle(ctx, k) {
 }
 
 function drawResult(ctx, k) {
-  const won = G.state === 'won', pw = 640 * k, ph = 420 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
-  txt(ctx, won ? '승리!' : '패배...', cx, y + 92 * k, 74 * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
-  txt(ctx, won ? '모든 적 기지를 파괴했습니다!' : '성문이 무너졌습니다...', cx, y + 162 * k, 24 * k, '#f3e3bf', 'center', { weight: 700 });
-  divider(ctx, cx, y + 192 * k, pw - 140 * k, k);
-  txt(ctx, `플레이 시간 ${fmtTime(G.time)}   ·   처치한 적 ${G.stats.kills}   ·   위협 Lv.${G.threat}`, cx, y + 226 * k, 18 * k, '#d8c8a4', 'center', { weight: 600 });
-  txt(ctx, `영웅: ${CONFIG.heroes[G.heroType].name} Lv.${G.hero.level}   ·   건물 ${G.buildings.length}채   ·   남은 골드 ${Math.floor(G.gold)}`, cx, y + 258 * k, 16 * k, '#bfae8a', 'center', { weight: 500 });
+  const won = G.state === 'won', pw = 700 * k, ph = 520 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  txt(ctx, won ? '승리!' : '패배...', cx, y + 82 * k, 70 * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
+  txt(ctx, won ? '모든 적 기지를 파괴했습니다!' : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, `${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
+  divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
+  const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
+  const rows = [                                                   // 통계 2열
+    ['플레이 시간', fmtTime(G.time)], ['처치한 적', st.kills], ['처치한 보스', st.bossKills], ['파괴한 기지', G.bases.filter(b => b.enabled && !b.alive).length + ' / 3'],
+    ['영웅 레벨', 'Lv.' + G.hero.level], ['영웅이 쓰러진 횟수', st.heroDeaths], ['지은 건물', st.built], ['번 골드', st.goldEarned],
+  ];
+  rows.forEach(([a, b], i) => {
+    const col = i % 2, row = Math.floor(i / 2), rx = x + 60 * k + col * (pw - 120 * k) / 2, ry = y + 226 * k + row * 30 * k;
+    txt(ctx, a, rx, ry, 15 * k, '#cdbb98', 'left', { weight: 600 });
+    txt(ctx, String(b), rx + (pw - 120 * k) / 2 - 30 * k, ry, 16 * k, '#ffffff', 'right', { weight: 800 });
+  });
+  txt(ctx, '장착 아이템', x + 60 * k, y + 360 * k, 15 * k, '#cdbb98', 'left', { weight: 600 });
+  if (!items.length) txt(ctx, '없음', x + 170 * k, y + 360 * k, 15 * k, '#8a7a5a', 'left', { weight: 600 });
+  items.forEach((it, i) => {
+    const ix = x + 190 * k + i * 160 * k;
+    Icon.item(ctx, it, G.heroType, ix, y + 360 * k, 24 * k);
+    fitTxt(ctx, it.name, ix + 18 * k, y + 360 * k, 13 * k, 128 * k, rarityOf(it).color, 'left', { weight: 700 });
+  });
   const bw = 250 * k, bh = 76 * k, by = y + ph - bh - 40 * k, gap = 24 * k, bx = cx - bw - gap / 2;
   drawButton(ctx, bx, by, bw, bh, UI.button('restart', bx, by, bw, bh, () => startGame(G.heroType)), k, '다시 하기', { size: 28 * k });
   drawButton(ctx, bx + bw + gap, by, bw, bh, UI.button('changeHero', bx + bw + gap, by, bw, bh, openSelect), k, '영웅 바꾸기', { size: 24 * k, c1: '#8a7a64', c2: '#5a4c3a', border: '#d8c8a4' });
@@ -4231,11 +4316,13 @@ function drawResult(ctx, k) {
 // ---------- 영웅 선택 화면 ----------
 const HERO_ORDER = ['knight', 'archer', 'mage'];
 let selectedHero = (() => { try { const h = localStorage.getItem('kg.hero'); return CONFIG.heroes[h] ? h : 'knight'; } catch (_) { return 'knight'; } })();
+let selectedDiff = (() => { try { const d = localStorage.getItem('kg.diff'); return CONFIG.difficulty[d] ? d : 'normal'; } catch (_) { return 'normal'; } })();
 function pickHero(type) { selectedHero = type; try { localStorage.setItem('kg.hero', type); } catch (_) {} }
+function pickDiff(key) { selectedDiff = key; try { localStorage.setItem('kg.diff', key); } catch (_) {} }
 function openSelect() { G.state = 'select'; G.paused = false; }
 
 function drawSelect(ctx, k) {
-  const pw = 1120 * k, ph = 650 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  const pw = 1120 * k, ph = 700 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '영웅 선택', cx, y + 52 * k, 42 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 7 * k, weight: 900 });
   txt(ctx, '함께 싸울 영웅을 고르세요 (카드를 눌러 선택)', cx, y + 92 * k, 17 * k, '#d8c8a4', 'center', { weight: 500 });
   const cw = 336 * k, ch = 420 * k, gap = 22 * k, x0 = cx - (cw * 3 + gap * 2) / 2, cy0 = y + 116 * k;
@@ -4270,19 +4357,44 @@ function drawSelect(ctx, k) {
       txt(ctx, `${sk.key}  ${sk.name}${sk.mana ? `  (마나 ${sk.mana})` : ''}`, X + 50 * k, sy, 13.5 * k, '#f3e3bf', 'left', { weight: 600 });
     });
   });
-  const bw = 300 * k, bh = 66 * k, bx = cx - bw / 2, by = y + ph - bh - 22 * k;
+  // 난이도
+  const dk = Object.keys(CONFIG.difficulty), dw = 130 * k, dh = 48 * k, dy = y + 550 * k;
+  txt(ctx, '난이도', cx - (dw * dk.length + 12 * k * (dk.length - 1)) / 2 - 16 * k, dy + dh / 2, 16 * k, '#d8c8a4', 'right', { weight: 700 });
+  dk.forEach((key, i) => {
+    const dx = cx - (dw * dk.length + 12 * k * (dk.length - 1)) / 2 + i * (dw + 12 * k), on = selectedDiff === key;
+    const col = { easy: ['#5f9a4a', '#3a6a2a'], normal: ['#d99a3a', '#9a6020'], hard: ['#c0502e', '#7a2a14'] }[key] || ['#8a7a64', '#5a4c3a'];
+    drawButton(ctx, dx, dy, dw, dh, UI.button('diff_' + key, dx - 5 * k, dy - 9 * k, dw + 10 * k, dh + 18 * k, () => pickDiff(key)), k, CONFIG.difficulty[key].name,   // 터치 영역은 조금 넓게
+      on ? { size: 17 * k, radius: 20, c1: col[0], c2: col[1], border: '#fff1c0' } : { size: 16 * k, radius: 20, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+  });
+  const bw = 300 * k, bh = 62 * k, bx = cx - bw / 2, by = y + ph - bh - 20 * k;
   drawButton(ctx, bx, by, bw, bh, UI.button('go', bx, by, bw, bh, () => startGame(selectedHero)), k, `${CONFIG.heroes[selectedHero].name}로 출정!`, { size: 26 * k });
 }
 
+const HELP = [
+  ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
+  ['빈 터 / 건물 탭', '건설 · 업그레이드 · 판매'], ['성 탭', '성문 업그레이드 (최대 5레벨)'],
+  ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
+  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E 스킬 · Space 일시정지 · F 배속 · 방향키 이동'],
+];
 function drawPause(ctx, k) {
-  const pw = 540 * k, ph = 360 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
-  txt(ctx, '일시정지', cx, y + 76 * k, 48 * k, '#ffd36b', 'center', { stroke: '#2a1405', strokeW: 8 * k, weight: 900 });
-  divider(ctx, cx, y + 118 * k, pw - 140 * k, k);
-  const bw = 300 * k, bh = 72 * k, bx = cx - bw / 2;
-  let by = y + 148 * k;
-  drawButton(ctx, bx, by, bw, bh, UI.button('resume', bx, by, bw, bh, togglePause), k, '계속하기', { size: 26 * k });
-  by += bh + 22 * k;
-  drawButton(ctx, bx, by, bw, bh, UI.button('restart', bx, by, bw, bh, openSelect), k, '처음부터', { size: 24 * k, c1: '#8a7a64', c2: '#5a4c3a', border: '#d8c8a4' });
+  const pw = 760 * k, ph = 560 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  txt(ctx, '일시정지', cx, y + 56 * k, 42 * k, '#ffd36b', 'center', { stroke: '#2a1405', strokeW: 7 * k, weight: 900 });
+  divider(ctx, cx, y + 92 * k, pw - 120 * k, k);
+  HELP.forEach(([a, b], i) => {                                   // 조작 도움말
+    const yy = y + 122 * k + i * 27 * k;
+    txt(ctx, a, x + 50 * k, yy, 15 * k, '#ffcf6a', 'left', { weight: 800 });
+    fitTxt(ctx, b, x + 230 * k, yy, 15 * k, pw - 280 * k, '#efe2c6', 'left', { weight: 500 });
+  });
+  const tw = 300 * k, th = 52 * k, ty = y + 350 * k;            // 효과 켜기/끄기 (터치 영역은 조금 넓게)
+  const tog = (id, label, key, tx) => drawButton(ctx, tx, ty, tw, th, UI.button(id, tx, ty - 8 * k, tw, th + 16 * k, () => { SETTINGS[key] = !SETTINGS[key]; saveSettings(); }), k,
+    `${label}: ${SETTINGS[key] ? '켜짐' : '꺼짐'}`, SETTINGS[key] ? { size: 17 * k, radius: 23, c1: '#4a7a3a', c2: '#2e5224', border: '#c8f0b0' } : { size: 17 * k, radius: 23, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+  tog('optDmg', '데미지 숫자', 'damageNumbers', cx - tw - 10 * k);
+  tog('optShake', '화면 흔들림', 'screenShake', cx + 10 * k);
+  const bw = 300 * k, bh = 64 * k, bx = cx - bw - 10 * k;
+  let by = y + ph - bh - 28 * k;
+  drawButton(ctx, bx, by, bw, bh, UI.button('resume', bx, by, bw, bh, togglePause), k, '계속하기', { size: 24 * k });
+  const bx2 = cx + 10 * k;
+  drawButton(ctx, bx2, by, bw, bh, UI.button('restart', bx2, by, bw, bh, openSelect), k, '처음부터', { size: 22 * k, c1: '#8a7a64', c2: '#5a4c3a', border: '#d8c8a4' });
 }
 
 // ==========================================================================
@@ -4292,7 +4404,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let G = null;
 let MAPDATA = null;
-let realTime = 0, viewScale = 1, pixelRatio = 1, bgCanvas = null, bgRes = 0, miniCanvas = null;
+let realTime = 0, viewScale = 1, pixelRatio = 1, bgCanvas = null, bgRes = 0, miniCanvas = null, bgLow = null;
+const BG_LOW_RES = 0.75;    // 축소 화면용 저해상도 배경 배율
 
 function buildMapData() {
   const W = CONFIG.world.width, H = CONFIG.world.height, rng = mulberry32(MAP.seed + 99);
@@ -4363,26 +4476,29 @@ function createState() {
   return {
     state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, threatTime: 1, nextId: 1,
     gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
-    gold: CONFIG.economy.startGold, goldFlashUntil: 0,
+    gold: 0, goldFlashUntil: 0,     // 시작 골드는 newGame에서 난이도에 따라
     buildings: [], spots: MAP.buildSpots.map(s => ({ x: s.x, y: s.y, tower: null })),
     soldiers: [],       // 아군 병사 (전체 상한 CONFIG.soldiers.globalCap)
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
     drops: [], itemPrompt: null, itemInfo: null,   // 바닥 아이템 / 교체 선택 창 / 아이템 정보 창
     midTimer: CONFIG.bosses.midFirst, finalSpawned: false, finalBoss: null, redFlash: 0,
     sel: null,          // 선택된 대상: { kind: 'spot' | 'building' | 'gate', ref, confirmSell }
-    pendingResult: null, endTimer: 0, banner: null, stats: { kills: 0 },
+    pendingResult: null, endTimer: 0, banner: null,
+    stats: { kills: 0, bossKills: 0, goldEarned: 0, itemsFound: 0, heroDeaths: 0, built: 0 },
+    shakeT: 0, shakeDur: 1, shakeMag: 0,
   };
 }
-function newGame(state, heroType = 'knight') {
+function newGame(state, heroType = 'knight', diffKey = 'normal') {
   G = createState();
-  G.heroType = heroType;
+  G.heroType = heroType; G.diffKey = diffKey; G.diff = CONFIG.difficulty[diffKey] || CONFIG.difficulty.normal;
+  G.gold = G.diff.startGold;
   G.gate = new Gate();
   G.hero = new Hero(heroType);
   G.bases = Object.keys(CONFIG.bases).map(k => new EnemyBase(k));
   G.state = state;
 }
 function startGame(heroType) {
-  newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero);
+  newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff);
   Camera.centerOn(MAP.startView.x, MAP.startView.y);
   showBanner('적 기지 3곳을 모두 파괴하세요! (화면을 끌어서 지도 이동)', '#ffe08a', 3.2);
 }
@@ -4427,10 +4543,14 @@ function update(dt) {
 
 function renderWorld(ctx) {
   const W = CONFIG.world.width, H = CONFIG.world.height;
-  ctx.imageSmoothingQuality = 'high';
   const vx = clamp(Camera.x, 0, W), vy = clamp(Camera.y, 0, H);                       // 화면에 보이는 부분만 그림
   const vw = Math.min(W, Camera.x + Camera.viewW()) - vx, vh = Math.min(H, Camera.y + Camera.viewH()) - vy;
-  if (vw > 0 && vh > 0) ctx.drawImage(bgCanvas, vx * bgRes, vy * bgRes, vw * bgRes, vh * bgRes, vx, vy, vw, vh);
+  const low = bgLow && pixelRatio * Camera.zoom <= BG_LOW_RES * 1.1;                   // 많이 축소했을 때는 저해상도 배경 (성능)
+  const src = low ? bgLow : bgCanvas, sr = low ? BG_LOW_RES : bgRes;
+  ctx.imageSmoothingQuality = low ? 'medium' : 'high';
+  if (vw > 0 && vh > 0) ctx.drawImage(src, vx * sr, vy * sr, vw * sr, vh * sr, vx, vy, vw, vh);
+  const cx0 = Camera.x - 80, cy0 = Camera.y - 120, cx1 = Camera.x + Camera.viewW() + 80, cy1 = Camera.y + Camera.viewH() + 80;
+  const vis = o => o.x > cx0 && o.x < cx1 && o.y > cy0 && o.y < cy1;               // 화면 안에 있는지 (밖은 그리지 않음)
   Art.riverShimmer(ctx, realTime);
   Art.castleDynamic(ctx, G.gate, realTime);
   for (const b of G.bases) Art.base(ctx, b, G.time, realTime);
@@ -4460,12 +4580,12 @@ function renderWorld(ctx) {
   if (h && !h.dead && h.mode === 'move') Art.rallyFlag(ctx, h.guard, realTime);
   if (h && G.aim && !h.dead) Art.aimPreview(ctx, h, G.aim, Input.hover, realTime);
 
-  for (const e of G.enemies) if (e.air) Art.airShadow(ctx, e);
+  for (const e of G.enemies) if (e.air && vis(e)) Art.airShadow(ctx, e);
   const ground = [];
-  for (const e of G.enemies) if (!e.air) ground.push(e);
+  for (const e of G.enemies) if (!e.air && vis(e)) ground.push(e);
   for (const c of G.gate.carpenters) ground.push(c);
-  for (const b of G.buildings) ground.push(b);
-  for (const u of G.soldiers) ground.push(u);
+  for (const b of G.buildings) if (vis(b)) ground.push(b);
+  for (const u of G.soldiers) if (vis(u)) ground.push(u);
   if (h) ground.push(h);
   ground.sort((a, b) => (a.dead ? a.deathY : a.y) - (b.dead ? b.deathY : b.y));
   for (const o of ground) {
@@ -4476,14 +4596,14 @@ function renderWorld(ctx) {
     else Art.carpenter(ctx, o);
   }
   for (const a of G.gate.archers) Art.wallArcher(ctx, a);
-  for (const p of G.projectiles) Art.projectile(ctx, p);
-  for (const e of G.enemies) if (e.air) Art.enemy(ctx, e);
+  for (const p of G.projectiles) if (vis(p)) Art.projectile(ctx, p);
+  for (const e of G.enemies) if (e.air && (vis(e) || e.boss)) Art.enemy(ctx, e);
   for (const z of G.zones) Art.zoneTop(ctx, z);
   FX.draw(ctx);
   for (const b of G.bases) Art.baseBar(ctx, b);
-  for (const e of G.enemies) Art.enemyBar(ctx, e);
-  for (const u of G.soldiers) Art.soldierBar(ctx, u);
-  for (const b of G.buildings) if (b instanceof Barracks) Art.barracksGauge(ctx, b);
+  for (const e of G.enemies) if (vis(e)) Art.enemyBar(ctx, e);
+  for (const u of G.soldiers) if (vis(u)) Art.soldierBar(ctx, u);
+  for (const b of G.buildings) if (b instanceof Barracks && vis(b)) Art.barracksGauge(ctx, b);
   if (h) Art.heroBar(ctx, h);
 }
 
@@ -4492,6 +4612,10 @@ function render() {
   ctx.fillStyle = '#1d2914'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   ctx.save();
+  if (SETTINGS.screenShake && G.shakeT > 0) {                     // 화면 흔들림
+    const m = G.shakeMag * (G.shakeT / G.shakeDur);
+    ctx.translate(rand(-m, m), rand(-m, m));
+  }
   ctx.scale(Camera.zoom, Camera.zoom); ctx.translate(-Camera.x, -Camera.y);
   renderWorld(ctx);
   ctx.restore();
@@ -4529,7 +4653,11 @@ function resize() {
   // 배경 해상도: 최대 확대에서도 선명하게, 단 큰 지도에서 메모리를 너무 쓰지 않도록 상한 (약 800만 픽셀)
   const W = CONFIG.world.width, H = CONFIG.world.height, maxRes = Math.floor(Math.sqrt(8e6 / (W * H)) * 4) / 4;
   const res = clamp(Math.round(pixelRatio * CONFIG.view.maxZoom * 4) / 4, 1, Math.min(2, maxRes));
-  if (!bgCanvas || res !== bgRes) { bgRes = res; bgCanvas = Art.buildBackground(res); miniCanvas = buildMinimapCanvas(); }
+  if (!bgCanvas || res !== bgRes) {
+    bgRes = res; bgCanvas = Art.buildBackground(res); miniCanvas = buildMinimapCanvas();
+    bgLow = document.createElement('canvas'); bgLow.width = Math.round(W * BG_LOW_RES); bgLow.height = Math.round(H * BG_LOW_RES);
+    const lg = bgLow.getContext('2d'); lg.imageSmoothingQuality = 'high'; lg.drawImage(bgCanvas, 0, 0, bgLow.width, bgLow.height);
+  }
 }
 
 let lastNow = performance.now(), acc = 0;
@@ -4538,6 +4666,8 @@ function frame(now) {
   dt = clamp(dt, 0, 0.25);
   realTime += dt;
   Input.panKeys(dt);
+  if (G.shakeT > 0 && !G.paused && !G.itemPrompt) G.shakeT -= dt;
+  Camera.glide(dt);
   if (G.state === 'playing' && !G.paused && !G.itemPrompt) {
     acc += dt * CONFIG.speeds[G.speedIdx];
     let n = 0;
