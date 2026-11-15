@@ -2667,6 +2667,16 @@ function dropItem(x, y, final) {
   FX.ring(p.x, p.y, 40, '255,230,150', 0.6);
   FX.text(p.x, p.y - 50, `${rarityOf(it).name} 아이템!`, rarityOf(it).color, 18, 1.6); Sound.play(it.rarity === 'legendary' ? 'dropLegend' : 'drop');
 }
+// 영웅 장비 보관: 직업별로 저장 → 다음 스테이지 · 다시 하기에서도 그대로 착용 (브라우저에 저장)
+const SavedGear = {
+  mem: null,
+  all() {
+    if (!this.mem) { try { this.mem = JSON.parse(localStorage.getItem('kg.gear') || '{}') || {}; } catch (_) { this.mem = {}; } }
+    return this.mem;
+  },
+  get(type) { return this.all()[type] || null; },
+  save(type, items) { this.all()[type] = { ...items }; try { localStorage.setItem('kg.gear', JSON.stringify(this.mem)); } catch (_) {} },
+};
 // 바닥에 떨어진 아이템: 영웅이 위로 지나가면 획득
 class Drop {
   constructor(x, y, item) { this.x = x; this.y = y; this.item = item; this.t = 0; this.done = false; }
@@ -3371,7 +3381,8 @@ class Hero {
   constructor(type) {
     this.type = type; this.cfg = CONFIG.heroes[type];
     this.level = 1; this.xp = 0; this.radius = this.cfg.radius;
-    this.items = { weapon: null, armor: null, accessory: null };   // 장착 아이템
+    this.items = { weapon: null, armor: null, accessory: null };   // 장착 아이템 (저장된 장비가 있으면 그대로 착용)
+    const saved = SavedGear.get(type); if (saved) for (const k in this.items) if (saved[k]) this.items[k] = saved[k];
     this.recalc(); this.hp = this.maxHp;
     this.x = MAP.heroSpawn.x; this.y = MAP.heroSpawn.y; this.face = 0;
     this.guard = { x: this.x, y: this.y }; this.path = []; this.mode = 'guard';
@@ -3406,7 +3417,7 @@ class Hero {
   hasPerk(id) { return Object.values(this.items).some(it => it && it.perk === id); }
   equip(item) {
     const hr = this.hp / this.maxHp, mr = this.maxMana ? this.mana / this.maxMana : 1;
-    this.items[item.slot] = item; this.recalc();
+    this.items[item.slot] = item; this.recalc(); SavedGear.save(this.type, this.items);
     this.hp = Math.max(1, this.maxHp * hr); this.mana = this.maxMana * mr;
     FX.ring(this.x, this.y, 40, '255,215,90', 0.5);
   }
@@ -4683,7 +4694,7 @@ function drawResult(ctx, k) {
   const won = G.state === 'won', pw = 700 * k, ph = 520 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last;
   txt(ctx, won ? (last ? '왕국을 지켰습니다!' : '스테이지 클리어!') : '패배...', cx, y + 82 * k, (won ? 58 : 70) * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
-  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」${josa(CONFIG.stages[G.stageIdx + 1].name, '이', '가').slice(-1)} 열렸습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」${josa(CONFIG.stages[G.stageIdx + 1].name, '이', '가').slice(-1)} 열렸습니다!` : G.diffKey === 'normal' ? '모든 스테이지를 깼습니다! 어려움 난이도가 열렸습니다' : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
   txt(ctx, `${G.stageIdx + 1}스테이지 ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
   divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
   const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
@@ -4717,16 +4728,36 @@ const HERO_ORDER = ['knight', 'archer', 'mage'];
 let selectedHero = (() => { try { const h = localStorage.getItem('kg.hero'); return CONFIG.heroes[h] ? h : 'knight'; } catch (_) { return 'knight'; } })();
 let selectedDiff = (() => { try { const d = localStorage.getItem('kg.diff'); return CONFIG.difficulty[d] ? d : 'normal'; } catch (_) { return 'normal'; } })();
 function pickHero(type) { selectedHero = type; try { localStorage.setItem('kg.hero', type); } catch (_) {} }
-function pickDiff(key) { selectedDiff = key; try { localStorage.setItem('kg.diff', key); } catch (_) {} }
+function pickDiff(key) {
+  if (!diffUnlocked(key)) { selectMsg = { text: `보통 난이도 ${CONFIG.stages.length}스테이지를 모두 깨면 열려요`, until: realTime + 2 }; Sound.play('error'); return; }
+  if (selectedDiff === key) return;
+  selectedDiff = key; try { localStorage.setItem('kg.diff', key); } catch (_) {}
+  const st = Math.min(selectedStage, Math.min(cleared[key] || 0, CONFIG.stages.length - 1));   // 그 난이도에서 열린 스테이지로
+  if (G && G.state === 'select') { selectedStage = st; newGame('select', selectedHero, key, st); } else selectedStage = st;
+}
 function openSelect() { G.state = 'select'; G.paused = false; G.sel = null; G.aim = null; }
-// 스테이지: 깬 스테이지 수(kg.cleared)만큼 다음 스테이지가 열림
-let clearedStages = (() => { try { return clamp(+localStorage.getItem('kg.cleared') || 0, 0, CONFIG.stages.length); } catch (_) { return 0; } })();
-let selectedStage = (() => { try { const v = +localStorage.getItem('kg.stage') || 0; return clamp(v, 0, Math.min(clearedStages, CONFIG.stages.length - 1)); } catch (_) { return 0; } })();
+// 스테이지 진행: 난이도마다 따로 기록 (깬 스테이지 수만큼 다음 스테이지가 열림)
+// 어려움은 보통 난이도의 모든 스테이지를 깨야 열리고, 1스테이지부터 시작
+const cleared = (() => {
+  const c = { easy: 0, normal: 0, hard: 0 };
+  try {
+    const v = JSON.parse(localStorage.getItem('kg.progress') || 'null');
+    if (v) Object.assign(c, v); else c.normal = +localStorage.getItem('kg.cleared') || 0;     // 예전 기록은 보통 난이도로
+  } catch (_) {}
+  for (const k in c) c[k] = clamp(c[k] | 0, 0, CONFIG.stages.length);
+  return c;
+})();
+function diffUnlocked(key) { return key !== 'hard' || cleared.normal >= CONFIG.stages.length; }
+if (!diffUnlocked(selectedDiff)) selectedDiff = 'normal';
+let selectedStage = (() => { try { const v = +localStorage.getItem('kg.stage') || 0; return clamp(v, 0, Math.min(cleared[selectedDiff], CONFIG.stages.length - 1)); } catch (_) { return 0; } })();
 let selectMsg = null;
-function stageUnlocked(i) { return i <= clearedStages; }
-function markCleared(i) { if (i + 1 > clearedStages) { clearedStages = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.cleared', clearedStages); } catch (_) {} } }
+function stageUnlocked(i) { return i <= cleared[selectedDiff]; }
+function markCleared(i) {
+  const d = G.diffKey;
+  if (i + 1 > cleared[d]) { cleared[d] = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.progress', JSON.stringify(cleared)); } catch (_) {} }
+}
 function pickStage(i) {
-  if (!stageUnlocked(i)) { selectMsg = { text: `${josa(CONFIG.stages[i - 1].name, '을', '를')} 깨면 열려요`, until: realTime + 1.8 }; Sound.play('error'); return; }
+  if (!stageUnlocked(i)) { selectMsg = { text: `${CONFIG.difficulty[selectedDiff].name} 난이도에서 ${josa(CONFIG.stages[i - 1].name, '을', '를')} 깨면 열려요`, until: realTime + 1.8 }; Sound.play('error'); return; }
   if (selectedStage === i) return;
   selectedStage = i; try { localStorage.setItem('kg.stage', i); } catch (_) {}
   newGame('select', selectedHero, selectedDiff, i);           // 뒤에 보이는 지도도 그 스테이지로
@@ -4773,7 +4804,7 @@ function drawSelect(ctx, k) {
   const stg = CONFIG.stages, sw = 252 * k, sh = 56 * k, sgap = 12 * k, sy = y + 540 * k, sx0 = cx - (sw * stg.length + sgap * (stg.length - 1)) / 2 + 44 * k;
   txt(ctx, '스테이지', sx0 - 16 * k, sy + sh / 2, 16 * k, '#d8c8a4', 'right', { weight: 700 });
   stg.forEach((sg, i) => {
-    const sx = sx0 + i * (sw + sgap), on = selectedStage === i, open = stageUnlocked(i), done = i < clearedStages;
+    const sx = sx0 + i * (sw + sgap), on = selectedStage === i, open = stageUnlocked(i), done = i < cleared[selectedDiff];
     const pr = UI.button('stage_' + i, sx - 5 * k, sy - 5 * k, sw + 10 * k, sh + 10 * k, () => pickStage(i));
     const off = drawButton(ctx, sx, sy, sw, sh, pr, k, '', on ? { radius: 14, c1: '#d99a3a', c2: '#9a6020', border: '#fff1c0' } : open ? { radius: 14, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' } : { radius: 14, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
     txt(ctx, `${i + 1}. ${sg.name}`, sx + 14 * k, sy + 20 * k + off, 17 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
@@ -4790,8 +4821,12 @@ function drawSelect(ctx, k) {
   dk.forEach((key, i) => {
     const dx = cx - (dw * dk.length + 12 * k * (dk.length - 1)) / 2 + i * (dw + 12 * k), on = selectedDiff === key;
     const col = { easy: ['#5f9a4a', '#3a6a2a'], normal: ['#d99a3a', '#9a6020'], hard: ['#c0502e', '#7a2a14'] }[key] || ['#8a7a64', '#5a4c3a'];
-    drawButton(ctx, dx, dy, dw, dh, UI.button('diff_' + key, dx - 5 * k, dy - 9 * k, dw + 10 * k, dh + 18 * k, () => pickDiff(key)), k, CONFIG.difficulty[key].name,   // 터치 영역은 조금 넓게
-      on ? { size: 17 * k, radius: 20, c1: col[0], c2: col[1], border: '#fff1c0' } : { size: 16 * k, radius: 20, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+    const open = diffUnlocked(key);
+    const off = drawButton(ctx, dx, dy, dw, dh, UI.button('diff_' + key, dx - 5 * k, dy - 9 * k, dw + 10 * k, dh + 18 * k, () => pickDiff(key)), k, open ? CONFIG.difficulty[key].name : '',   // 터치 영역은 조금 넓게
+      on ? { size: 17 * k, radius: 20, c1: col[0], c2: col[1], border: '#fff1c0' } : open ? { size: 16 * k, radius: 20, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' } : { radius: 20, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
+    if (!open) { Icon.lock(ctx, dx + 26 * k, dy + dh / 2 + off, 18 * k); txt(ctx, CONFIG.difficulty[key].name, dx + dw / 2 + 10 * k, dy + dh / 2 + off + 1, 16 * k, '#8a7a60', 'center', { weight: 800 }); }
+    const n = cleared[key] || 0;                                     // 깬 스테이지 수
+    if (open && n) txt(ctx, `${n}/${CONFIG.stages.length}`, dx + dw - 8 * k, dy + 9 * k + off, 10.5 * k, '#fff3c8', 'right', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
   });
   const bw = 300 * k, bh = 58 * k, bx = cx - bw / 2, by = y + ph - bh - 18 * k;
   drawButton(ctx, bx, by, bw, bh, UI.button('go', bx, by, bw, bh, () => startGame(selectedHero)), k, `${CONFIG.heroes[selectedHero].name}로 출정!`, { size: 26 * k });
@@ -4949,7 +4984,8 @@ function startGame(heroType, stageIdx = selectedStage) {
   showBanner(`${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, '#ffe08a', 3.4);
 }
 function nextStage() {
-  const n = G.stageIdx + 1; if (n < CONFIG.stages.length) startGame(G.heroType, n);
+  const n = G.stageIdx + 1; if (n >= CONFIG.stages.length) return;
+  selectedDiff = G.diffKey; startGame(G.heroType, n);
 }
 // 지도 바꾸기 (스테이지마다 다른 지도): 배경·미니맵을 다시 그림
 let loadedMap = null;
@@ -5141,7 +5177,7 @@ requestAnimationFrame(frame);
 // 콘솔 디버그/밸런스 테스트용: GAME.simulate(60) → 60초 진행
 window.GAME = {
   get G() { return G; }, get MAP() { return MAP; }, CONFIG, Camera,
-  unlockAll() { markCleared(CONFIG.stages.length - 1); },
+  unlockAll() { for (const k in cleared) cleared[k] = CONFIG.stages.length; },
   start: startGame, useSkill, tap: (x, y) => onWorldTap({ x, y }),
   simulate(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n && G.state === 'playing'; i++) update(STEP); },
 };
