@@ -52,10 +52,11 @@
 const CONFIG = {
   view: {
     width: 1600, height: 900,     // 가상 해상도(16:9). 실제 화면에 맞춰 비율 유지하며 자동 확대/축소
-    smallScreenScale: 0.55,       // 화면 배율이 이보다 작으면(휴대폰 등) 지도를 확대해서 보여주고 드래그로 이동
+    smallScreenScale: 0.55,       // 화면 배율이 이보다 작으면(휴대폰 등) 지도를 확대해서 보여줌
     smallScreenZoom: 1.35,
+    maxZoom: 1.6,                 // 확대 한계 (휠 / 두 손가락). 축소 한계는 지도 전체가 보이는 배율
   },
-  world: { width: 1600, height: 900 },  // 지도 크기 (5단계에서 확장 예정)
+  world: { width: 2400, height: 1350 }, // 지도 크기 (화면보다 넓음 → 드래그로 이동, 미니맵)
   speeds: [1, 2],                        // 배속 버튼 단계
 
   gate: {
@@ -72,7 +73,7 @@ const CONFIG = {
 
   // ---------------- 경제 ----------------
   economy: {
-    startGold: 260,               // 시작 골드
+    startGold: 300,               // 시작 골드
     sellRefund: 0.6,              // 건물 판매 시 투자 비용 환급 비율
   },
 
@@ -175,7 +176,7 @@ const CONFIG = {
   },
   heroLevels: {
     max: 10,
-    xpToNext: [60, 100, 140, 180, 220, 260, 300, 340, 380],   // Lv1→2, Lv2→3, ... Lv9→10 필요 경험치
+    xpToNext: [80, 130, 190, 260, 340, 430, 530, 640, 760],   // Lv1→2, Lv2→3, ... Lv9→10 필요 경험치
     sharedXp: 0.35,                   // 영웅이 아닌 성벽 궁수 등이 처치해도 이 비율만큼 경험치 획득
   },
 
@@ -183,25 +184,41 @@ const CONFIG = {
     // hp: 체력 / speed: 이동속도(px/초) / gateDamage: 성문 1회 공격력 / damage: 영웅·병사 공격력
     // attackInterval: 공격 간격(초) / air: 공중 유닛(근접으로 막을 수 없음) / xp: 처치 경험치 / gold: 처치 골드
     // armor: 물리 피해 감소 비율 (마법 피해는 무시)
-    spider: { name: '거미', hp: 45, speed: 70, radius: 11, air: false, armor: 0.1, gateDamage: 4, damage: 7, attackInterval: 1.0, xp: 8, gold: 5 },
-    bat:    { name: '박쥐', hp: 30, speed: 92, radius: 12, air: true,  armor: 0,   gateDamage: 3, damage: 5, attackInterval: 0.8, xp: 6, gold: 4 },
+    // ranged: 원거리 (range 안의 영웅·병사·성문을 활로 공격) / regen: 초당 체력 회복
+    spider:       { name: '거미',      hp: 45,  speed: 70, radius: 11, air: false, armor: 0.1,  gateDamage: 4,  damage: 7,  attackInterval: 1.0, xp: 8,  gold: 5 },
+    bat:          { name: '박쥐',      hp: 30,  speed: 92, radius: 12, air: true,  armor: 0,    gateDamage: 3,  damage: 5,  attackInterval: 0.8, xp: 6,  gold: 4 },
+    goblin:       { name: '고블린',    hp: 38,  speed: 98, radius: 10, air: false, armor: 0,    gateDamage: 3,  damage: 6,  attackInterval: 0.8, xp: 6,  gold: 4 },
+    goblinArcher: { name: '고블린 궁수', hp: 32, speed: 80, radius: 10, air: false, armor: 0,    gateDamage: 4,  damage: 8,  attackInterval: 1.4, xp: 8,  gold: 6, ranged: true, range: 140 },
+    orc:          { name: '오크',      hp: 120, speed: 60, radius: 13, air: false, armor: 0.3,  gateDamage: 9,  damage: 14, attackInterval: 1.1, xp: 16, gold: 10 },
+    troll:        { name: '트롤',      hp: 420, speed: 40, radius: 17, air: false, armor: 0.15, gateDamage: 30, damage: 28, attackInterval: 1.6, xp: 40, gold: 25, regen: 4 },
   },
 
   bases: {
     // regenDelay: 공격받지 않은 뒤 회복 시작(초) / regenRate: 초당 회복량
     // spawnInterval: 생산 주기(초) / spawns: 한 번에 나오는 무리 (weight = 등장 비중)
+    // defenders: 기지를 지키는 수비병 (count명으로 시작, 기지가 공격받으면 summon명 추가 소환, 최대 max명)
     cave: {
-      name: '동굴', enabled: true, maxHp: 1500, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
+      name: '동굴', enabled: true, maxHp: 1800, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
       firstSpawn: 3, spawnInterval: 7, groupGap: 0.35,
       spawns: [ { type: 'spider', count: 3, weight: 6 }, { type: 'bat', count: 2, weight: 4 } ],
+      defenders: { type: 'spider', count: 2, hpMul: 1.8, damageMul: 1.3, summon: 2, summonCooldown: 12, max: 6, aggro: 170, leash: 260 },
     },
-    // 5단계에서 활성화
-    goblin: { name: '고블린 부락', enabled: false, maxHp: 2500, regenDelay: 6, regenRate: 10, firstSpawn: 5, spawnInterval: 5, groupGap: 0.4, spawns: [] },
-    orc:    { name: '오크 요새',   enabled: false, maxHp: 4500, regenDelay: 6, regenRate: 14, firstSpawn: 8, spawnInterval: 9, groupGap: 0.6, spawns: [] },
+    goblin: {
+      name: '고블린 부락', enabled: true, maxHp: 3200, regenDelay: 6, regenRate: 10, xp: 400, gold: 400,
+      firstSpawn: 20, spawnInterval: 5.5, groupGap: 0.3,        // 생산 속도 빠름
+      spawns: [ { type: 'goblin', count: 3, weight: 6 }, { type: 'goblinArcher', count: 2, weight: 3 }, { type: 'goblin', count: 5, weight: 1 } ],
+      defenders: { type: 'goblin', count: 3, hpMul: 1.8, damageMul: 1.3, summon: 3, summonCooldown: 10, max: 9, aggro: 170, leash: 260 },
+    },
+    orc: {
+      name: '오크 요새', enabled: true, maxHp: 6500, regenDelay: 6, regenRate: 14, xp: 600, gold: 600,
+      firstSpawn: 45, spawnInterval: 11, groupGap: 0.8,         // 가장 멀고 강함
+      spawns: [ { type: 'orc', count: 2, weight: 6 }, { type: 'orc', count: 3, weight: 2 }, { type: 'troll', count: 1, weight: 2 } ],
+      defenders: { type: 'orc', count: 3, hpMul: 1.6, damageMul: 1.3, summon: 3, summonCooldown: 12, max: 8, aggro: 180, leash: 280 },
+    },
   },
 
-  // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1
-  escalation: { interval: 45, hpMul: 1.10, damageMul: 1.06, spawnIntervalMul: 0.93, minSpawnInterval: 2.5 },
+  // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
+  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.08, damageMul: 1.05, spawnIntervalMul: 0.94, minSpawnInterval: 2.5 },
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -214,44 +231,43 @@ const MAP = {
   seed: 1115,                     // 나무·장식 배치용 난수 시드 (바꾸면 숲 모양이 바뀜)
   pathWidth: 46,
   riverWidth: 62,
-  castle: { wallX: 128, wallW: 44, gateTop: 412, gateBottom: 488 },
-  gate: { x: 150, y: 450 },
-  heroSpawn: { x: 238, y: 450 },  // 영웅 시작·부활 위치 (성문 앞)
-  wallArcherSpots: [[150, 384], [150, 516], [150, 300], [150, 600]],   // 성벽 궁수 위치 (레벨업 시 순서대로 추가)
-  towers: [[150, 384, 27], [150, 516, 27], [150, 150, 34], [150, 750, 34]],
-  keep: { x: 16, y: 376, w: 96, h: 148 },
-  houses: [[18, 40, 80, 54], [30, 168, 70, 62], [14, 266, 88, 50], [24, 596, 78, 58], [40, 700, 62, 52], [16, 800, 86, 60]],
+  castle: { wallX: 128, wallW: 44, gateTop: 637, gateBottom: 713 },
+  gate: { x: 150, y: 675 },
+  heroSpawn: { x: 238, y: 675 },  // 영웅 시작·부활 위치 (성문 앞)
+  startView: { x: 700, y: 640 },  // 게임 시작 시 화면 중심
+  wallArcherSpots: [[150, 609], [150, 741], [150, 525], [150, 825]],   // 성벽 궁수 위치 (레벨업 시 순서대로 추가)
+  towers: [[150, 609, 27], [150, 741, 27], [150, 225, 34], [150, 1125, 34]],
+  keep: { x: 16, y: 601, w: 96, h: 148 },
+  houses: [[18, 60, 80, 54], [30, 252, 70, 62], [14, 399, 88, 50], [24, 505, 76, 50], [30, 790, 70, 56],
+           [24, 894, 78, 58], [40, 1050, 62, 52], [16, 1180, 86, 60], [22, 1280, 80, 50]],
   bases: {
-    cave:   { x: 990,  y: 172, hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-    goblin: { x: 1250, y: 715, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'm1m2', 'main'] },
-    orc:    { x: 1480, y: 410, hitRadius: 100, barOffset: 112, path: ['orc', 'm1m2', 'main'] },
+    cave:   { x: 1452, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
+    goblin: { x: 1855, y: 1072, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'm1m2', 'main'] },
+    orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'm1m2', 'main'] },
   },
   // 길 구간 (곡선으로 부드럽게 이어짐). 기지별 경로 = 구간들을 이어 붙인 것
   segments: {
-    cave:   [[990, 210], [968, 290], [892, 350], [812, 398], [760, 440]],
-    goblin: [[1205, 655], [1165, 588], [1112, 526], [1080, 470]],
-    orc:    [[1398, 420], [1320, 446], [1236, 430], [1152, 468], [1080, 470]],
-    m1m2:   [[1080, 470], [985, 505], [870, 476], [760, 440]],
-    main:   [[760, 440], [655, 402], [545, 440], [435, 480], [325, 442], [240, 452], [190, 450]],
+    cave:   [[1452, 298], [1418, 435], [1300, 525], [1176, 597], [1096, 660]],
+    goblin: [[1798, 1024], [1735, 935], [1660, 830], [1592, 705]],
+    orc:    [[2132, 625], [1964, 669], [1833, 645], [1703, 702], [1592, 705]],
+    m1m2:   [[1592, 705], [1444, 758], [1266, 714], [1096, 660]],
+    main:   [[1096, 660], [933, 603], [762, 660], [592, 720], [421, 663], [290, 678], [186, 675]],
   },
-  river: [[612, -40], [590, 110], [546, 255], [550, 400], [508, 560], [522, 720], [486, 940]],
+  river: [[866, -60], [832, 165], [764, 382], [770, 600], [705, 840], [727, 1080], [671, 1410]],
   forests: [
-    { x: 330, y: 195, r: 125, n: 46 },
-    { x: 330, y: 715, r: 135, n: 50 },
-    { x: 765, y: 215, r: 110, n: 34 },
-    { x: 800, y: 735, r: 130, n: 44 },
-    { x: 1300, y: 200, r: 150, n: 52 },
-    { x: 1480, y: 770, r: 110, n: 30 },
-    { x: 1010, y: 775, r: 90, n: 22 },
+    { x: 429, y: 292, r: 180, n: 90 },  { x: 429, y: 1072, r: 195, n: 100 },
+    { x: 1103, y: 322, r: 160, n: 66 }, { x: 1158, y: 1102, r: 188, n: 86 },
+    { x: 1932, y: 300, r: 218, n: 100 }, { x: 2212, y: 1155, r: 160, n: 60 },
+    { x: 1483, y: 1162, r: 130, n: 44 }, { x: 2020, y: 880, r: 110, n: 34 },
+    { x: 2330, y: 330, r: 110, n: 30 },  { x: 1700, y: 120, r: 120, n: 34 },
   ],
-  scatterTrees: 55,
-  startView: { x: 700, y: 270 },  // 휴대폰처럼 지도를 확대해서 볼 때 처음 화면 중심
+  scatterTrees: 120,
   // 건설 자리 (빈 터): 성 근처에 많고 적 기지 쪽으로 갈수록 적게. 나무는 자동으로 피해서 배치됨
   buildSpots: [
-    { x: 265, y: 375 }, { x: 265, y: 530 }, { x: 360, y: 362 }, { x: 358, y: 548 }, { x: 452, y: 392 }, { x: 440, y: 556 },  // 성 앞 (강 서쪽)
-    { x: 640, y: 330 }, { x: 662, y: 492 }, { x: 740, y: 335 },                                                              // 다리 건너편
-    { x: 915, y: 425 }, { x: 982, y: 572 },                                                                                  // 갈림길
-    { x: 1062, y: 300 }, { x: 1198, y: 372 },                                                                                // 적 기지 근처
+    { x: 332, y: 584 }, { x: 322, y: 760 }, { x: 463, y: 585 }, { x: 489, y: 781 }, { x: 633, y: 624 }, { x: 599, y: 805 },  // 성 앞 (강 서쪽)
+    { x: 912, y: 519 }, { x: 959, y: 693 }, { x: 1046, y: 544 }, { x: 1121, y: 758 },                                         // 다리 건너편
+    { x: 1336, y: 638 }, { x: 1440, y: 843 }, { x: 1563, y: 625 },                                                            // 갈림길
+    { x: 1600, y: 330 }, { x: 1990, y: 540 }, { x: 1640, y: 960 },                                                            // 적 기지 근처 (투석기 공성용)
   ],
   spotRadius: 30,
 };
@@ -901,6 +917,52 @@ const Art = {
     ctx.restore();
   },
 
+  // 고블린 / 고블린 궁수 / 오크 / 트롤 (위에서 본 모습, 오른쪽이 앞)
+  humanoid(ctx, e) {
+    const r = e.radius, lunge = e.lunge > 0 ? Math.sin((e.lunge / 0.15) * Math.PI) * 4 : 0;
+    const bob = e.state === 'walk' || e.state === 'rejoin' || e.state === 'toGate' ? Math.sin(e.anim * 12) * 1 : 0;
+    const x = e.x + Math.cos(e.face) * lunge, y = e.y + Math.sin(e.face) * lunge + bob;
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ellipse(ctx, e.x + 1, e.y + r * 0.45, r * 1.1, r * 0.55); ctx.fill();
+    if (this.img(ctx, e.type, x, y, r * 3, r * 3, e.face)) return;
+    const fl = e.flash > 0, T = e.type;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(e.face);
+    if (T === 'goblin' || T === 'goblinArcher') {
+      ctx.fillStyle = fl ? '#fff' : T === 'goblin' ? '#6b4a2a' : '#4a5a2a'; ellipse(ctx, -1, 0, 7, 8.5); ctx.fill();          // 몸 (조끼/두건)
+      if (T === 'goblin') { ctx.fillStyle = '#a9adb3'; ctx.fillRect(4, 5, 8, 2); ctx.fillStyle = '#5a3a1c'; ctx.fillRect(2, 4.5, 3, 3); }   // 단검
+      else {
+        const pull = e.state === 'shoot' || e.state === 'siege' ? Math.max(0, e.lunge / 0.15) : 0;
+        ctx.strokeStyle = '#6b4220'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(2, 0, 8, -1.1, 1.1); ctx.stroke();
+        ctx.strokeStyle = '#ddd'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(2 + Math.cos(1.1) * 8, -Math.sin(1.1) * 8); ctx.lineTo(-2 - pull * 3, 0); ctx.lineTo(2 + Math.cos(1.1) * 8, Math.sin(1.1) * 8); ctx.stroke();
+      }
+      ctx.fillStyle = fl ? '#fff' : '#7aa84a';                                                                          // 머리 + 큰 귀
+      ctx.beginPath(); ctx.moveTo(-2, -3); ctx.lineTo(-5, -11); ctx.lineTo(2, -4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-2, 3); ctx.lineTo(-5, 11); ctx.lineTo(2, 4); ctx.closePath(); ctx.fill();
+      circle(ctx, 0.5, 0, 4.8); ctx.fill();
+      if (T === 'goblinArcher') { ctx.fillStyle = '#3a4a1e'; ctx.beginPath(); ctx.arc(0, 0, 5, Math.PI * 0.5, Math.PI * 1.5); ctx.fill(); }
+      ctx.fillStyle = '#ffde3a'; circle(ctx, 3.4, -1.6, 1.1); ctx.fill(); circle(ctx, 3.4, 1.6, 1.1); ctx.fill();
+    } else if (T === 'orc') {
+      ctx.fillStyle = fl ? '#fff' : '#4d7436'; ellipse(ctx, 0, 0, 10, 13); ctx.fill();                                       // 어깨
+      ctx.fillStyle = '#6b6560'; ellipse(ctx, -1, -9, 5, 4); ctx.fill(); ellipse(ctx, -1, 9, 5, 4); ctx.fill();          // 어깨 갑옷
+      ctx.fillStyle = '#5a3a1c'; ctx.fillRect(-2, -3, 6, 6);
+      ctx.save(); ctx.translate(3, 11); ctx.rotate(e.lunge > 0 ? -0.6 : 0.3);                                            // 도끼
+      ctx.fillStyle = '#5a3a1c'; ctx.fillRect(0, -1.5, 16, 3); ctx.fillStyle = '#9aa0a8';
+      ctx.beginPath(); ctx.moveTo(12, -1.5); ctx.quadraticCurveTo(18, -9, 21, -2); ctx.lineTo(16, -1.5); ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.fillStyle = fl ? '#fff' : '#5c8a40'; circle(ctx, 2, 0, 6); ctx.fill();                                           // 머리
+      ctx.fillStyle = '#f0ead6'; ctx.fillRect(6, -3.5, 2.5, 1.6); ctx.fillRect(6, 2, 2.5, 1.6);                          // 엄니
+      ctx.fillStyle = '#ff4a2a'; circle(ctx, 5, -2, 1); ctx.fill(); circle(ctx, 5, 2, 1); ctx.fill();
+    } else if (T === 'troll') {
+      ctx.fillStyle = fl ? '#fff' : '#7a8a6a'; ellipse(ctx, -2, 0, 14, 17); ctx.fill();                                   // 큰 몸
+      ctx.fillStyle = '#4a3a2a'; for (let i = -2; i <= 2; i++) { ellipse(ctx, -9, i * 5, 3.5, 2.2); ctx.fill(); }         // 등 털
+      ctx.save(); ctx.translate(4, 15); ctx.rotate(e.lunge > 0 ? -0.8 : 0.25);                                            // 몽둥이
+      ctx.fillStyle = '#6b4a2a'; ctx.fillRect(0, -3, 20, 6); ctx.fillStyle = '#5a3a1c'; circle(ctx, 20, 0, 6); ctx.fill();
+      ctx.fillStyle = '#c8c2b0'; for (const a of [0, 1.6, 3.2, 4.8]) { circle(ctx, 20 + Math.cos(a) * 6, Math.sin(a) * 6, 1.3); ctx.fill(); }
+      ctx.restore();
+      ctx.fillStyle = fl ? '#fff' : '#8a9a78'; circle(ctx, 6, 0, 7); ctx.fill();                                           // 머리
+      ctx.fillStyle = '#ffb83a'; circle(ctx, 10, -2.5, 1.4); ctx.fill(); circle(ctx, 10, 2.5, 1.4); ctx.fill();
+    }
+    ctx.restore();
+  },
+
   airShadow(ctx, e) {
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; ellipse(ctx, e.x, e.y + 4, e.radius * 0.9, e.radius * 0.4); ctx.fill();
   },
@@ -935,7 +997,10 @@ const Art = {
       ctx.strokeStyle = 'rgba(170,130,255,0.75)'; ctx.lineWidth = 2;
       ellipse(ctx, e.x, e.y + 3, e.radius + 4, (e.radius + 4) * 0.5); ctx.stroke();
     }
-    if (e.type === 'spider') this.spider(ctx, e); else if (e.type === 'bat') this.bat(ctx, e);
+    if (e.post) { ctx.strokeStyle = 'rgba(200,40,30,0.75)'; ctx.lineWidth = 2; ellipse(ctx, e.x, e.y + 4, e.radius + 3, (e.radius + 3) * 0.5); ctx.stroke(); }   // 수비병 표시
+    if (e.type === 'spider') this.spider(ctx, e);
+    else if (e.type === 'bat') this.bat(ctx, e);
+    else this.humanoid(ctx, e);
     const top = e.y - (e.air ? AIR_HEIGHT : 0) - e.radius - 14;
     if (e.stun > 0) this.stunStars(ctx, e.x, top + 2, e.anim);
     else if (e.taunt > 0) { ctx.fillStyle = '#ff4a3a'; circle(ctx, e.x, top - 2, 5.5); ctx.fill(); txt(ctx, '!', e.x, top - 1.5, 9, '#fff', 'center', { weight: 900 }); }
@@ -1300,9 +1365,9 @@ const Art = {
     const x = p.x, y = p.y - p.z;
     if (this.img(ctx, 'arrow', x, y, this.SIZES.arrow, this.SIZES.arrow * 0.35, p.angle)) return;
     ctx.save(); ctx.translate(x, y); ctx.rotate(p.angle);
-    ctx.strokeStyle = '#5b3b1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(6, 0); ctx.stroke();
+    ctx.strokeStyle = p.hostile ? '#2a1a10' : '#5b3b1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(6, 0); ctx.stroke();
     ctx.fillStyle = '#d8d8d8'; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(5, -2.8); ctx.lineTo(5, 2.8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#f2efe6'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-13, -3); ctx.lineTo(-7, 0); ctx.lineTo(-13, 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = p.hostile ? '#c0392b' : '#f2efe6'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-13, -3); ctx.lineTo(-7, 0); ctx.lineTo(-13, 3); ctx.closePath(); ctx.fill();
     ctx.restore();
   },
 };
@@ -1673,7 +1738,7 @@ class WallArcher {
       if (!e.alive) continue;
       const dx = e.x - this.x, dy = e.y - this.y, d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;
-      const score = (e.state === 'walk' ? e.dist / e.route.length : 2) - Math.sqrt(d2) * 0.001;   // 성문에 붙은 적 우선
+      const score = (e.post ? -1 : e.state === 'walk' ? e.dist / e.route.length : 2) - Math.sqrt(d2) * 0.001;   // 성문에 붙은 적 우선
       if (score > bs) { bs = score; best = e; }
     }
     return best;
@@ -1696,6 +1761,7 @@ class WallArcher {
 class Arrow {
   constructor(x, y, target, damage, speed, source) {
     this.x = x; this.y = y; this.target = target; this.damage = damage; this.source = source || 'tower';
+    this.hostile = source instanceof Enemy;
     this.tx = target.x; this.ty = target.y - (target.air ? AIR_HEIGHT : 0);
     this.speed = speed || CONFIG.wallArcher.arrowSpeed; this.traveled = 0;
     this.total = Math.max(1, dist(x, y, this.tx, this.ty));
@@ -1750,7 +1816,7 @@ class Tower extends Building {
     for (const e of G.enemies) {
       if (!e.alive || (e.air && !this.cfg.canHitAir)) continue;
       const dx = e.x - this.x, dy = e.y - this.y; if (dx * dx + dy * dy > r2) continue;
-      const score = e.state === 'walk' || e.state === 'rejoin' ? e.dist / e.route.length : 2;   // 성문에 가까운 적 우선
+      const score = e.post ? -1 : e.state === 'walk' || e.state === 'rejoin' ? e.dist / e.route.length : 2;   // 성문에 가까운 적 우선, 수비병은 마지막
       if (score > bs) { bs = score; best = e; }
     }
     return best;
@@ -1837,6 +1903,7 @@ class Soldier {
     this.level = level; this.maxHp = s.hp; this.hp = this.maxHp * ratio; this.damage = s.damage; this.armor = s.armor;
   }
   get dash() { return null; }
+  get alive() { return !this.dead; }
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount * (1 - this.armor); this.lastHit = G.time; this.flash = 0.1;
@@ -2006,6 +2073,8 @@ class Enemy {
     this.state = 'walk';
     this.slot = null; this.fallback = null; this.foe = null; this.engageAngle = 0;
     this.stun = 0; this.taunt = 0; this.knock = null;
+    this.ranged = !!cfg.ranged; this.shootTarget = null; this.prevState = 'walk';
+    this.post = null; this.guardCfg = null; this.hunt = null;     // 수비병: 지키는 자리 / 설정 / 쫓는 대상
     this.atkTimer = rand(0.2, cfg.attackInterval);
     this.anim = Math.random() * 10; this.lunge = 0; this.flash = 0; this.alive = true;
     const s = this.route.sample(0, TMP);
@@ -2046,6 +2115,7 @@ class Enemy {
   release() {
     if (this.foe) this.foe.engaged.delete(this);
     this.foe = null;
+    if (this.post) { this.state = 'guard'; this.hunt = null; return; }
     if (this.reachedEnd) this.state = 'toGate';
     else { this.dist = this.route.nearestDist(this.x, this.y, this.dist); this.state = 'rejoin'; }
   }
@@ -2070,10 +2140,25 @@ class Enemy {
       return;
     }
     if (this.stun > 0) { this.stun -= dt; return; }     // 기절
+    if (this.cfg.regen && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.cfg.regen * dt);   // 트롤 재생
 
     switch (this.state) {
+      case 'guard': this.updateGuard(dt); break;
+      case 'shoot': this.updateShoot(dt); break;
+      case 'siege': {                                   // 원거리 적: 성문 앞에서 활로 성문 공격
+        if (this.tryEngage() || this.tryShoot()) break;
+        this.face = Math.atan2(MAP.gate.y - this.y, MAP.castle.wallX + MAP.castle.wallW - this.x);
+        if (G.gate.destroyed) break;
+        this.atkTimer -= dt;
+        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; G.projectiles.push(new Arrow(this.x, this.y - 4, gateTarget(), this.gateDamage, 520, this)); }
+        break;
+      }
       case 'walk': {
         if (this.tryEngage()) break;
+        if (this.ranged) {
+          if (this.tryShoot()) break;
+          if (this.dist >= this.route.length - 130) { this.state = 'siege'; break; }
+        }
         this.dist += this.spd * dt;
         if (this.dist >= this.route.length) {
           this.dist = this.route.length; this.state = 'toGate';
@@ -2085,7 +2170,7 @@ class Enemy {
         break;
       }
       case 'rejoin': {
-        if (this.tryEngage()) break;
+        if (this.tryEngage() || (this.ranged && this.tryShoot())) break;
         const s = this.route.sample(this.dist, TMP);
         if (this.moveToward(s.x - s.dy * this.lane, s.y + s.dx * this.lane, dt)) this.state = 'walk';
         break;
@@ -2108,9 +2193,48 @@ class Enemy {
     }
   }
 
+  // 원거리 적: 사거리 안의 영웅·병사를 발견하면 멈춰서 활을 쏨
+  tryShoot() {
+    let best = null, bd = this.cfg.range;
+    const h = G.hero;
+    if (h && !h.dead) { const d = dist(this.x, this.y, h.x, h.y); if (d < bd) { bd = d; best = h; } }
+    for (const u of G.soldiers) { if (u.dead) continue; const d = dist(this.x, this.y, u.x, u.y); if (d < bd) { bd = d; best = u; } }
+    if (!best) return false;
+    this.shootTarget = best; if (this.state !== 'shoot') this.prevState = this.state; this.state = 'shoot';
+    return true;
+  }
+  updateShoot(dt) {
+    if (this.tryEngage()) return;
+    const t = this.shootTarget;
+    if (!t || t.dead || dist(this.x, this.y, t.x, t.y) > this.cfg.range + 20) { this.shootTarget = null; this.state = this.prevState === 'siege' ? 'siege' : 'walk'; return; }
+    this.face = Math.atan2(t.y - this.y, t.x - this.x);
+    this.atkTimer -= dt;
+    if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; G.projectiles.push(new Arrow(this.x, this.y - 4, t, this.damage, 520, this)); }
+  }
+
+  // 수비병: 기지 근처에 들어온 영웅·병사를 쫓아가 싸우고, 멀어지면 자리로 복귀
+  updateGuard(dt) {
+    const g = this.guardCfg, post = this.post;
+    if (this.hunt && (this.hunt.dead || dist(this.hunt.x, this.hunt.y, post.x, post.y) > g.leash)) this.hunt = null;
+    if (!this.hunt) {
+      let best = null, bd = g.aggro;
+      const h = G.hero;
+      if (h && !h.dead) { const d = dist(h.x, h.y, post.x, post.y); if (d < bd) { bd = d; best = h; } }
+      for (const u of G.soldiers) { if (u.dead) continue; const d = dist(u.x, u.y, post.x, post.y); if (d < bd) { bd = d; best = u; } }
+      this.hunt = best;
+    }
+    const t = this.hunt;
+    if (t) {
+      if (dist(this.x, this.y, t.x, t.y) <= this.radius + t.radius + 7) { this.engage(t); return; }
+      this.moveToward(t.x, t.y, dt); return;
+    }
+    if (dist(this.x, this.y, post.x, post.y) > 3) this.moveToward(post.x, post.y, dt);
+  }
+
   updateFight(dt) {
     const h = this.foe;
     if (!h || h.dead) { this.release(); return; }
+    if (this.post && dist(this.x, this.y, this.post.x, this.post.y) > this.guardCfg.leash) { this.release(); return; }
     const contact = this.radius + h.radius + 3, d = dist(this.x, this.y, h.x, h.y);
     if (this.taunt <= 0 && d > contact + 60) { this.release(); return; }   // 영웅이 멀어지면 다시 성문으로
     const fx = h.x + Math.cos(this.engageAngle) * contact, fy = h.y + Math.sin(this.engageAngle) * contact;
@@ -2140,6 +2264,11 @@ class Enemy {
       if (h && !h.dead) h.gainXp(killer === h ? this.xp : this.xp * CONFIG.heroLevels.sharedXp);
     }
   }
+}
+
+// 원거리 적이 성문을 쏠 때 쓰는 목표 (화살이 따라갈 위치 + 맞으면 성문 피해)
+function gateTarget() {
+  return { x: MAP.castle.wallX + MAP.castle.wallW - 4, y: MAP.gate.y + rand(-30, 30), alive: true, radius: 10, takeDamage: d => G.gate.takeDamage(d) };
 }
 
 // ---------- 이동 도우미: 강은 다리로만 건널 수 있음, 성 안으로는 못 들어감 ----------
@@ -2212,6 +2341,7 @@ class Hero {
     this.armor = Math.min(0.75, c.armor + c.perLevel.armor * l);
   }
   get maxBlock() { return this.cfg.maxBlock; }
+  get alive() { return !this.dead; }
   get xpToNext() { return this.level >= CONFIG.heroLevels.max ? 0 : CONFIG.heroLevels.xpToNext[this.level - 1]; }
   skillValue(sk, key) { return sk[key] + (key === 'damage' && sk.perLevel ? sk.perLevel * (this.level - 1) : 0); }
 
@@ -2377,8 +2507,9 @@ class Hero {
     if (this.flash > 0) this.flash -= dt;
     this.atkTimer -= dt;
     this.moving = false;
+    if (this.baseTarget && !this.baseTarget.alive) this.baseTarget = null;     // 파괴된 기지는 목표에서 제외
     // 병사들이 함께 공격할 적 기지 (기지를 공격하러 가는 중이거나 공격 중일 때)
-    this.siegeTarget = this.baseTarget && this.baseTarget.alive ? this.baseTarget : null;
+    this.siegeTarget = this.baseTarget;
     if (this.dead) { this.respawnTimer -= dt; if (this.respawnTimer <= 0) this.respawn(); return; }
     const c = this.cfg;
     if (G.time - this.lastHit >= c.regenDelay && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * c.regenRate * dt);   // 자연 회복
@@ -2481,6 +2612,22 @@ class EnemyBase {
     this.spawnTimer = this.cfg.firstSpawn; this.queue = [];
     this.lastHit = -999; this.flash = 0; this.shake = 0; this.smokeTimer = 0;
     this.art = makeBaseArt(key);
+    this.defenders = []; this.summonCd = 0;
+    if (this.enabled && this.cfg.defenders) this.spawnDefenders(this.cfg.defenders.count, false);
+  }
+  // 수비병 배치: 기지 둘레(성 쪽 반원)에 자리를 잡음. summoned = 기지 입구에서 나와 자리로 이동
+  spawnDefenders(n, summoned) {
+    const d = this.cfg.defenders;
+    compact(this.defenders, e => e.alive);
+    for (let i = 0; i < n && this.defenders.length < d.max; i++) {
+      const e = new Enemy(d.type, this, 0, G.threat || 1);
+      e.maxHp = e.hp = Math.round(e.maxHp * d.hpMul); e.damage *= d.damageMul;
+      const k = this.defenders.length, a = Math.PI * (0.55 + ((k * 0.37) % 0.9)), r = this.m.hitRadius * 0.8 + 34 + (k % 2) * 20;
+      e.post = Nav.clampTarget(this.x + Math.cos(a) * r, this.y + Math.sin(a) * r);
+      e.guardCfg = d; e.state = 'guard';
+      if (!summoned) { e.x = e.post.x; e.y = e.post.y; } else FX.dust(e.x, e.y);
+      this.defenders.push(e); G.enemies.push(e);
+    }
   }
   get spawnInterval() {
     const e = CONFIG.escalation;
@@ -2489,6 +2636,7 @@ class EnemyBase {
   update(dt) {
     if (this.flash > 0) this.flash -= dt;
     if (this.shake > 0) this.shake -= dt;
+    if (this.summonCd > 0) this.summonCd -= dt;
     if (!this.enabled) return;
     if (!this.alive) {                                   // 폐허 연기
       this.smokeTimer -= dt;
@@ -2517,12 +2665,25 @@ class EnemyBase {
   takeDamage(amount) {
     if (!this.alive || !this.enabled) return;
     this.hp -= amount; this.lastHit = G.time; this.flash = 0.12; this.shake = 0.2;
+    const d = this.cfg.defenders;                         // 공격받으면 수비병 추가 소환해 반격
+    if (d && this.summonCd <= 0 && this.hp > 0) {
+      this.summonCd = d.summonCooldown;
+      const before = this.defenders.filter(e => e.alive).length;
+      this.spawnDefenders(d.summon, true);
+      if (this.defenders.length > before) FX.text(this.x, this.y - 40, '수비병 소환!', '#ff8a6a', 18, 1.3);
+    }
     if (this.hp <= 0) this.destroy();
   }
   destroy() {
     this.hp = 0; this.alive = false; this.queue.length = 0;
+    for (const e of this.defenders) {                     // 남은 수비병은 성문으로 진격
+      if (!e.alive) continue;
+      e.post = null; e.guardCfg = null; e.hunt = null;
+      if (e.state !== 'fight') { e.dist = e.route.nearestDist(e.x, e.y, 0, 1e9); e.state = 'rejoin'; }
+    }
     FX.explosion(this.x, this.y, 1.5);
-    showBanner(`${this.cfg.name} 파괴!`, '#ffd36b', 2.6);
+    const left = G.bases.filter(b => b.enabled && b.alive).length;
+    showBanner(left ? `${this.cfg.name} 파괴!  남은 기지들이 분노합니다 (위협 +${CONFIG.escalation.baseLostBonus || 0})` : `${this.cfg.name} 파괴!`, '#ffd36b', 3);
     if (G.hero && !G.hero.dead) G.hero.gainXp(this.cfg.xp || 0);
     if (this.cfg.gold) { G.gold += this.cfg.gold; FX.text(this.x, this.y - 70, `+${this.cfg.gold} 골드`, '#ffd84a', 26, 2); }
     if (!G.pendingResult && G.bases.every(b => !b.enabled || !b.alive)) { G.pendingResult = 'won'; G.endTimer = 2; }
@@ -2533,20 +2694,27 @@ class EnemyBase {
 // 7. 카메라 / 입력
 // ==========================================================================
 const Camera = {
-  x: 0, y: 0, zoom: 1, topPad: 0, botPad: 0,
+  x: 0, y: 0, zoom: 1, topPad: 0, botPad: 0, inited: false,
   viewW() { return CONFIG.view.width / this.zoom; },
   viewH() { return CONFIG.view.height / this.zoom; },
+  minZoom() { return Math.max(CONFIG.view.width / CONFIG.world.width, CONFIG.view.height / CONFIG.world.height); },   // 지도 전체가 보이는 배율
   canPan() { return this.viewW() < CONFIG.world.width - 0.5 || this.viewH() < CONFIG.world.height - 0.5; },
   clamp() {
     const W = CONFIG.world.width, H = CONFIG.world.height, vw = this.viewW(), vh = this.viewH();
-    const zoomed = this.zoom > 1.001;
-    const tp = zoomed ? this.topPad / this.zoom : 0, bp = zoomed ? this.botPad / this.zoom : 0;   // 위·아래 HUD에 가리지 않도록 여유
+    const tp = this.topPad / this.zoom, bp = this.botPad / this.zoom;   // 위·아래 HUD에 가리지 않도록 여유
     this.x = vw >= W ? (W - vw) / 2 : clamp(this.x, 0, W - vw);
-    this.y = vh >= H + tp + bp ? (H - vh) / 2 : clamp(this.y, -tp, H - vh + bp);
+    this.y = vh >= H + tp + bp ? (H - vh) / 2 + (bp - tp) / 2 : clamp(this.y, -tp, H - vh + bp);
   },
   setZoom(z) {
     const cx = this.x + this.viewW() / 2, cy = this.y + this.viewH() / 2;
-    this.zoom = z; this.x = cx - this.viewW() / 2; this.y = cy - this.viewH() / 2; this.clamp();
+    this.zoom = clamp(z, this.minZoom(), CONFIG.view.maxZoom);
+    this.x = cx - this.viewW() / 2; this.y = cy - this.viewH() / 2; this.clamp();
+  },
+  // 화면 좌표 (sx, sy) 아래의 지도 지점을 고정한 채 확대/축소
+  zoomAt(z, sx, sy) {
+    const w = this.toWorld(sx, sy);
+    this.zoom = clamp(z, this.minZoom(), CONFIG.view.maxZoom);
+    this.x = w.x - sx / this.zoom; this.y = w.y - sy / this.zoom; this.clamp();
   },
   centerOn(wx, wy) { this.x = wx - this.viewW() / 2; this.y = wy - this.viewH() / 2; this.clamp(); },
   toWorld(sx, sy) { return { x: sx / this.zoom + this.x, y: sy / this.zoom + this.y }; },
@@ -2562,7 +2730,16 @@ const Input = {
     cv.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('gesturestart', e => e.preventDefault());
     window.addEventListener('keydown', e => this.key(e));
+    window.addEventListener('keyup', e => this.keys.delete(e.code));
+    window.addEventListener('blur', () => this.keys.clear());
+    cv.addEventListener('wheel', e => {                                    // 마우스 휠: 확대/축소
+      e.preventDefault();
+      const v = this.toVirtual(e);
+      Camera.zoomAt(Camera.zoom * Math.exp(-e.deltaY * 0.0015), v.x, v.y);
+    }, { passive: false });
   },
+  keys: new Set(),     // 누르고 있는 키 (방향키 화면 이동)
+  pinch: null,         // 두 손가락 확대/축소 상태
   toVirtual(e) {
     const r = canvas.getBoundingClientRect();
     return { x: ((e.clientX - r.left) * CONFIG.view.width) / r.width, y: ((e.clientY - r.top) * CONFIG.view.height) / r.height };
@@ -2573,8 +2750,16 @@ const Input = {
     if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
     const v = this.toVirtual(e), item = UI.hit(v.x, v.y);
     this.hoverScreen = v;
-    this.pointers.set(e.pointerId, { sx: v.x, sy: v.y, lx: v.x, ly: v.y, moved: false, item });
+    const p = { sx: v.x, sy: v.y, lx: v.x, ly: v.y, moved: false, item };
+    this.pointers.set(e.pointerId, p);
+    if (item && item.id === 'minimap') { p.mini = item; p.moved = true; minimapJump(v.x, v.y, item); return; }   // 미니맵: 누른 곳으로 화면 이동
     if (item && item.id) UI.pressed = item.id;
+    const free = [...this.pointers.values()].filter(q => !q.item);
+    if (free.length === 2) {                                                // 두 손가락 → 확대/축소 시작
+      const [a, b] = free;
+      this.pinch = { d0: Math.max(10, Math.hypot(a.lx - b.lx, a.ly - b.ly)), z0: Camera.zoom };
+      a.moved = b.moved = true;
+    }
   },
   hover: null,      // 마우스 위치(지도 좌표) — 조준 미리보기용
   hoverScreen: null, // 마우스 위치(화면 좌표) — 건설 메뉴 설명용
@@ -2582,11 +2767,21 @@ const Input = {
     const v = this.toVirtual(e);
     this.hover = Camera.toWorld(v.x, v.y); this.hoverScreen = v;
     const p = this.pointers.get(e.pointerId); if (!p) return;
+    if (p.mini) { minimapJump(v.x, v.y, p.mini); return; }
     if (!p.moved && Math.hypot(v.x - p.sx, v.y - p.sy) > this.threshold()) {
       p.moved = true;
       if (p.item && UI.pressed === p.item.id) UI.pressed = null;
     }
-    if (p.moved && !p.item && this.pointers.size === 1 && Camera.canPan()) {    // 드래그로 화면 이동
+    const free = [...this.pointers.values()].filter(q => !q.item);
+    if (this.pinch && free.length === 2 && !p.item) {                      // 두 손가락: 가운데 지점을 고정하고 확대/축소 + 이동
+      const [a, b] = free, oldMx = (a.lx + b.lx) / 2, oldMy = (a.ly + b.ly) / 2;
+      p.lx = v.x; p.ly = v.y;
+      const mx = (a.lx + b.lx) / 2, my = (a.ly + b.ly) / 2, d = Math.hypot(a.lx - b.lx, a.ly - b.ly);
+      Camera.x -= (mx - oldMx) / Camera.zoom; Camera.y -= (my - oldMy) / Camera.zoom;
+      Camera.zoomAt(this.pinch.z0 * d / this.pinch.d0, mx, my);
+      return;
+    }
+    if (p.moved && !p.item && free.length === 1 && Camera.canPan()) {      // 드래그로 화면 이동
       Camera.x -= (v.x - p.lx) / Camera.zoom; Camera.y -= (v.y - p.ly) / Camera.zoom; Camera.clamp();
     }
     p.lx = v.x; p.ly = v.y;
@@ -2594,6 +2789,7 @@ const Input = {
   up(e) {
     const p = this.pointers.get(e.pointerId); if (!p) return;
     this.pointers.delete(e.pointerId);
+    if (this.pinch && [...this.pointers.values()].filter(q => !q.item).length < 2) this.pinch = null;
     const v = this.toVirtual(e);
     if (!p.moved) {
       if (p.item) { if (p.item.id) { const it = UI.hit(v.x, v.y); if (it && it.id === p.item.id && it.onTap) it.onTap(); } }
@@ -2601,8 +2797,9 @@ const Input = {
     }
     UI.pressed = null;
   },
-  cancel(e) { this.pointers.delete(e.pointerId); UI.pressed = null; },
+  cancel(e) { this.pointers.delete(e.pointerId); this.pinch = null; UI.pressed = null; },
   key(e) {   // 키보드는 보조 단축키
+    if (e.code.startsWith('Arrow')) { this.keys.add(e.code); e.preventDefault(); return; }
     if (e.repeat) return;
     switch (e.code) {
       case 'Space': case 'Enter': case 'NumpadEnter':
@@ -2617,7 +2814,19 @@ const Input = {
       case 'KeyW': useSkill(1); break;
       case 'KeyE': useSkill(2); break;
       case 'KeyH': focusHero(); break;
+      case 'Minus': case 'NumpadSubtract': Camera.setZoom(Camera.zoom / 1.2); break;
+      case 'Equal': case 'NumpadAdd': Camera.setZoom(Camera.zoom * 1.2); break;
     }
+  },
+  // 방향키로 화면 이동 (매 프레임)
+  panKeys(dt) {
+    if (!this.keys.size) return;
+    const sp = 700 * dt / Camera.zoom;
+    if (this.keys.has('ArrowLeft')) Camera.x -= sp;
+    if (this.keys.has('ArrowRight')) Camera.x += sp;
+    if (this.keys.has('ArrowUp')) Camera.y -= sp;
+    if (this.keys.has('ArrowDown')) Camera.y += sp;
+    Camera.clamp();
   },
 };
 
@@ -3020,6 +3229,63 @@ function drawGateMenu(ctx, s, px, py, w, h, k) {
   else costButton(ctx, 'gateUpg', px + 16 * k, by, bw, bh, k, '성문 업그레이드', g.upgradeCost, G.gold >= g.upgradeCost && !g.destroyed, upgradeGate);
 }
 
+// ---------- 미니맵 (오른쪽 위) — 누르거나 끌면 그 위치로 화면 이동 ----------
+const MINIMAP = { w: 240, h: 135, open: true };
+function buildMinimapCanvas() {
+  const c = document.createElement('canvas'); c.width = MINIMAP.w * 2; c.height = MINIMAP.h * 2;
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+  g.drawImage(bgCanvas, 0, 0, bgCanvas.width, bgCanvas.height, 0, 0, c.width, c.height);
+  return c;
+}
+function minimapRect() {
+  const s = Math.min(UI.k, 1.4), w = MINIMAP.w * s, h = MINIMAP.h * s;
+  return { x: CONFIG.view.width - 10 * UI.kt - w, y: (10 + 58 + 10) * UI.kt, w, h, s };
+}
+function minimapJump(vx, vy, r) {
+  Camera.centerOn(clamp((vx - r.x) / r.w, 0, 1) * CONFIG.world.width, clamp((vy - r.y) / r.h, 0, 1) * CONFIG.world.height);
+}
+function drawMinimap(ctx) {
+  if (!miniCanvas || G.state !== 'playing') return;
+  const r = minimapRect(), s = r.s;
+  if (!MINIMAP.open) {                                     // 접힌 상태: 지도 버튼만
+    const bs = 52 * s, bx = CONFIG.view.width - 10 * UI.kt - bs;
+    const off = drawButton(ctx, bx, r.y, bs, bs, UI.button('mmToggle', bx, r.y, bs, bs, () => { MINIMAP.open = true; }), s, '', { radius: 10, c1: '#4a6aa8', c2: '#2a3f6e', border: '#c9d8ff' });
+    ctx.strokeStyle = '#fff8e6'; ctx.lineWidth = 2.5 * s; ctx.lineJoin = 'round';
+    const cx = bx + bs / 2, cy = r.y + bs / 2 + off, u = bs / 52;
+    ctx.beginPath(); ctx.moveTo(cx - 14 * u, cy - 9 * u); ctx.lineTo(cx - 5 * u, cy - 13 * u); ctx.lineTo(cx + 5 * u, cy - 9 * u); ctx.lineTo(cx + 14 * u, cy - 13 * u);
+    ctx.lineTo(cx + 14 * u, cy + 9 * u); ctx.lineTo(cx + 5 * u, cy + 13 * u); ctx.lineTo(cx - 5 * u, cy + 9 * u); ctx.lineTo(cx - 14 * u, cy + 13 * u); ctx.closePath(); ctx.stroke();
+    return;
+  }
+  const W = CONFIG.world.width, H = CONFIG.world.height, sx = r.w / W, sy = r.h / H;
+  const mx = x => r.x + x * sx, my = y => r.y + y * sy;
+  rr(ctx, r.x - 4 * s, r.y - 4 * s, r.w + 8 * s, r.h + 8 * s, 8 * s); ctx.fillStyle = 'rgba(30,22,14,0.9)'; ctx.fill();
+  ctx.strokeStyle = '#b8914a'; ctx.lineWidth = 2 * s; ctx.stroke();
+  UI.button('minimap', r.x, r.y, r.w, r.h, null);
+  ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+  ctx.drawImage(miniCanvas, r.x, r.y, r.w, r.h);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = G.gate.destroyed ? '#555' : '#6fb7ff'; ctx.fillRect(mx(MAP.castle.wallX), my(MAP.castle.gateTop), 4 * s, (MAP.castle.gateBottom - MAP.castle.gateTop) * sy + 2);   // 성문
+  for (const b of G.buildings) { ctx.fillStyle = b instanceof Barracks ? '#9fd8ff' : '#ffe08a'; ctx.fillRect(mx(b.x) - 2 * s, my(b.y) - 2 * s, 4 * s, 4 * s); }
+  for (const e of G.enemies) { ctx.fillStyle = e.post ? '#a02a20' : '#ff4a3a'; ctx.fillRect(mx(e.x) - 1.2 * s, my(e.y) - 1.2 * s, 2.4 * s, 2.4 * s); }
+  ctx.fillStyle = '#bfe6ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1 * s, my(u.y) - 1 * s, 2 * s, 2 * s);
+  for (const b of G.bases) {
+    if (!b.enabled) continue;
+    const bx = mx(b.x), by = my(b.y);
+    if (b.alive) { circle(ctx, bx, by, 6 * s); ctx.fillStyle = '#c0392b'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * s; ctx.stroke(); }
+    else { ctx.strokeStyle = '#999'; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(bx - 5 * s, by - 5 * s); ctx.lineTo(bx + 5 * s, by + 5 * s); ctx.moveTo(bx + 5 * s, by - 5 * s); ctx.lineTo(bx - 5 * s, by + 5 * s); ctx.stroke(); }
+  }
+  const h = G.hero;
+  if (h && !h.dead) { circle(ctx, mx(h.x), my(h.y), (3.5 + Math.sin(realTime * 6) * 0.8) * s); ctx.fillStyle = '#ffd36b'; ctx.fill(); ctx.strokeStyle = '#3a2208'; ctx.lineWidth = 1.2 * s; ctx.stroke(); }
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5 * s;                               // 지금 보고 있는 범위
+  ctx.strokeRect(mx(Camera.x), my(Camera.y), Camera.viewW() * sx, Camera.viewH() * sy);
+  ctx.restore();
+  const cs = 40 * s, cbx = r.x - cs - 8 * s, cby = r.y - 4 * s;                      // 접기 버튼 (미니맵 왼쪽)
+  const pr = UI.button('mmToggle', cbx, cby, cs, cs, () => { MINIMAP.open = false; });
+  rr(ctx, cbx, cby, cs, cs, 6 * s); ctx.fillStyle = pr ? 'rgba(0,0,0,0.8)' : 'rgba(30,22,14,0.85)'; ctx.fill();
+  ctx.strokeStyle = '#b8914a'; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.strokeStyle = '#f3e3bf'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cbx + 12 * s, cby + cs / 2); ctx.lineTo(cbx + cs - 12 * s, cby + cs / 2); ctx.stroke();
+}
+
 function drawAimHint(ctx) {
   if (!G.aim || G.state !== 'playing' || G.paused) return;
   const k = UI.k, VW = CONFIG.view.width, sk = G.hero.cfg.skills[G.aim.skill];
@@ -3082,13 +3348,12 @@ function drawTitle(ctx, k) {
   txt(ctx, '성문을 지키고, 적의 기지를 무너뜨려라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
-    ['4단계 테스트 버전 — 영웅: 기사', '#ffcf6a'],
-    ['· 빈 곳을 탭하면 기사가 이동하고, 동굴을 탭하면 달려가서 기지를 공격합니다.'],
-    ['· 스킬: 방패 강타(Q) · 도발의 함성(W) · 돌진(E: 버튼 → 지도에서 방향 탭)'],
-    ['· 빈 터를 탭해 건설: 궁수탑 · 투석기(기지 공격 가능) · 마법탑 / 보병 · 궁수 · 기사단 막사'],
-    ['· 막사의 병사들은 영웅을 따라다니며 싸우고, 영웅이 기지를 공격하면 함께 공격해요.'],
-    ['· 성을 탭하면 성문 업그레이드 (3레벨: 끓는 기름)'],
-    ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 동굴을 파괴하세요!'],
+    ['5단계 테스트 버전 — 영웅: 기사', '#ffcf6a'],
+    ['· 적 기지 3곳: 동굴(거미·박쥐) · 고블린 부락(고블린·궁수) · 오크 요새(오크·트롤)'],
+    ['· 빈 곳 탭: 기사 이동 · 적 기지 탭: 공격 (기지마다 수비병이 있고, 공격받으면 더 불러와요)'],
+    ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
+    ['· 빈 터에 탑·막사 건설, 성을 탭해 성문 업그레이드. 스킬은 Q · W · E'],
+    ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 기지 3곳을 모두 파괴하세요!'],
   ];
   let ly = y + 192 * k;
   for (const [s, col] of lines) {
@@ -3129,7 +3394,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let G = null;
 let MAPDATA = null;
-let realTime = 0, viewScale = 1, pixelRatio = 1, bgCanvas = null, bgRes = 0;
+let realTime = 0, viewScale = 1, pixelRatio = 1, bgCanvas = null, bgRes = 0, miniCanvas = null;
 
 function buildMapData() {
   const W = CONFIG.world.width, H = CONFIG.world.height, rng = mulberry32(MAP.seed + 99);
@@ -3198,7 +3463,7 @@ function buildMapData() {
 
 function createState() {
   return {
-    state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, nextId: 1,
+    state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, threatTime: 1, nextId: 1,
     gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
     gold: CONFIG.economy.startGold, goldFlashUntil: 0,
     buildings: [], spots: MAP.buildSpots.map(s => ({ x: s.x, y: s.y, tower: null })),
@@ -3216,16 +3481,20 @@ function newGame(state) {
 }
 function startGame() {
   newGame('playing');
-  if (Camera.zoom > 1) Camera.centerOn(MAP.startView.x, MAP.startView.y);
-  showBanner('빈 곳을 탭해 기사를 움직이고, 동굴을 탭해 공격하세요!', '#ffe08a', 3.2);
+  Camera.centerOn(MAP.startView.x, MAP.startView.y);
+  showBanner('적 기지 3곳을 모두 파괴하세요! (화면을 끌어서 지도 이동)', '#ffe08a', 3.2);
 }
 function togglePause() { if (G.state === 'playing') G.paused = !G.paused; }
 function toggleSpeed() { if (G.state === 'playing') G.speedIdx = (G.speedIdx + 1) % CONFIG.speeds.length; }
 
 function update(dt) {
   G.time += dt;
-  const th = 1 + Math.floor(G.time / CONFIG.escalation.interval);
-  if (th !== G.threat) { G.threat = th; showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4); }
+  const esc = CONFIG.escalation, lost = G.bases.filter(b => b.enabled && !b.alive).length;
+  const timeTh = 1 + Math.floor(G.time / esc.interval), th = timeTh + lost * (esc.baseLostBonus || 0);
+  if (th !== G.threat) {
+    if (timeTh !== G.threatTime) showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4);
+    G.threat = th; G.threatTime = timeTh;
+  }
   G.gate.update(dt);
   G.hero.update(dt);
   for (const b of G.buildings) b.update(dt);
@@ -3245,7 +3514,9 @@ function update(dt) {
 function renderWorld(ctx) {
   const W = CONFIG.world.width, H = CONFIG.world.height;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(bgCanvas, 0, 0, W, H);
+  const vx = clamp(Camera.x, 0, W), vy = clamp(Camera.y, 0, H);                       // 화면에 보이는 부분만 그림
+  const vw = Math.min(W, Camera.x + Camera.viewW()) - vx, vh = Math.min(H, Camera.y + Camera.viewH()) - vy;
+  if (vw > 0 && vh > 0) ctx.drawImage(bgCanvas, vx * bgRes, vy * bgRes, vw * bgRes, vh * bgRes, vx, vy, vw, vh);
   Art.riverShimmer(ctx, realTime);
   Art.castleDynamic(ctx, G.gate, realTime);
   for (const b of G.bases) Art.base(ctx, b, G.time, realTime);
@@ -3308,6 +3579,7 @@ function render() {
   ctx.restore();
   UI.begin();
   drawHUD(ctx);
+  drawMinimap(ctx);
   drawBanner(ctx);
   drawSelectionPanel(ctx);   // 메뉴는 안내 띠보다 위에
   drawAimHint(ctx);
@@ -3327,10 +3599,15 @@ function resize() {
   UI.kt = Math.min(UI.k, (VW - 4) / TOP_HUD_W);
   Camera.topPad = (10 + 58 + 6) * UI.kt;
   Camera.botPad = (BOTTOM_HUD_H + 20) * UI.k;
-  const zoom = viewScale < CONFIG.view.smallScreenScale ? CONFIG.view.smallScreenZoom : 1;
-  if (zoom !== Camera.zoom) { Camera.setZoom(zoom); if (zoom > 1) Camera.centerOn(MAP.startView.x, MAP.startView.y); } else Camera.clamp();
-  const res = clamp(Math.round(pixelRatio * Camera.zoom * 4) / 4, 1, 2);
-  if (!bgCanvas || res !== bgRes) { bgRes = res; bgCanvas = Art.buildBackground(res); }
+  if (!Camera.inited) {                                   // 처음 한 번: 화면 크기에 맞는 기본 배율
+    Camera.inited = true;
+    Camera.zoom = viewScale < CONFIG.view.smallScreenScale ? CONFIG.view.smallScreenZoom : 1;
+    Camera.centerOn(MAP.startView.x, MAP.startView.y);
+  } else Camera.setZoom(Camera.zoom);
+  // 배경 해상도: 최대 확대에서도 선명하게, 단 큰 지도에서 메모리를 너무 쓰지 않도록 상한 (약 800만 픽셀)
+  const W = CONFIG.world.width, H = CONFIG.world.height, maxRes = Math.floor(Math.sqrt(8e6 / (W * H)) * 4) / 4;
+  const res = clamp(Math.round(pixelRatio * CONFIG.view.maxZoom * 4) / 4, 1, Math.min(2, maxRes));
+  if (!bgCanvas || res !== bgRes) { bgRes = res; bgCanvas = Art.buildBackground(res); miniCanvas = buildMinimapCanvas(); }
 }
 
 let lastNow = performance.now(), acc = 0;
@@ -3338,6 +3615,7 @@ function frame(now) {
   let dt = (now - lastNow) / 1000; lastNow = now;
   dt = clamp(dt, 0, 0.25);
   realTime += dt;
+  Input.panKeys(dt);
   if (G.state === 'playing' && !G.paused) {
     acc += dt * CONFIG.speeds[G.speedIdx];
     let n = 0;
