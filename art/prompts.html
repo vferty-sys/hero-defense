@@ -154,14 +154,14 @@ footer { color: var(--muted); font-size: 13px; }
 (() => {
   // 분류별 그림체 문구 (모든 그림을 같은 느낌으로)
   const STYLES = {
-    char: '2D fantasy game character sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, full body, facing right, centered and filling most of the frame, isolated on a transparent background, no ground, no shadow, no text',
-    fly:  '2D fantasy game creature sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, flying with wings spread, facing right, centered and filling most of the frame, isolated on a transparent background, no ground, no shadow, no text',
-    build:'2D fantasy game building asset, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole structure visible, centered, isolated on a transparent background, no text',
-    prop: '2D fantasy game environment prop, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich colors, seen from a 3/4 top-down view, single object centered, isolated on a transparent background, no text',
+    char: '2D fantasy game character sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, full body, facing right, centered and filling most of the frame, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no ground, no shadow, no text',
+    fly:  '2D fantasy game creature sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, flying with wings spread, facing right, centered and filling most of the frame, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no ground, no shadow, no text',
+    build:'2D fantasy game building asset, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole structure visible, centered, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no text',
+    prop: '2D fantasy game environment prop, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich colors, seen from a 3/4 top-down view, single object centered, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no text',
     tex:  'seamless tileable ground texture viewed straight from above, hand-painted cartoon game texture, soft painterly detail, even flat lighting, no objects, no shadows, no text, square',
-    fx:   '2D fantasy game projectile sprite, hand-painted cartoon style, bold outlines, glowing, pointing right, centered, isolated on a transparent background, no text',
-    sheet:'2D game character sprite sheet, 12 poses of the same character arranged in a grid of 4 columns and 3 rows, every pose drawn at the same scale, full body, facing right, evenly spaced with clear empty space between poses, no overlapping, isolated on a transparent background, no text, no numbers, no grid lines, no labels, hand-painted cartoon fantasy style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 view, wide landscape image',
-    icon: 'fantasy RPG inventory item icon, hand-painted cartoon style, bold clean outlines, soft shading, rich colors, single object centered, isolated on a transparent background, no text, no frame',
+    fx:   '2D fantasy game projectile sprite, hand-painted cartoon style, bold outlines, glowing, pointing right, centered, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no text',
+    sheet:'2D game character sprite sheet, 12 poses of the same character arranged in a grid of 4 columns and 3 rows, every pose drawn at the same scale, full body, facing right, evenly spaced with clear empty space between poses, no overlapping, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no text, no numbers, no grid lines, no labels, hand-painted cartoon fantasy style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 view, wide landscape image',
+    icon: 'fantasy RPG inventory item icon, hand-painted cartoon style, bold clean outlines, soft shading, rich colors, single object centered, isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern), no text, no frame',
   };
   const STYLE_NAMES = { sheet: '동작 시트', char: '캐릭터', fly: '날아다니는 캐릭터', build: '건물', prop: '나무·장식', tex: '지형 질감', fx: '투사체', icon: '아이템 아이콘' };
   const NEG = 'photo, realistic, 3d render, blurry, low quality, jpeg artifacts, text, letters, watermark, signature, frame, border, cropped, cut off, multiple characters, background scenery, ground shadow';
@@ -287,7 +287,7 @@ footer { color: var(--muted); font-size: 13px; }
   ];
   const PRIO = { 1: ['먼저', 'p1'], 2: ['다음', 'p2'], 3: ['나중', 'p2'] };
   const TIPS = {
-    gpt: ['<p><b>ChatGPT · Gemini</b> — 프롬프트를 그대로 붙여 넣으면 됩니다. 배경이 투명하게 안 나오면 "make the background transparent"라고 한 번 더 요청하세요. 동작 시트는 영웅 그림을 첨부하고 가로 그림(1536×1024)으로 요청하세요.</p>',
+    gpt: ['<p><b>ChatGPT · Gemini</b> — 프롬프트를 그대로 붙여 넣으면 됩니다. 배경에 회색·흰색 바둑판 무늬가 그려져 나오면 진짜 투명이 아니니 "make the background truly transparent, no checkerboard"라고 한 번 더 요청하세요 (바둑판이 남아도 게임에 넣을 때 자동으로 지우지만, 빛 효과 주변은 덜 깔끔해요). 동작 시트는 영웅 그림을 첨부하고 가로 그림(1536×1024)으로 요청하세요.</p>',
           '<p>두 번째 그림부터는 마음에 든 기사 그림을 첨부하고 맨 앞에 <code>Same art style as the attached image:</code>를 붙이면 그림체가 잘 맞습니다.</p>'],
     mj: ['<p><b>Midjourney</b> — 투명 배경이 안 되니 흰 배경으로 만든 뒤 배경 지우기 도구로 지우세요. 정사각형(<code>--ar 1:1</code>)과 지형 질감용 <code>--tile</code>은 자동으로 붙습니다.</p>',
          '<p>마음에 든 기사 그림의 주소를 <code>--sref 그림주소</code>로 붙이면 같은 그림체로 나옵니다.</p>'],
@@ -305,7 +305,7 @@ footer { color: var(--muted); font-size: 13px; }
   function fullPrompt(it) {
     const [, , cat, , subject] = it;
     let style = STYLES[cat];
-    if (tool !== 'gpt') style = style.replace('isolated on a transparent background', 'isolated on a plain white background');
+    if (tool !== 'gpt') style = style.replace('isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern)', 'isolated on a plain white background');
     let p = subject + ', ' + style;
     if (tool === 'mj') p += cat === 'tex' ? ' --ar 1:1 --tile' : cat === 'sheet' ? ' --ar 3:2 --no text, numbers, grid lines, scenery' : ' --ar 1:1 --no text, watermark, scenery';
     return p;

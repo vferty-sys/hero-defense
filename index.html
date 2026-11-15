@@ -788,9 +788,12 @@ function loadImages() {
 // images/ 에 원본을 올리고 tools/prepare_images.py 를 실행하면 images/web/ 에 게임용 그림이 생깁니다.
 // 아래 목록에 있는 그림만 불러오고, 그림이 없는 캐릭터는 지금처럼 도형으로 그립니다.
 // 그림은 오른쪽을 바라보는 모습 (왼쪽으로 갈 때는 뒤집어 그림). 병사는 unit_<종류>_<단계>, 없는 단계는 낮은 단계 그림을 씀
-const SPRITE_NAMES = ['hero_knight', 'hero_archer', 'hero_mage', 'unit_footman_1', 'unit_archer_1'];
+const SPRITE_NAMES = ['unit_footman_1', 'unit_archer_1'];
 // 동작 시트 (12자세: 1줄 서 있기·숨쉬기·맞음·스킬 / 2줄 걷기 4장 / 3줄 공격 4장). 있으면 한 장 그림 대신 사용
-const ANIM_NAMES = [];
+const ANIM_NAMES = ['hero_knight', 'hero_archer', 'hero_mage'];
+// 시트의 몇 번째 칸을 쓸지 (0~11). 마법사 스킬 칸은 효과가 칸을 가득 채워서 서 있는 칸을 대신 씀
+const ANIM_FRAMES = { idle: [0, 1], hurt: 2, cast: 3, walk: [4, 5, 6, 7], attack: [8, 9, 10, 11] };
+const ANIM_OVERRIDE = { hero_mage: { cast: 0 }, hero_archer: { cast: 10 } };   // 궁사 스킬 칸은 빛 효과 주변이 덜 깔끔해서 조준 칸을 씀
 const ANIM_COLS = 4, ANIM_ROWS = 3, ANIM_FOOT = 8 / 330;   // 칸 아래 여백 비율 (tools/prepare_images.py 와 맞춤)
 const SPRITE_DIR = 'images/web/';
 const Sprites = {
@@ -813,7 +816,19 @@ const Sprites = {
     hg.imageSmoothingQuality = 'high'; hg.drawImage(im, 0, 0, half.width, half.height);
     const flash = mk(im.width, im.height), fg = flash.getContext('2d');
     fg.drawImage(im, 0, 0); fg.globalCompositeOperation = 'source-in'; fg.fillStyle = '#ffffff'; fg.fillRect(0, 0, flash.width, flash.height);
-    this.anims[n] = { img: im, half, flash, cw: im.width / ANIM_COLS, ch: im.height / ANIM_ROWS };
+    const cw = im.width / ANIM_COLS, ch = im.height / ANIM_ROWS;
+    let head = { x: cw / 2, y: ch * 0.12 };                                                    // 초상화용 머리 위치 (첫 칸)
+    try {
+      const c = mk(Math.round(cw), Math.round(ch)), g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data; let top = -1;
+      for (let y = 0; y < c.height && top < 0; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 128) { top = y; break; }
+      if (top >= 0) {
+        let sx = 0, cnt = 0; const band = Math.round((c.height - top) * 0.2);
+        for (let y = top; y < top + band; y++) for (let x = 0; x < c.width; x += 2) if (d[(y * c.width + x) * 4 + 3] > 128) { sx += x; cnt++; }
+        head = { x: cnt ? sx / cnt : cw / 2, y: top };
+      }
+    } catch (_) {}
+    this.anims[n] = { img: im, half, flash, cw, ch, head, frames: { ...ANIM_FRAMES, ...(ANIM_OVERRIDE[n] || {}) } };
   },
   anim(n) { return this.anims[n] || null; },
   prepare(n, im) {
@@ -871,12 +886,12 @@ const Art = {
   // 동작 시트로 그리기: 상황에 맞는 자세(칸)를 골라 그림. (x, y) = 발 위치, H = 칸 높이(지도 px)
   animSprite(ctx, an, u, x, y, H, rt) {
     const c = Math.cos(u.face); if (c < -0.25) u.flipX = true; else if (c > 0.25) u.flipX = false;
-    let f;
-    if (u.attackAnim > 0) f = 8 + Math.min(3, Math.floor((1 - u.attackAnim / 0.25) * 4));            // 공격 4장
-    else if (u.castAnim > 0) f = 3;                                                                  // 스킬
-    else if (u.flash > 0.04) f = 2;                                                                  // 맞음
-    else if (u.moving || u.dash) f = 4 + (Math.floor(u.walkAnim * 8) % 4);                           // 걷기 4장
-    else f = Math.floor(rt * 1.5 + (u.x % 2)) % 2;                                                   // 서 있기 2장
+    const F = an.frames; let f;
+    if (u.attackAnim > 0) f = F.attack[Math.min(F.attack.length - 1, Math.floor((1 - u.attackAnim / 0.25) * F.attack.length))];   // 공격
+    else if (u.castAnim > 0) f = F.cast;                                                            // 스킬
+    else if (u.flash > 0.04) f = F.hurt;                                                            // 맞음
+    else if (u.moving || u.dash) f = F.walk[Math.floor(u.walkAnim * 8) % F.walk.length];            // 걷기
+    else f = F.idle[Math.floor(rt * 1.5 + (u.x % 2)) % F.idle.length];                              // 서 있기
     const fx = (f % ANIM_COLS) * an.cw, fy = Math.floor(f / ANIM_COLS) * an.ch, W = H * an.cw / an.ch;
     const small = H * pixelRatio * Camera.zoom < 170, src = small ? an.half : an.img, k = small ? 0.5 : 1;
     ctx.save(); ctx.translate(x, y + H * ANIM_FOOT); if (u.flipX) ctx.scale(-1, 1);
@@ -2200,6 +2215,13 @@ const Icon = {
     ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.moveTo(x + 11 * u, y - 2 * u); ctx.lineTo(x + 11 * u, y + 12 * u); ctx.stroke();
   },
   heroHead(ctx, type, x, y, s) {
+    const an = Sprites.anim('hero_' + type);
+    if (an) {                                                       // 동작 시트의 첫 칸(서 있기)에서 머리 부분을 잘라 초상화로
+      const cs = an.ch * 0.34, sx = clamp(an.head.x - cs / 2, 0, an.cw - cs), sy = Math.max(0, an.head.y - cs * 0.08);
+      ctx.save(); circle(ctx, x, y - s * 0.06, s * 0.79); ctx.clip();
+      ctx.drawImage(an.img, sx, sy, cs, cs, x - s * 0.82, y - s * 0.9, s * 1.64, s * 1.64);
+      ctx.restore(); return;
+    }
     const sp = Sprites.get('hero_' + type);
     if (sp) {                                                       // 그림 파일이 있으면 얼굴 부분을 잘라서 초상화로
       const im = sp.img, cs = im.height * 0.34, sx = clamp(im.width * sp.headX - cs / 2, 0, Math.max(0, im.width - cs));
