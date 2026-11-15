@@ -62,14 +62,14 @@ const CONFIG = {
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
     carpenterSpeed: 55,           // 목수 이동 속도(px/초)
-    levels: [                     // 성문 1~3레벨. cost = 그 레벨로 올리는 비용(골드)
-      { maxHp: 1000, carpenters: 2, repairPerCarpenter: 6,  archers: 2, archerDamage: 12, archerInterval: 1.0, archerRange: 290 },
-      { cost: 220, maxHp: 1500, carpenters: 3, repairPerCarpenter: 7,  archers: 3, archerDamage: 15, archerInterval: 0.9, archerRange: 310 },
-      { cost: 380, maxHp: 2200, carpenters: 3, repairPerCarpenter: 10, archers: 4, archerDamage: 20, archerInterval: 0.8, archerRange: 330,
+    levels: [                     // 성문 1~5레벨. cost = 그 레벨로 올리는 비용(골드)
+      { maxHp: 1500, carpenters: 2, repairPerCarpenter: 6,  archers: 3, archerDamage: 16, archerInterval: 1.0, archerRange: 290 },
+      { cost: 220, maxHp: 2100, carpenters: 3, repairPerCarpenter: 7,  archers: 4, archerDamage: 20, archerInterval: 0.9, archerRange: 310 },
+      { cost: 380, maxHp: 2800, carpenters: 3, repairPerCarpenter: 10, archers: 4, archerDamage: 25, archerInterval: 0.8, archerRange: 330,
         oilDamage: 60, oilInterval: 6, oilRadius: 120 },   // 3레벨: 성문에 붙은 적에게 oilInterval초마다 끓는 기름
-      { cost: 650, maxHp: 3000, carpenters: 4, repairPerCarpenter: 12, archers: 4, archerDamage: 27, archerInterval: 0.7, archerRange: 345,
+      { cost: 650, maxHp: 3600, carpenters: 4, repairPerCarpenter: 12, archers: 4, archerDamage: 31, archerInterval: 0.7, archerRange: 345,
         oilDamage: 90, oilInterval: 5, oilRadius: 130 },   // 4~5레벨: 후반 골드 사용처
-      { cost: 950, maxHp: 4000, carpenters: 4, repairPerCarpenter: 15, archers: 4, archerDamage: 34, archerInterval: 0.6, archerRange: 360,
+      { cost: 950, maxHp: 4500, carpenters: 4, repairPerCarpenter: 15, archers: 4, archerDamage: 38, archerInterval: 0.6, archerRange: 360,
         oilDamage: 130, oilInterval: 4, oilRadius: 140 },
     ],
   },
@@ -80,7 +80,7 @@ const CONFIG = {
   difficulty: {
     easy:   { name: '쉬움',   enemyHp: 0.75, enemyDmg: 0.75, baseHp: 0.8, startGold: 400 },
     normal: { name: '보통',   enemyHp: 1.0,  enemyDmg: 1.0,  baseHp: 1.0, startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.3,  enemyDmg: 1.25, baseHp: 1.2, startGold: 250 },
+    hard:   { name: '어려움', enemyHp: 1.25, enemyDmg: 1.2,  baseHp: 1.2, startGold: 300 },
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
@@ -91,24 +91,32 @@ const CONFIG = {
   // 훈련 시설: levels[0].cost = 건설 비용 (0 = 처음부터 있음), levels[1~2].cost = 강화 비용
   // 병사 능력치(hp, damage, armor)는 시설 레벨을 따르고, 강화하면 이미 나와 있는 병사도 바로 강해짐
   army: {
-    capByGateLevel: [8, 10, 12, 14, 16],    // 성문 레벨별 최대 병력 수 (성문 업그레이드로 늘어남)
+    capByGateLevel: [10, 12, 14, 16, 18],   // 성문 레벨별 최대 병력 수 (성문 업그레이드로 늘어남)
     order: ['footman', 'archer', 'knight', 'mage'],
     footman: { facility: '병영', desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
-      levels: [ { cost: 0,   spawnTime: 4.5, hp: 130, damage: 10, armor: 0.20 },
-                { cost: 120, spawnTime: 4.0, hp: 175, damage: 14, armor: 0.25 },
-                { cost: 200, spawnTime: 3.5, hp: 230, damage: 19, armor: 0.30 } ] },
+      levels: [ { cost: 0,   spawnTime: 3.5, hp: 130, damage: 10, armor: 0.20 },
+                { cost: 120, spawnTime: 3.0, hp: 175, damage: 14, armor: 0.25 },
+                { cost: 200, spawnTime: 2.6, hp: 230, damage: 19, armor: 0.30 },
+                { cost: 320, spawnTime: 2.3, hp: 290, damage: 25, armor: 0.34 },
+                { cost: 450, spawnTime: 2.0, hp: 360, damage: 32, armor: 0.38 } ] },
     archer:  { facility: '궁술장', desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격',
       levels: [ { cost: 120, spawnTime: 5.5, hp: 75,  damage: 11, armor: 0.05 },
                 { cost: 140, spawnTime: 5.0, hp: 95,  damage: 16, armor: 0.08 },
-                { cost: 210, spawnTime: 4.5, hp: 120, damage: 22, armor: 0.10 } ] },
-    knight:  { facility: '기사단', desc: '말을 탄 기사 · 빠르고 튼튼함 · 기지 공격력 높음',
+                { cost: 210, spawnTime: 4.5, hp: 120, damage: 22, armor: 0.10 },
+                { cost: 330, spawnTime: 4.0, hp: 150, damage: 29, armor: 0.12 },
+                { cost: 460, spawnTime: 3.6, hp: 185, damage: 37, armor: 0.14 } ] },
+    knight:  { facility: '기사단', desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
       levels: [ { cost: 220, spawnTime: 9,   hp: 320, damage: 20, armor: 0.35 },
                 { cost: 200, spawnTime: 8,   hp: 400, damage: 27, armor: 0.40 },
-                { cost: 280, spawnTime: 7,   hp: 500, damage: 35, armor: 0.45 } ] },
+                { cost: 280, spawnTime: 7,   hp: 500, damage: 35, armor: 0.45 },
+                { cost: 400, spawnTime: 6.2, hp: 620, damage: 44, armor: 0.48 },
+                { cost: 560, spawnTime: 5.5, hp: 760, damage: 55, armor: 0.50 } ] },
     mage:    { facility: '마법학교', desc: '마법 공격(방어력 무시) · 작은 범위 피해 · 공중 공격 가능',
       levels: [ { cost: 260, spawnTime: 10,  hp: 80,  damage: 22, armor: 0.05 },
                 { cost: 220, spawnTime: 9,   hp: 100, damage: 31, armor: 0.07 },
-                { cost: 300, spawnTime: 8,   hp: 125, damage: 42, armor: 0.10, slow: 0.35, slowTime: 1.2 } ] },   // 3레벨: 맞은 적 둔화
+                { cost: 300, spawnTime: 8,   hp: 125, damage: 42, armor: 0.10, slow: 0.35, slowTime: 1.2 },   // 3레벨부터: 맞은 적 둔화
+                { cost: 420, spawnTime: 7.2, hp: 155, damage: 55, armor: 0.12, slow: 0.40, slowTime: 1.4 },
+                { cost: 580, spawnTime: 6.5, hp: 190, damage: 70, armor: 0.14, slow: 0.45, slowTime: 1.6 } ] },
   },
 
   // ---------------- 병사 ----------------
@@ -117,10 +125,10 @@ const CONFIG = {
     leash: 220,                     // 대형 중심(영웅)에서 이보다 먼 적은 쫓지 않음
     // range: 근접은 몸 가장자리 사이 거리, 원거리는 사거리 / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
     // line: 'front' = 영웅 앞줄, 'back' = 영웅 뒷줄 / splash: 마법 범위 피해 반경
-    footman: { name: '보병',   speed: 78,  radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 1, baseDamageMul: 1.0, canHitAir: false, line: 'front' },
-    archer:  { name: '궁수',   speed: 80,  radius: 9,  range: 160, attackInterval: 1.1, detect: 175, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true, line: 'back' },
-    knight:  { name: '기사',   speed: 120, radius: 13, range: 18,  attackInterval: 1.1, detect: 135, maxBlock: 2, baseDamageMul: 2.5, canHitAir: false, line: 'front' },   // 말을 타서 빠름
-    mage:    { name: '마법사', speed: 74,  radius: 9,  range: 150, attackInterval: 1.7, detect: 170, maxBlock: 1, baseDamageMul: 0.8, canHitAir: true, ranged: true, magic: true, splash: 40, boltSpeed: 480, line: 'back' },
+    footman: { name: '보병',   speed: 92,  radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 2, baseDamageMul: 0.8, canHitAir: false, line: 'front' },
+    archer:  { name: '궁수',   speed: 90,  radius: 9,  range: 160, attackInterval: 1.1, detect: 175, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true, line: 'back' },
+    knight:  { name: '기사',   speed: 130, radius: 13, range: 18,  attackInterval: 1.1, detect: 135, maxBlock: 3, baseDamageMul: 1.5, canHitAir: false, line: 'front' },   // 말을 타서 빠름
+    mage:    { name: '마법사', speed: 86,  radius: 9,  range: 150, attackInterval: 1.7, detect: 170, maxBlock: 1, baseDamageMul: 0.8, canHitAir: true, ranged: true, magic: true, splash: 40, boltSpeed: 480, line: 'back' },
   },
   // 대형: 근접 병사는 영웅보다 frontDist 앞에, 원거리 병사는 backDist 뒤에 줄을 섬 (앞 = 적이 있는 쪽)
   formation: { frontDist: 48, backDist: 40, rowGap: 28, spacing: 30, perRow: 6, turnRate: 3 },
@@ -128,10 +136,10 @@ const CONFIG = {
   // ---------------- 영웅 ----------------
   heroes: {
     knight: {
-      name: '기사', role: '탱커', desc: '높은 체력과 방어력으로 적을 붙잡는 탱커. 적 기지 공격력이 높아요.',
+      name: '기사', role: '탱커', desc: '높은 체력과 방어력으로 적을 붙잡는 탱커. 칼을 휘둘러 주변 적도 함께 베어요.',
       hp: 650, armor: 0.35,           // armor: 받는 피해 감소 비율 (0.35 = 35% 감소)
       speed: 95, radius: 16,
-      attack: { damage: 26, interval: 0.9, range: 24 },   // range: 몸 가장자리 사이 거리 (근접)
+      attack: { damage: 30, interval: 0.9, range: 24, cleave: { radius: 45, ratio: 0.5 } },   // range: 몸 가장자리 사이 거리 (근접) / cleave: 주변 적에게 50% 휩쓸기 피해
       canHitAir: false,               // 근접이라 공중 유닛(박쥐)은 공격 불가
       baseDamageMul: 2.0,             // 적 기지 공격 배율 (기지 공격력 높음)
       aggroRange: 120,                // 서 있는 자리에서 이 거리 안의 적을 찾아가 싸움
@@ -220,10 +228,10 @@ const CONFIG = {
                     drawScale: 1.7, aura: { radius: 170, damageMul: 1.3, speedMul: 1.15 },               // 주변 적 강화
                     skills: [ { id: 'slam',   name: '대지 강타', cooldown: 8,  first: 3, trigger: 115, radius: 125, delay: 1.0, damage: 95, stun: 1.6 },      // 주변 기절
                               { id: 'charge', name: '돌격',      cooldown: 12, first: 8, range: 360, minRange: 120, width: 56, delay: 0.8, damage: 75, knock: 130, speed: 540 } ] },
-    dragon:       { name: '드래곤',     boss: true, final: true, hp: 9000, speed: 52, radius: 34, air: true, lowFly: true, armor: 0.3, gateDamage: 90, damage: 50, attackInterval: 1.6, xp: 1200, gold: 800,
+    dragon:       { name: '드래곤',     boss: true, final: true, hp: 8000, speed: 52, radius: 34, air: true, lowFly: true, armor: 0.3, gateDamage: 90, damage: 50, attackInterval: 1.6, xp: 1200, gold: 800,
                     breath: { interval: 4.5, range: 240, radius: 90, damage: 80 },                         // 화염 범위 공격. lowFly: 낮게 날아서 근접 공격은 맞지만 붙잡을 수는 없음
                     skills: [ { id: 'meteor', name: '화염 비',   cooldown: 12, first: 6,  range: 430, count: 5, spread: 150, radius: 66, delay: 1.3, damage: 85 },
-                              { id: 'gust',   name: '날개 바람', cooldown: 14, first: 10, trigger: 150, radius: 195, delay: 0.75, damage: 45, knock: 170 } ],
+                              { id: 'gust',   name: '날개 바람', cooldown: 14, first: 10, trigger: 150, radius: 195, delay: 0.75, damage: 45, knock: 140 } ],
                     enrage: { hpRatio: 0.35, damageMul: 1.25, cdMul: 0.7 } },                             // 체력 35% 이하: 분노 (공격력↑, 스킬·화염 더 자주)
   },
 
@@ -232,19 +240,19 @@ const CONFIG = {
     // spawnInterval: 생산 주기(초) / spawns: 한 번에 나오는 무리 (weight = 등장 비중)
     // defenders: 기지를 지키는 수비병 (count명으로 시작, 기지가 공격받으면 summon명 추가 소환, 최대 max명)
     cave: {
-      name: '동굴', maxHp: 1800, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
+      name: '동굴', maxHp: 4500, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
       firstSpawn: 3, spawnInterval: 7, groupGap: 0.35,
       spawns: [ { type: 'spider', count: 3, weight: 6 }, { type: 'bat', count: 2, weight: 4 } ],
       defenders: { type: 'spider', count: 2, hpMul: 1.8, damageMul: 1.3, summon: 2, summonCooldown: 12, max: 6, aggro: 170, leash: 260 },
     },
     goblin: {
-      name: '고블린 부락', maxHp: 3200, regenDelay: 6, regenRate: 10, xp: 400, gold: 400,
+      name: '고블린 부락', maxHp: 7000, regenDelay: 6, regenRate: 10, xp: 400, gold: 400,
       firstSpawn: 20, spawnInterval: 5.5, groupGap: 0.3,        // 생산 속도 빠름
       spawns: [ { type: 'goblin', count: 3, weight: 6 }, { type: 'goblinArcher', count: 2, weight: 3 }, { type: 'goblin', count: 5, weight: 1 } ],
       defenders: { type: 'goblin', count: 3, hpMul: 1.8, damageMul: 1.3, summon: 3, summonCooldown: 10, max: 9, aggro: 170, leash: 260 },
     },
     orc: {
-      name: '오크 요새', maxHp: 6500, regenDelay: 6, regenRate: 14, xp: 600, gold: 600,
+      name: '오크 요새', maxHp: 12000, regenDelay: 6, regenRate: 14, xp: 600, gold: 600,
       firstSpawn: 45, spawnInterval: 11, groupGap: 0.8,         // 가장 멀고 강함
       spawns: [ { type: 'orc', count: 2, weight: 6 }, { type: 'orc', count: 3, weight: 2 }, { type: 'troll', count: 1, weight: 2 } ],
       defenders: { type: 'orc', count: 3, hpMul: 1.6, damageMul: 1.3, summon: 3, summonCooldown: 12, max: 8, aggro: 180, leash: 280 },
@@ -252,19 +260,19 @@ const CONFIG = {
   },
 
   // ---------------- 스테이지 ---------------- (영웅 선택 화면에서 고름. 앞 스테이지를 깨면 다음 스테이지가 열림)
-  // map: 지도(MAPS) / bases: 나오는 적 기지 / power: 적·기지 체력과 공격력 배율 / startGold: 시작 골드 추가
+  // map: 지도(MAPS) / bases: 나오는 적 기지 / power: 적·기지 체력과 공격력 배율 / spawnMul: 적 생산 간격 배율(클수록 적게) / startGold: 시작 골드 추가
   // mid: 중간보스 — first초부터 interval초마다, 남은 기지 중 한 곳에서 그 기지의 보스(byBase) 등장
   // final: 최종보스 — base 체력이 triggerHpRatio 이하가 되면 type 보스가 나와 기지를 지킴 (hpMul: 체력 배율, protectBase: 살아 있는 동안 기지 무적)
   stages: [
-    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.0, startGold: 0,
+    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.25, spawnMul: 0.7, startGold: 0,
       desc: '기지 2곳 · 최종보스 고블린 주술사',
       mid: { first: 150, interval: 170, byBase: { cave: 'spiderQueen' } },
       final: { base: 'goblin', type: 'goblinShaman', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.15, startGold: 50,
+    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.1, spawnMul: 1.3, startGold: 50,
       desc: '기지 3곳 · 최종보스 오크 족장',
       mid: { first: 160, interval: 170, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'orcChief', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.3, startGold: 100,
+    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.2, spawnMul: 1.35, startGold: 100,
       desc: '기지 3곳 · 최종보스 드래곤',
       mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1, protectBase: true } },
@@ -300,7 +308,7 @@ const CONFIG = {
   },
 
   // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.08, damageMul: 1.05, spawnIntervalMul: 0.94, minSpawnInterval: 2.5 },
+  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.07, damageMul: 1.04, spawnIntervalMul: 0.94, minSpawnInterval: 2.5 },
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -1528,17 +1536,24 @@ const Art = {
     if (s.root > 0) { ctx.strokeStyle = 'rgba(235,235,235,0.8)'; ctx.lineWidth = 1.2; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(s.x, s.y + 2, s.radius + 2 + i * 2, i, i + 2.4); ctx.stroke(); } }
     if (!this.img(ctx, s.kind + L, s.x, s.y + bob, s.radius * 3, s.radius * 3, s.face)) {
       if (s.kind === 'archer') {
+        const L = Math.min(3, s.level);
         const cloak = ['#6b7f3a', '#3f6a3a', '#2c5b45'][L - 1];
         this.archerFigure(ctx, s.x, s.y + bob, s.face, s.attackAnim > 0 ? s.attackAnim / 0.25 : 0, s.flash > 0 ? '#ffffff' : cloak, 0.85);
         if (L === 3) { ctx.fillStyle = '#e8c35a'; circle(ctx, s.x, s.y + bob, 2); ctx.fill(); }
       } else if (s.kind === 'mage') this.mageSoldier(ctx, s, s.x, s.y + bob, rt);
       else this.swordsman(ctx, s, s.x, s.y + bob, horse);
     }
+    if (s.level >= 4) for (let i = 0; i < s.level - 3; i++) {             // 4~5레벨: 금색 별 표시
+      const px = s.x - (s.level - 4) * 4 + i * 8, py = s.y - s.radius - 7;
+      ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = 'rgba(60,30,0,0.8)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, r = j % 2 ? 1.6 : 3.8; ctx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     if (s.stun > 0) this.stunStars(ctx, s.x, s.y - s.radius - 8, rt);
   },
   // 보병 / 기사(말 탄 모습): 레벨에 따라 장비가 바뀜 (가죽 → 사슬 → 판금·금장식)
   swordsman(ctx, s, x, y, horse) {
-    const L = s.level, sc = horse ? 1.05 : 1;
+    const L = Math.min(3, s.level), sc = horse ? 1.05 : 1;
     ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.rotate(s.face);
     if (horse) {                                                                                         // 말
       const coat = s.flash > 0 ? '#ffffff' : ['#7a5230', '#4a3628', '#e6e0d4'][L - 1], mane = ['#3a2614', '#1e140c', '#b8b0a0'][L - 1];
@@ -1572,7 +1587,7 @@ const Art = {
   },
   // 마법사 병사: 로브 + 뾰족 모자 + 빛나는 지팡이 (레벨에 따라 로브 색)
   mageSoldier(ctx, s, x, y, rt) {
-    const L = s.level, cast = s.attackAnim > 0 ? s.attackAnim / 0.25 : 0;
+    const L = Math.min(3, s.level), cast = s.attackAnim > 0 ? s.attackAnim / 0.25 : 0;
     ctx.save(); ctx.translate(x, y); ctx.rotate(s.face);
     ctx.fillStyle = s.flash > 0 ? '#ffffff' : ['#5a3f9e', '#3f4fb0', '#2a2f7a'][L - 1]; ellipse(ctx, -1, 0, 7.5, 8.5); ctx.fill();   // 로브
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ellipse(ctx, 1, -2, 4, 5); ctx.fill();
@@ -2549,7 +2564,7 @@ function pushStep(u, dt) {
 
 // ---------- 보스 등장 ----------
 function spawnBoss(type, base, asFinal) {
-  const e = new Enemy(type, base, 0, G.threat);
+  const e = new Enemy(type, base, 0, asFinal ? 1 : G.threat);     // 최종보스는 위협 레벨 영향 없음 (체력은 hpMul로)
   if (asFinal) { e.final = true; e.maxHp = e.hp = Math.round(e.maxHp * (G.stage.final.hpMul || 1)); }   // 스테이지 최종보스 (기지를 지킴)
   G.enemies.push(e);
   for (let i = 0; i < 4; i++) FX.dust(e.x + rand(-20, 20), e.y + rand(-10, 10));
@@ -3652,7 +3667,11 @@ class Hero {
       FX.spark(hx, hy, '#ffe08a', 4); FX.text(hx, hy - 16, '-' + d, '#ffd36b', 16, 0.7);
     } else {
       t.takeDamage(this.damage * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3); Sound.play('sword', t.x, t.y);
-      FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, 16, 1.4, '255,255,255', 0.14);   // 베기 효과
+      if (A.cleave) for (const e of G.enemies) {                   // 휩쓸기: 앞쪽 가까운 적들에게도 피해
+        if (e === t || !e.alive || (e.air && !e.cfg.lowFly)) continue;
+        if (dist(e.x, e.y, t.x, t.y) <= A.cleave.radius + e.radius) e.takeDamage(this.damage * A.cleave.ratio, this);
+      }
+      FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, A.cleave ? 30 : 16, A.cleave ? 2.2 : 1.4, '255,255,255', 0.14);   // 베기 효과
     }
   }
 }
@@ -3728,7 +3747,7 @@ class EnemyBase {
   }
   get spawnInterval() {
     const e = CONFIG.escalation;
-    return Math.max(e.minSpawnInterval, this.cfg.spawnInterval * Math.pow(e.spawnIntervalMul, G.threat - 1));
+    return Math.max(e.minSpawnInterval, this.cfg.spawnInterval * (G.stage.spawnMul || 1) * Math.pow(e.spawnIntervalMul, G.threat - 1));
   }
   update(dt) {
     if (this.flash > 0) this.flash -= dt;
