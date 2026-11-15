@@ -62,15 +62,10 @@ const CONFIG = {
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
     carpenterSpeed: 55,           // 목수 이동 속도(px/초)
-    levels: [                     // 성문 1~5레벨. cost = 그 레벨로 올리는 비용(골드)
-      { maxHp: 1500, carpenters: 2, repairPerCarpenter: 6,  archers: 3, archerDamage: 16, archerInterval: 1.0, archerRange: 290 },
-      { cost: 220, maxHp: 2100, carpenters: 3, repairPerCarpenter: 7,  archers: 4, archerDamage: 20, archerInterval: 0.9, archerRange: 310 },
-      { cost: 380, maxHp: 2800, carpenters: 3, repairPerCarpenter: 10, archers: 4, archerDamage: 25, archerInterval: 0.8, archerRange: 330,
-        oilDamage: 60, oilInterval: 6, oilRadius: 120 },   // 3레벨: 성문에 붙은 적에게 oilInterval초마다 끓는 기름
-      { cost: 650, maxHp: 3600, carpenters: 4, repairPerCarpenter: 12, archers: 4, archerDamage: 31, archerInterval: 0.7, archerRange: 345,
-        oilDamage: 90, oilInterval: 5, oilRadius: 130 },   // 4~5레벨: 후반 골드 사용처
-      { cost: 950, maxHp: 4500, carpenters: 4, repairPerCarpenter: 15, archers: 4, archerDamage: 38, archerInterval: 0.6, archerRange: 360,
-        oilDamage: 130, oilInterval: 4, oilRadius: 140 },
+    // 성문 능력치 (업그레이드 없음): oil = 성문에 붙은 적에게 oilInterval초마다 끓는 기름
+    levels: [
+      { maxHp: 2500, carpenters: 3, repairPerCarpenter: 8, archers: 4, archerDamage: 22, archerInterval: 0.85, archerRange: 320,
+        oilDamage: 70, oilInterval: 6, oilRadius: 120 },
     ],
   },
   wallArcher: { arrowSpeed: 700 },
@@ -91,47 +86,52 @@ const CONFIG = {
   // 훈련 시설: levels[0].cost = 건설 비용 (0 = 처음부터 있음), levels[1~2].cost = 강화 비용
   // 병사 능력치(hp, damage, armor)는 시설 레벨을 따르고, 강화하면 이미 나와 있는 병사도 바로 강해짐
   army: {
-    capByGateLevel: [10, 12, 14, 16, 18],   // 성문 레벨별 최대 병력 수 (성문 업그레이드로 늘어남)
+    popCap: 50,                   // 최대 인구 (병사마다 인구를 차지: 보병·궁수 1 / 기사 4 / 마법사 3)
     order: ['footman', 'archer', 'knight', 'mage'],
-    footman: { facility: '병영', desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
+    // skill: 최고 레벨(5)이 되면 생기는 자동 스킬 (cooldown초마다 저절로 사용)
+    footman: { facility: '병영', pop: 1, desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
+      skill: { id: 'bash', name: '방패 강타', cooldown: 7, radius: 46, damageMul: 2.5, stun: 1.2, desc: '7초마다 주변 적을 방패로 쳐서 기절' },
       levels: [ { cost: 0,   spawnTime: 3.5, hp: 130, damage: 10, armor: 0.20 },
                 { cost: 120, spawnTime: 3.0, hp: 175, damage: 14, armor: 0.25 },
                 { cost: 200, spawnTime: 2.6, hp: 230, damage: 19, armor: 0.30 },
                 { cost: 320, spawnTime: 2.3, hp: 290, damage: 25, armor: 0.34 },
                 { cost: 450, spawnTime: 2.0, hp: 360, damage: 32, armor: 0.38 } ] },
-    archer:  { facility: '궁술장', desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격',
-      levels: [ { cost: 120, spawnTime: 5.5, hp: 75,  damage: 11, armor: 0.05 },
-                { cost: 140, spawnTime: 5.0, hp: 95,  damage: 16, armor: 0.08 },
-                { cost: 210, spawnTime: 4.5, hp: 120, damage: 22, armor: 0.10 },
-                { cost: 330, spawnTime: 4.0, hp: 150, damage: 29, armor: 0.12 },
-                { cost: 460, spawnTime: 3.6, hp: 185, damage: 37, armor: 0.14 } ] },
-    knight:  { facility: '기사단', desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
-      levels: [ { cost: 220, spawnTime: 9,   hp: 320, damage: 20, armor: 0.35 },
-                { cost: 200, spawnTime: 8,   hp: 400, damage: 27, armor: 0.40 },
-                { cost: 280, spawnTime: 7,   hp: 500, damage: 35, armor: 0.45 },
-                { cost: 400, spawnTime: 6.2, hp: 620, damage: 44, armor: 0.48 },
-                { cost: 560, spawnTime: 5.5, hp: 760, damage: 55, armor: 0.50 } ] },
-    mage:    { facility: '마법학교', desc: '마법 공격(방어력 무시) · 작은 범위 피해 · 공중 공격 가능',
-      levels: [ { cost: 260, spawnTime: 10,  hp: 80,  damage: 22, armor: 0.05 },
-                { cost: 220, spawnTime: 9,   hp: 100, damage: 31, armor: 0.07 },
-                { cost: 300, spawnTime: 8,   hp: 125, damage: 42, armor: 0.10, slow: 0.35, slowTime: 1.2 },   // 3레벨부터: 맞은 적 둔화
-                { cost: 420, spawnTime: 7.2, hp: 155, damage: 55, armor: 0.12, slow: 0.40, slowTime: 1.4 },
-                { cost: 580, spawnTime: 6.5, hp: 190, damage: 70, armor: 0.14, slow: 0.45, slowTime: 1.6 } ] },
+    archer:  { facility: '궁술장', pop: 1, desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격 · 강화하면 사거리 증가',
+      skill: { id: 'volley', name: '연속 사격', cooldown: 6, arrows: 4, damageMul: 1.2, desc: '6초마다 화살 4발을 여러 적에게' },
+      levels: [ { cost: 120, spawnTime: 5.0, hp: 75,  damage: 11, armor: 0.05, range: 170 },
+                { cost: 140, spawnTime: 4.6, hp: 95,  damage: 16, armor: 0.08, range: 190 },
+                { cost: 210, spawnTime: 4.2, hp: 120, damage: 22, armor: 0.10, range: 210 },
+                { cost: 330, spawnTime: 3.8, hp: 150, damage: 29, armor: 0.12, range: 230 },
+                { cost: 460, spawnTime: 3.4, hp: 185, damage: 37, armor: 0.14, range: 250 } ] },
+    knight:  { facility: '기사단', pop: 4, desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
+      skill: { id: 'charge', name: '돌격', cooldown: 9, range: 230, speed: 440, damageMul: 2.5, knock: 70, desc: '9초마다 적에게 돌진해 길 위의 적을 밀쳐냄' },
+      levels: [ { cost: 220, spawnTime: 9,   hp: 360, damage: 22, armor: 0.35 },
+                { cost: 200, spawnTime: 8,   hp: 450, damage: 30, armor: 0.40 },
+                { cost: 280, spawnTime: 7,   hp: 560, damage: 39, armor: 0.45 },
+                { cost: 400, spawnTime: 6.2, hp: 690, damage: 49, armor: 0.48 },
+                { cost: 560, spawnTime: 5.5, hp: 850, damage: 61, armor: 0.50 } ] },
+    mage:    { facility: '마법학교', pop: 3, desc: '마법 공격(방어력 무시) · 범위 피해 · 공중 공격 가능 · 강화하면 사거리 증가',
+      skill: { id: 'fireball', name: '화염구', cooldown: 8, radius: 72, damageMul: 3, desc: '8초마다 적이 많은 곳에 화염구' },
+      levels: [ { cost: 260, spawnTime: 9,   hp: 85,  damage: 24, armor: 0.05, range: 165 },
+                { cost: 220, spawnTime: 8.2, hp: 105, damage: 34, armor: 0.07, range: 185 },
+                { cost: 300, spawnTime: 7.4, hp: 130, damage: 46, armor: 0.10, range: 205, slow: 0.35, slowTime: 1.2 },   // 3레벨부터: 맞은 적 둔화
+                { cost: 420, spawnTime: 6.6, hp: 160, damage: 60, armor: 0.12, range: 225, slow: 0.40, slowTime: 1.4 },
+                { cost: 580, spawnTime: 6.0, hp: 195, damage: 76, armor: 0.14, range: 245, slow: 0.45, slowTime: 1.6 } ] },
   },
 
   // ---------------- 병사 ----------------
   soldiers: {
     regenDelay: 5, regenRate: 0.04, // 공격 안 받은 지 5초 후 초당 최대 체력의 4% 회복
     leash: 220,                     // 대형 중심(영웅)에서 이보다 먼 적은 쫓지 않음
-    // range: 근접은 몸 가장자리 사이 거리, 원거리는 사거리 / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
+    // range: 근접은 몸 가장자리 사이 거리 (원거리 병사의 사거리는 army 레벨별 range) / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
     // line: 'front' = 영웅 앞줄, 'back' = 영웅 뒷줄 / splash: 마법 범위 피해 반경
     footman: { name: '보병',   speed: 92,  radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 2, baseDamageMul: 0.8, canHitAir: false, line: 'front' },
-    archer:  { name: '궁수',   speed: 90,  radius: 9,  range: 160, attackInterval: 1.1, detect: 175, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true, line: 'back' },
+    archer:  { name: '궁수',   speed: 90,  radius: 9,  range: 170, attackInterval: 1.1, detect: 175, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true, line: 'back' },
     knight:  { name: '기사',   speed: 130, radius: 13, range: 18,  attackInterval: 1.1, detect: 135, maxBlock: 3, baseDamageMul: 1.5, canHitAir: false, line: 'front' },   // 말을 타서 빠름
-    mage:    { name: '마법사', speed: 86,  radius: 9,  range: 150, attackInterval: 1.7, detect: 170, maxBlock: 1, baseDamageMul: 0.8, canHitAir: true, ranged: true, magic: true, splash: 40, boltSpeed: 480, line: 'back' },
+    mage:    { name: '마법사', speed: 86,  radius: 9,  range: 165, attackInterval: 1.7, detect: 170, maxBlock: 1, baseDamageMul: 0.8, canHitAir: true, ranged: true, magic: true, splash: 40, boltSpeed: 480, line: 'back' },
   },
   // 대형: 근접 병사는 영웅보다 frontDist 앞에, 원거리 병사는 backDist 뒤에 줄을 섬 (앞 = 적이 있는 쪽)
-  formation: { frontDist: 48, backDist: 40, rowGap: 28, spacing: 30, perRow: 6, turnRate: 3 },
+  formation: { frontDist: 46, backDist: 40, rowGap: 25, spacing: 27, perRow: 8, turnRate: 3 },
 
   // ---------------- 영웅 ----------------
   heroes: {
@@ -846,7 +846,7 @@ const Art = {
     }
     if (this.img(ctx, 'gate', x + w / 2, y + h / 2, w, h)) return;
     const ratio = gate.hp / gate.maxHp;
-    const L = Math.min(3, gate.level);   // 레벨별 외형: 1 나무문 / 2 철띠 보강 / 3~5 철판 + 금장식
+    const L = 2;                         // 외형: 철띠로 보강한 나무문
     const planks = L === 3 ? ['#55524f', '#4a4744'] : L === 2 ? ['#6a4324', '#5e3b20'] : ['#7a4f2b', '#6e4626'];
     for (let i = 0; i < 4; i++) { ctx.fillStyle = planks[i % 2]; ctx.fillRect(x + (i * w) / 4, y, w / 4 + 0.5, h); }
     ctx.strokeStyle = 'rgba(30,18,8,0.5)'; ctx.lineWidth = 1;
@@ -1613,7 +1613,7 @@ const Art = {
     else this.arrow(ctx, p);
   },
   bolt(ctx, p) {
-    const c = p.color ? ['127,208,255', '#bfe8ff'] : ['180,140,255', '#c9a8ff'];
+    const c = p.color === 'fire' ? ['255,140,40', '#ffd08a'] : p.color ? ['127,208,255', '#bfe8ff'] : ['180,140,255', '#c9a8ff'];
     p.trail.forEach((q, i) => { ctx.fillStyle = `rgba(${c[0]},${(i + 1) / p.trail.length * 0.35})`; circle(ctx, q.x, q.y, 2 + i * 0.6); ctx.fill(); });
     ctx.fillStyle = `rgba(${c[0]},0.45)`; circle(ctx, p.x, p.y, 9); ctx.fill();
     ctx.fillStyle = c[1]; circle(ctx, p.x, p.y, 5); ctx.fill();
@@ -2176,17 +2176,6 @@ class Gate {
   }
   get cfg() { return CONFIG.gate.levels[this.level - 1]; }
   get underAttack() { return G.time - this.lastHit < 1.0; }
-  get maxed() { return this.level >= CONFIG.gate.levels.length; }
-  get upgradeCost() { return this.maxed ? 0 : CONFIG.gate.levels[this.level].cost; }
-  upgrade() {
-    if (this.maxed || this.destroyed) return false;
-    this.level++; this.applyLevel(false);
-    const fx = MAP.castle.wallX + MAP.castle.wallW / 2;
-    FX.ring(fx, MAP.gate.y, 80, '255,215,90', 0.6); FX.spark(fx, MAP.gate.y, '#ffe08a', 12);
-    FX.text(fx + 40, MAP.gate.y - 70, `성문 Lv.${this.level}!`, '#ffd36b', 22, 1.6); Sound.play('upgrade');
-    return true;
-  }
-
   // 성문 앞 공격 자리 (반원 모양으로 여러 줄)
   static buildSlots() {
     const cx = MAP.castle.wallX + MAP.castle.wallW, cy = MAP.gate.y, slots = [];
@@ -2379,11 +2368,13 @@ class Arrow {
 }
 
 // ---------- 병력 생산: 성문에서 고른 병사가 일정 시간마다 1명씩 나옴 ----------
-function armyCap() { const c = CONFIG.army.capByGateLevel; return c[Math.min(c.length, G.gate.level) - 1]; }
+function armyCap() { return CONFIG.army.popCap; }
+function popOf(kind) { return CONFIG.army[kind].pop || 1; }
+function armyPop() { let n = 0; for (const u of G.soldiers) n += popOf(u.kind); return n; }   // 지금 쓰는 인구
 function unitStats(kind) { const L = G.army.lv[kind]; return L ? CONFIG.army[kind].levels[L - 1] : null; }
 function updateArmy(dt) {
   const A = G.army, s = unitStats(A.sel);
-  A.full = G.soldiers.length >= armyCap();
+  A.full = armyPop() + popOf(A.sel) > armyCap();
   if (!s || G.gate.destroyed) return;
   if (A.timer > 0) A.timer = Math.max(0, A.timer - dt);
   if (A.timer <= 0 && !A.full) { A.timer = s.spawnTime; spawnSoldier(A.sel); }
@@ -2447,13 +2438,16 @@ class Soldier {
     this.engaged = new Set(); this.target = null; this.retarget = 0; this.fIdx = 0;
     this.atkTimer = rand(0, 0.5); this.attackAnim = 0; this.flash = 0;
     this.stun = 0; this.root = 0; this.push = null;      // 보스 스킬: 기절 / 묶임 / 밀려남
+    this.rush = null; this.skillT = 2 + Math.random() * 2;   // 최고 레벨 자동 스킬 (기사 돌격 중 / 다음 사용까지)
     this.lastHit = -999; this.dead = false; this.moving = false; this.walkAnim = Math.random() * 3;
   }
   applyStats(level, s, fresh) {
     const ratio = fresh ? 1 : this.hp / this.maxHp;
     this.level = level; this.stats = s; this.maxHp = s.hp; this.hp = this.maxHp * ratio; this.damage = s.damage; this.armor = s.armor;
+    this.range = s.range || this.cfg.range;                       // 궁수·마법사: 레벨이 오를수록 사거리 증가
   }
-  get dash() { return null; }
+  get dash() { return this.rush; }                                // 돌격 중에는 붙잡히지 않음
+  get maxLevel() { return this.level >= CONFIG.army[this.kind].levels.length; }
   get alive() { return !this.dead; }
   takeDamage(amount) {
     if (this.dead) return;
@@ -2484,14 +2478,16 @@ class Soldier {
     if (!Nav.blocked(nx, ny)) { this.x = nx; this.y = ny; }
   }
 
+  get detect() { return this.cfg.ranged ? Math.max(this.cfg.detect, this.range + 15) : this.cfg.detect; }
+  // 싸울 적: 나를 붙잡은 적 → 내 근처(탐지 범위)의 적. 영웅과 멀리 떨어져 있어도 근처 적은 무시하지 않음
   findEnemy() {
-    const c = this.cfg, a = this.anchorCenter(); let best = null, bd = Infinity;
+    const c = this.cfg, det = this.detect; let best = null, bd = Infinity;
     for (const e of this.engaged) { if (!e.alive) continue; const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
     if (best) return best;
     for (const e of G.enemies) {
       if (!e.alive || (e.air && !c.canHitAir && !e.cfg.lowFly)) continue;
-      const d = dist(this.x, this.y, e.x, e.y);
-      if (d > c.detect || dist(e.x, e.y, a.x, a.y) > CONFIG.soldiers.leash) continue;
+      const d = dist(this.x, this.y, e.x, e.y) - (e.post ? 30 : 0);       // 기지 수비병은 조금 덜 우선
+      if (d > det) continue;
       if (d < bd) { bd = d; best = e; }
     }
     return best;
@@ -2521,17 +2517,23 @@ class Soldier {
     const c = this.cfg, S = CONFIG.soldiers;
     if (G.time - this.lastHit >= S.regenDelay && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * S.regenRate * dt);
     if (this.push) { pushStep(this, dt); return; }                 // 밀려나는 중
+    if (this.rush) { this.updateRush(dt); return; }                 // 기사 돌격 중
     if (this.stun > 0) { this.stun -= dt; return; }                 // 기절
     const a = this.anchorCenter();
+    if (this.maxLevel && CONFIG.army[this.kind].skill) {            // 최고 레벨: 자동 스킬
+      this.skillT -= dt;
+      if (this.skillT <= 0) this.skillT = this.useSkill(CONFIG.army[this.kind].skill) ? CONFIG.army[this.kind].skill.cooldown : 0.5;
+      if (this.rush) return;
+    }
 
-    // 1) 적과 싸움
-    if (this.target && (!this.target.alive || dist(this.target.x, this.target.y, a.x, a.y) > S.leash + 30)) this.target = null;
+    // 1) 적과 싸움 (영웅에게서 너무 멀어진 적은 내 근처에 없을 때만 포기)
+    if (this.target && (!this.target.alive || (dist(this.target.x, this.target.y, a.x, a.y) > S.leash + 30 && dist(this.target.x, this.target.y, this.x, this.y) > this.detect + 40))) this.target = null;
     this.retarget -= dt;
     if (!this.target || this.retarget <= 0) { this.retarget = 0.3; this.target = this.findEnemy(); }
     const e = this.target;
     if (e) {
       const d = dist(this.x, this.y, e.x, e.y);
-      const reach = c.ranged ? c.range : this.radius + e.radius + c.range;
+      const reach = c.ranged ? this.range : this.radius + e.radius + c.range;
       if (d > reach) this.stepToward(e.x, e.y, dt); else this.hit(e, false);
       return;
     }
@@ -2540,7 +2542,7 @@ class Soldier {
     if (b && b.alive) {
       const bodyR = b.m.hitRadius * 0.8;
       const ang = Math.atan2(this.y - b.y, this.x - b.x);
-      const want = c.ranged ? bodyR + c.range * 0.7 : bodyR + this.radius + 4;
+      const want = c.ranged ? bodyR + this.range * 0.7 : bodyR + this.radius + 4;
       const d = dist(this.x, this.y, b.x, b.y);
       if (d > want + (c.ranged ? 20 : 6)) {
         const spread = ((idx % 7) - 3) * 0.18;
@@ -2554,6 +2556,64 @@ class Soldier {
     else this.face = G.front;
   }
 }
+
+// 병사 자동 스킬 (최고 레벨) — Soldier에 붙임
+Soldier.prototype.useSkill = function (sk) {
+  const ground = e => e.alive && (!e.air || e.cfg.lowFly);
+  switch (sk.id) {
+    case 'bash': {                                                   // 보병: 방패 강타 (주변 적 기절 + 큰 피해)
+      const list = G.enemies.filter(e => ground(e) && dist(e.x, e.y, this.x, this.y) <= sk.radius + e.radius);
+      if (!list.length) return false;
+      for (const e of list) { e.takeDamage(this.damage * sk.damageMul, this); e.stun = Math.max(e.stun, sk.stun); }
+      this.attackAnim = 0.25; FX.ring(this.x, this.y, sk.radius, '255,230,150', 0.35); FX.spark(this.x, this.y, '#ffe08a', 5); Sound.play('bash', this.x, this.y, 0.35);
+      return true;
+    }
+    case 'volley': {                                                 // 궁수: 연속 사격 (여러 적에게 화살)
+      const list = G.enemies.filter(e => e.alive && dist(e.x, e.y, this.x, this.y) <= this.range).sort((p, q) => dist(p.x, p.y, this.x, this.y) - dist(q.x, q.y, this.x, this.y));
+      if (!list.length) return false;
+      for (let i = 0; i < sk.arrows; i++) { const t = list[i % list.length]; G.projectiles.push(new Arrow(this.x + rand(-4, 4), this.y - 4 + rand(-4, 4), t, this.damage * sk.damageMul, 700 + i * 40, this)); }
+      this.attackAnim = 0.25; Sound.play('rain', this.x, this.y, 0.3);
+      return true;
+    }
+    case 'charge': {                                                 // 기사: 돌격 (적에게 달려가며 길 위의 적을 밀쳐냄)
+      let t = null, bd = sk.range;
+      for (const e of G.enemies) { if (!ground(e) || e.post) continue; const d = dist(e.x, e.y, this.x, this.y); if (d > 50 && d < bd) { bd = d; t = e; } }
+      if (!t) return false;
+      const a = Math.atan2(t.y - this.y, t.x - this.x), L = bd + 30;
+      this.releaseAll(); this.face = a;
+      this.rush = { vx: Math.cos(a) * sk.speed, vy: Math.sin(a) * sk.speed, t: L / sk.speed, hit: new Set(), sk };
+      Sound.play('charge', this.x, this.y, 0.35);
+      return true;
+    }
+    case 'fireball': {                                               // 마법사: 화염구 (적이 가장 많이 모인 곳)
+      let t = null, bn = 0;
+      for (const e of G.enemies) {
+        if (!e.alive || dist(e.x, e.y, this.x, this.y) > this.range) continue;
+        let n = 0; for (const o of G.enemies) if (o.alive && dist(o.x, o.y, e.x, e.y) <= sk.radius) n++;
+        if (n > bn) { bn = n; t = e; }
+      }
+      if (!t) return false;
+      G.projectiles.push(new MagicBolt(this.x, this.y - 8, t, { damage: this.damage * sk.damageMul, splash: sk.radius, burst: true }, { boltSpeed: 420 }, this, 'fire'));
+      this.attackAnim = 0.25; Sound.play('fireCast', this.x, this.y, 0.3);
+      return true;
+    }
+  }
+  return false;
+};
+Soldier.prototype.updateRush = function (dt) {
+  const R = this.rush, nx = this.x + R.vx * dt, ny = this.y + R.vy * dt;
+  if (Nav.blocked(nx, ny)) R.t = 0; else { this.x = nx; this.y = ny; }
+  this.moving = true; this.walkAnim += dt * 2;
+  if (Math.random() < 0.4) FX.dust(this.x, this.y + 6);
+  const sp = Math.hypot(R.vx, R.vy);
+  for (const e of G.enemies) {
+    if (!e.alive || (e.air && !e.cfg.lowFly) || R.hit.has(e) || dist(e.x, e.y, this.x, this.y) > this.radius + e.radius + 10) continue;
+    R.hit.add(e); e.takeDamage(this.damage * R.sk.damageMul, this); FX.spark(e.x, e.y, '#ffe08a', 4);
+    if (e.foe) e.release();
+    e.knockback(R.vx / sp * R.sk.knock / 0.22, R.vy / sp * R.sk.knock / 0.22, 0.4);
+  }
+  R.t -= dt; if (R.t <= 0) this.rush = null;
+};
 
 // 밀려남 (영웅·병사 공통, 보스 스킬): 벽·강에 막히면 멈춤
 function pushStep(u, dt) {
@@ -2734,9 +2794,11 @@ class MagicBolt {
         this.target.takeDamage(this.s.damage, this.source, true);
         if (this.s.slow && this.target.applySlow) this.target.applySlow(this.s.slow, this.s.slowTime);
       }
-      if (this.s.splash) {                                      // 범위 피해: 주변 적에게 60%
-        for (const e of G.enemies) if (e.alive && e !== this.target && dist(e.x, e.y - (e.air ? AIR_HEIGHT : 0), this.tx, this.ty) <= this.s.splash + e.radius) e.takeDamage(this.s.damage * 0.6, this.source, true);
-        FX.ring(this.tx, this.ty, this.s.splash, '190,150,255', 0.3);
+      if (this.s.splash) {                                      // 범위 피해: 주변 적에게 60% (화염구는 100%)
+        const r = this.s.burst ? 1 : 0.6;
+        for (const e of G.enemies) if (e.alive && e !== this.target && dist(e.x, e.y - (e.air ? AIR_HEIGHT : 0), this.tx, this.ty) <= this.s.splash + e.radius) e.takeDamage(this.s.damage * r, this.source, true);
+        if (this.s.burst) { FX.explosion(this.tx, this.ty, 0.4); Sound.play('boom', this.tx, this.ty, 0.45); }
+        else FX.ring(this.tx, this.ty, this.s.splash, '190,150,255', 0.3);
       }
       FX.spark(this.tx, this.ty, '#d6b8ff', 5); FX.ring(this.tx, this.ty, 16, '190,150,255', 0.25);
       return;
@@ -3989,8 +4051,6 @@ function onWorldTap(w) {
   G.itemInfo = null;                                       // 아이템 정보창 닫기
   // 방향/지점 지정 스킬 조준 중이면 → 그 방향으로 스킬 사용
   if (G.aim) { const i = G.aim.skill; G.aim = null; if (h) h.cast(i, w.x, w.y); return; }
-  // 성 탭 → 성문 메뉴 (다시 탭하면 닫기)
-  if (w.x < MAP.castle.wallX + MAP.castle.wallW + 8) { G.sel = G.sel && G.sel.kind === 'gate' ? null : { kind: 'gate', ref: G.gate }; return; }
   if (G.sel) { G.sel = null; return; }   // 메뉴가 열려 있으면 빈 곳 탭은 메뉴 닫기만
   // 테스트 옵션: 기지 탭 → 바로 피해
   if (CONFIG.debug.tapBaseDamage > 0) {
@@ -4027,19 +4087,12 @@ function useSkill(i) {
   G.aim = null;
   h.cast(i);
 }
-// ---------- 골드 부족 알림 / 성문 업그레이드 ----------
+// ---------- 골드 부족 알림 ----------
 function notEnoughGold() {
   toast('골드가 부족합니다', '#ff8a75'); Sound.play('error');
   G.goldFlashUntil = realTime + 0.7;
 }
 function toast(text, color = '#ffe7a8') { G.toast = { text, color, until: realTime + 1.8 }; }
-function upgradeGate() {
-  const g = G.gate; if (g.maxed || g.destroyed) return;
-  const cost = g.upgradeCost;
-  if (G.gold < cost) { notEnoughGold(); return; }
-  G.gold -= cost; g.upgrade();
-}
-function openGateMenu() { if (G.state === 'playing') { G.aim = null; G.sel = G.sel && G.sel.kind === 'gate' ? null : { kind: 'gate', ref: G.gate }; } }
 
 function focusHero() {
   const h = G.hero; if (!h) return;
@@ -4092,10 +4145,10 @@ function drawHUD(ctx) {
 
   // --- 성문 에너지 (누르면 성문 업그레이드 메뉴) ---
   let x = pad, w = 290 * k;
-  UI.button('gatePanel', x, top, w, ph, openGateMenu);
+  UI.block(x, top, w, ph);
   panel(ctx, x, top, w, ph, k);
   Icon.castle(ctx, x + 27 * k, top + ph / 2 + 2 * k, 30 * k);
-  txt(ctx, `성문 Lv.${g.level}`, x + 52 * k, top + 17 * k, 15 * k, '#f3e3bf');
+  txt(ctx, '성문', x + 52 * k, top + 17 * k, 15 * k, '#f3e3bf');
   const sx = x + w - 12 * k, sy = top + 17 * k;
   if (g.destroyed) txt(ctx, '붕괴', sx, sy, 14 * k, '#ff6a55', 'right');
   else if (g.underAttack) {
@@ -4194,8 +4247,8 @@ function drawBottomHUD(ctx) {
   const maxed = h.level >= CONFIG.heroLevels.max;
   bar(ctx, tx, py + (mp ? 69 : 63) * k, bw, (mp ? 8 : 11) * k, maxed ? 1 : h.xp / h.xpToNext, '#8f7bff');
   txt(ctx, maxed ? 'EXP  최대 레벨' : `EXP  ${Math.floor(h.xp)} / ${h.xpToNext}`, tx, py + 86 * k, 12 * k, '#c9c0ff', 'left', { weight: 600 });
-  const cap = armyCap();
-  txt(ctx, `병사 ${G.soldiers.length} / ${cap}`, tx + bw, py + 86 * k, 12 * k, G.soldiers.length >= cap ? '#ff9a7a' : '#9fd8ff', 'right', { weight: 700 });
+  const cap = armyCap(), pop = armyPop();
+  txt(ctx, `인구 ${pop} / ${cap}`, tx + bw, py + 86 * k, 12 * k, G.army.full ? '#ff9a7a' : '#9fd8ff', 'right', { weight: 700 });
 
   // --- 스킬 버튼 (오른쪽 아래) ---
   const bs = 92 * k, gap = 14 * k, by = VH - pad - bs;
@@ -4266,7 +4319,7 @@ function drawArmyBar(ctx, L, R, heroTop) {
     }
     const ly = cy + ch - 15 * u * k + off;
     if (lv) {
-      const full = sel && A.full, label = full ? '최대 병력' : `${CONFIG.soldiers[kind].name} ${lv}${canUp ? ' ▲' : ''}`;
+      const full = sel && A.full, label = full ? '인구 가득' : `${CONFIG.soldiers[kind].name} ${lv}${canUp ? ' ▲' : ''}`;
       fitTxt(ctx, label, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, full ? '#ffb09a' : canUp ? '#b8ff9a' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
     } else {
       Icon.lock(ctx, cx + cw / 2, cy + 34 * u * k + off, 22 * u * k);
@@ -4318,27 +4371,15 @@ function drawSkillButton(ctx, i, x, y, s, k) {
 function worldToScreen(x, y) { return { x: (x - Camera.x) * Camera.zoom, y: (y - Camera.y) * Camera.zoom }; }
 
 function drawSelectionPanel(ctx) {
-  const s = G.sel; if (!s || G.state !== 'playing') return;
-  const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, fac = s.kind === 'facility';
-  const w = (fac ? 380 : 404) * k, h = (fac ? 300 : 282) * k;
+  const s = G.sel; if (!s || G.state !== 'playing' || s.kind !== 'facility') return;
+  const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, fac = true;
+  const ranged = CONFIG.soldiers[s.ref].ranged, w = 400 * k, h = (ranged ? 380 : 352) * k;
   const top = (10 + 58 + 10) * UI.kt, bottom = VH - (BOTTOM_HUD_H + 20) * k;
   let px, py;
   if (fac) {                                                     // 병력 칸 바로 위 (자리가 없으면 오른쪽)
     const r = G.armyRects && G.armyRects[s.ref], bar = G.armyBarRect; if (!r) return;
     px = r.x + r.w / 2 - w / 2; py = bar.y - 10 * k - h;
     if (py < top) { px = bar.x + bar.w + 10 * k; py = Math.max(top, bar.y + bar.h - h); }
-  } else {
-    const a = worldToScreen(MAP.castle.wallX + MAP.castle.wallW, MAP.gate.y);
-    if (UI.k >= 1.3) {
-      // 작은 화면: 메뉴를 오른쪽 가장자리에 붙이고, 성문이 남은 공간 가운데 오도록 화면을 옮김
-      px = VW - 10 - w; py = clamp(top + (bottom - top - h) / 2, top, Math.max(top, bottom - h));
-      if (!s.panned) {
-        s.panned = true;
-        const wantX = px / 2, wantY = (top + bottom) / 2;
-        if (a.x < 60 * k || a.x > px - 60 * k || a.y < top + 40 * k || a.y > bottom - 40 * k)
-          Camera.glideTo(Camera.x + (a.x - wantX) / Camera.zoom, Camera.y + (a.y - wantY) / Camera.zoom);
-      }
-    } else { px = a.x + 70 * Camera.zoom; py = a.y - h / 2; }
   }
   px = clamp(px, 10, VW - 10 - w); py = clamp(py, top, Math.max(top, (fac ? VH : bottom) - h));
   UI.block(px, py, w, h);
@@ -4348,8 +4389,7 @@ function drawSelectionPanel(ctx) {
   ctx.strokeStyle = pr ? '#fff' : '#d8c8a4'; ctx.lineWidth = 3 * k; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(cx + 13 * k, cy + 13 * k); ctx.lineTo(cx + cs - 13 * k, cy + cs - 13 * k);
   ctx.moveTo(cx + cs - 13 * k, cy + 13 * k); ctx.lineTo(cx + 13 * k, cy + cs - 13 * k); ctx.stroke();
-  if (fac) drawFacilityMenu(ctx, s.ref, px, py, w, h, k);
-  else drawGateMenu(ctx, s, px, py, w, h, k);
+  drawFacilityMenu(ctx, s.ref, px, py, w, h, k);
 }
 
 function drawStatRows(ctx, rows, x, y, w, k, curCol, nextCol) {
@@ -4377,41 +4417,34 @@ function costButton(ctx, id, x, y, w, h, k, label, cost, enabled, onTap, style =
   txt(ctx, String(cost), x + w / 2 - cw / 2 + 19 * k, y + 39.5 * k + off, 15 * k, enabled ? '#ffe9a0' : '#ff9a8a', 'left', { stroke: 'rgba(60,30,5,0.85)', weight: 800 });
 }
 
-// 훈련 시설 메뉴: 병사 능력치 (현재 → 다음 레벨) + 건설/강화 + 생산 선택
+// 훈련 시설 메뉴: 병사 능력치 (현재 → 다음 레벨) + 건설/강화 + 생산 선택 + 최고 레벨 자동 스킬
 function drawFacilityMenu(ctx, kind, px, py, w, h, k) {
-  const A = G.army, c = CONFIG.army[kind], sc = CONFIG.soldiers[kind], lv = A.lv[kind];
-  const cur = lv ? c.levels[lv - 1] : null, nx = lv < c.levels.length ? c.levels[lv] : null;
+  const A = G.army, c = CONFIG.army[kind], sc = CONFIG.soldiers[kind], lv = A.lv[kind], maxL = c.levels.length;
+  const cur = lv ? c.levels[lv - 1] : null, nx = lv < maxL ? c.levels[lv] : null;
   Icon.unit(ctx, kind, Math.max(1, lv), px + 34 * k, py + 36 * k, 40 * k);
-  txt(ctx, lv ? `${c.facility}  Lv.${lv}` : `${c.facility}  (미건설)`, px + 64 * k, py + 25 * k, 19 * k, '#ffe7b8');
-  txt(ctx, `${sc.name} 생산`, px + 64 * k, py + 49 * k, 13 * k, '#cdbb98', 'left', { weight: 600 });
+  txt(ctx, lv ? `${c.facility}  Lv.${lv}${lv >= maxL ? ' (최고)' : ''}` : `${c.facility}  (미건설)`, px + 64 * k, py + 25 * k, 19 * k, '#ffe7b8');
+  txt(ctx, `${sc.name} 생산 · 인구 ${popOf(kind)}`, px + 64 * k, py + 49 * k, 13 * k, '#cdbb98', 'left', { weight: 600 });
   const pct = x => Math.round(x * 100) + '%', sec = x => x + '초', v = f => (nx ? f(nx) : null), cv = f => (cur ? f(cur) : '—');
-  drawStatRows(ctx, [['체력', cv(L => L.hp), v(L => L.hp)], ['공격력', cv(L => L.damage), v(L => L.damage)],
-    ['방어력', cv(L => pct(L.armor)), v(L => pct(L.armor))], ['생산 시간', cv(L => sec(L.spawnTime)), v(L => sec(L.spawnTime))]], px, py + 84 * k, w, k, 0.42, 0.72);
+  const rows = [['체력', cv(L => L.hp), v(L => L.hp)], ['공격력', cv(L => L.damage), v(L => L.damage)],
+    ['방어력', cv(L => pct(L.armor)), v(L => pct(L.armor))], ['생산 시간', cv(L => sec(L.spawnTime)), v(L => sec(L.spawnTime))]];
+  if (sc.ranged) rows.push(['사거리', cv(L => L.range), v(L => L.range)]);
+  drawStatRows(ctx, rows, px, py + 84 * k, w, k, 0.42, 0.72);
+  let ty = py + 84 * k + rows.length * 28 * k;
   const slowNext = nx && nx.slow && !(cur && cur.slow);
-  fitTxt(ctx, (slowNext ? '다음 레벨: 맞은 적 둔화 · ' : '') + c.desc, px + 18 * k, py + 84 * k + 4 * 28 * k, 12.5 * k, w - 36 * k, slowNext ? '#b8ff9a' : '#cdbb98', 'left', { weight: 500 });
+  fitTxt(ctx, (slowNext ? '다음 레벨: 맞은 적 둔화 · ' : '') + c.desc, px + 18 * k, ty, 12.5 * k, w - 36 * k, slowNext ? '#b8ff9a' : '#cdbb98', 'left', { weight: 500 });
+  if (c.skill) {                                                   // 최고 레벨 자동 스킬 안내
+    const on = lv >= maxL;
+    fitTxt(ctx, `${on ? '★ 자동 스킬' : `${maxL}레벨 자동 스킬`} 「${c.skill.name}」 ${c.skill.desc}`, px + 18 * k, ty + 24 * k, 12.5 * k, w - 36 * k, on ? '#ffd84a' : '#a8c8ff', 'left', { weight: 700 });
+  }
   const bh = 56 * k, by = py + h - bh - 14 * k;
   if (!lv) { costButton(ctx, 'facUp', px + 16 * k, by, w - 32 * k, bh, k, `${c.facility} 건설`, nx.cost, G.gold >= nx.cost, () => upgradeFacility(kind)); return; }
   const bw = (w - 48 * k) / 2, ux = px + 16 * k, sx = ux + bw + 16 * k, on = A.sel === kind;
   costButton(ctx, 'facSel', ux, by, bw, bh, k, on ? '생산 중' : '이 병사 생산', null, !on, () => selectUnit(kind), { c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' });
-  if (!nx) costButton(ctx, 'facUp', sx, by, bw, bh, k, '최대 레벨', null, false, () => {});
-  else costButton(ctx, 'facUp', sx, by, bw, bh, k, '강화', nx.cost, G.gold >= nx.cost, () => upgradeFacility(kind));
+  if (!nx) costButton(ctx, 'facUp', sx, by, bw, bh, k, '최고 레벨', null, false, () => {});
+  else costButton(ctx, 'facUp', sx, by, bw, bh, k, lv + 1 === maxL ? '강화 (자동 스킬)' : '강화', nx.cost, G.gold >= nx.cost, () => upgradeFacility(kind));
 }
 
-function drawGateMenu(ctx, s, px, py, w, h, k) {
-  const g = G.gate, c = g.cfg, n = g.maxed ? null : CONFIG.gate.levels[g.level];
-  const oil = L => (L.oilDamage ? `${L.oilInterval}초마다 ${L.oilDamage}` : '없음');
-  txt(ctx, `성문  Lv.${g.level}`, px + 18 * k, py + 26 * k, 19 * k, '#ffe7b8');
-  drawStatRows(ctx, [
-    ['최대 에너지', c.maxHp, n && n.maxHp],
-    ['목수 (수리)', `${c.carpenters}명 · ${c.carpenters * c.repairPerCarpenter}/초`, n && `${n.carpenters}명 · ${n.carpenters * n.repairPerCarpenter}/초`],
-    ['성벽 궁수', `${c.archers}명 · 공격 ${c.archerDamage}`, n && `${n.archers}명 · 공격 ${n.archerDamage}`],
-    ['끓는 기름', oil(c), n && oil(n)],
-    ['최대 병력', armyCap() + '명', n && CONFIG.army.capByGateLevel[g.level] + '명'],
-  ], px, py + 60 * k, w, k, 0.36, 0.70);
-  const bw = w - 32 * k, bh = 56 * k, by = py + h - bh - 14 * k;
-  if (g.maxed) costButton(ctx, 'gateUpg', px + 16 * k, by, bw, bh, k, '최대 레벨', null, false, () => {});
-  else costButton(ctx, 'gateUpg', px + 16 * k, by, bw, bh, k, '성문 업그레이드', g.upgradeCost, G.gold >= g.upgradeCost && !g.destroyed, upgradeGate);
-}
+
 
 // ---------- 미니맵 (오른쪽 위) — 누르거나 끌면 그 위치로 화면 이동 ----------
 const MINIMAP = { w: 240, h: 135, open: true };
@@ -4766,7 +4799,7 @@ function drawSelect(ctx, k) {
 
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
-  ['아래 병력 칸', '성문에서 나올 병사 고르기 · 다시 누르면 시설 건설/강화'], ['성 탭', '성문 업그레이드 (최대 병력 증가)'],
+  ['아래 병력 칸', '성문에서 나올 병사 고르기 · 다시 누르면 시설 건설/강화'], ['인구 (최대 50)', '보병·궁수 1 · 기사 4 · 마법사 3 · 5레벨은 자동 스킬'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
   ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E 스킬 · 1~4 병력 · Space 일시정지 · F 배속 · 방향키'],
 ];
@@ -4989,7 +5022,6 @@ function renderWorld(ctx) {
   for (const t of G.telegraphs) Art.telegraph(ctx, t, realTime);
 
   const h = G.hero, sel = G.sel;
-  if (sel && G.state === 'playing' && sel.kind === 'gate') for (const a of G.gate.archers) Art.rangeCircle(ctx, a.x, a.y, G.gate.cfg.archerRange, realTime, '160,200,255');
   if (h && !h.dead && h.mode === 'move') Art.rallyFlag(ctx, h.guard, realTime);
   if (h && G.aim && !h.dead) Art.aimPreview(ctx, h, G.aim, Input.hover, realTime);
 
