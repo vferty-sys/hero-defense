@@ -788,7 +788,7 @@ function loadImages() {
 // images/ 에 원본을 올리고 tools/prepare_images.py 를 실행하면 images/web/ 에 게임용 그림이 생깁니다.
 // 아래 목록에 있는 그림만 불러오고, 그림이 없는 캐릭터는 지금처럼 도형으로 그립니다.
 // 그림은 오른쪽을 바라보는 모습 (왼쪽으로 갈 때는 뒤집어 그림). 병사는 unit_<종류>_<단계>, 없는 단계는 낮은 단계 그림을 씀
-const SPRITE_NAMES = ['unit_footman_1', 'unit_archer_1'];
+const SPRITE_NAMES = [];
 // 동작 시트 (12자세: 1줄 서 있기·숨쉬기·맞음·스킬 / 2줄 걷기 4장 / 3줄 공격 4장). 있으면 한 장 그림 대신 사용
 const ANIM_NAMES = ['hero_knight', 'hero_archer', 'hero_mage'];
 // 시트의 몇 번째 칸을 쓸지 (0~11). 마법사 스킬 칸은 효과가 칸을 가득 채워서 서 있는 칸을 대신 씀
