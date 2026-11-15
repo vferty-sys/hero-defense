@@ -87,7 +87,64 @@ const CONFIG = {
         { cost: 130, damage: 21, interval: 0.50, range: 200 },
       ],
     },
-    // 4단계에서 추가: catapult(투석기), mage(마법탑)
+    catapult: {
+      name: '투석기', desc: '느린 광역 공격 · 지상만 · 사거리 안의 적 기지도 공격', canHitAir: false, canHitBase: true,
+      projectileSpeed: 340,
+      levels: [   // splash: 폭발 반경 / baseDamage: 적 기지에 주는 피해
+        { cost: 110, damage: 28, splash: 55, interval: 2.6, range: 210, baseDamage: 45 },
+        { cost: 130, damage: 44, splash: 62, interval: 2.4, range: 225, baseDamage: 70 },
+        { cost: 180, damage: 66, splash: 70, interval: 2.2, range: 240, baseDamage: 105 },
+      ],
+    },
+    mage: {
+      name: '마법탑', desc: '마법 피해(방어력 무시) · 공중 공격 가능 · 3레벨 둔화', canHitAir: true, magic: true,
+      boltSpeed: 520,
+      levels: [   // slow: 이동속도 감소 비율 / slowTime: 둔화 지속(초)
+        { cost: 100, damage: 22, interval: 1.3, range: 165 },
+        { cost: 120, damage: 34, interval: 1.2, range: 175 },
+        { cost: 160, damage: 50, interval: 1.1, range: 190, slow: 0.5, slowTime: 1.5 },
+      ],
+    },
+  },
+
+  // ---------------- 병력생성소 (병사를 계속 생산) ----------------
+  // maxUnits: 동시에 유지하는 병사 수 / spawnTime: 1명 생산 시간(초) / 병사 능력치(hp, damage, armor)는 레벨별
+  barracks: {
+    infantry: {
+      name: '보병 막사', desc: '검과 방패 보병 · 근접 균형형', unit: 'footman',
+      levels: [
+        { cost: 90,  maxUnits: 3, spawnTime: 10, hp: 120, damage: 9,  armor: 0.20 },
+        { cost: 100, maxUnits: 4, spawnTime: 9,  hp: 160, damage: 13, armor: 0.25 },
+        { cost: 140, maxUnits: 5, spawnTime: 8,  hp: 210, damage: 18, armor: 0.30 },
+      ],
+    },
+    archers: {
+      name: '궁수 막사', desc: '원거리 · 공중 공격 가능 · 체력 낮음', unit: 'archer',
+      levels: [
+        { cost: 100, maxUnits: 3, spawnTime: 11, hp: 70,  damage: 10, armor: 0.05 },
+        { cost: 110, maxUnits: 4, spawnTime: 10, hp: 90,  damage: 15, armor: 0.08 },
+        { cost: 150, maxUnits: 5, spawnTime: 9,  hp: 115, damage: 21, armor: 0.10 },
+      ],
+    },
+    knights: {
+      name: '기사단 막사', desc: '체력 높은 기사 · 기지 공격력 높음 · 비싸고 생산이 느림', unit: 'knight',
+      levels: [
+        { cost: 170, maxUnits: 2, spawnTime: 18, hp: 300, damage: 18, armor: 0.35 },
+        { cost: 160, maxUnits: 3, spawnTime: 16, hp: 380, damage: 25, armor: 0.40 },
+        { cost: 220, maxUnits: 4, spawnTime: 14, hp: 470, damage: 33, armor: 0.45 },
+      ],
+    },
+  },
+
+  // ---------------- 병사 ----------------
+  soldiers: {
+    globalCap: 30,                  // 전체 아군 병사 수 상한 (성능용)
+    regenDelay: 5, regenRate: 0.04, // 공격 안 받은 지 5초 후 초당 최대 체력의 4% 회복
+    leash: 210,                     // 대형 중심(영웅)에서 이보다 먼 적은 쫓지 않음
+    // range: 근접은 몸 가장자리 사이 거리, 원거리는 사거리 / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
+    footman: { name: '보병', speed: 80, radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 1, baseDamageMul: 1.0, canHitAir: false },
+    archer:  { name: '궁수', speed: 80, radius: 9,  range: 150, attackInterval: 1.1, detect: 170, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true },
+    knight:  { name: '기사', speed: 84, radius: 12, range: 18,  attackInterval: 1.1, detect: 125, maxBlock: 2, baseDamageMul: 2.5, canHitAir: false },
   },
 
   // ---------------- 영웅 ----------------
@@ -125,8 +182,9 @@ const CONFIG = {
   enemies: {
     // hp: 체력 / speed: 이동속도(px/초) / gateDamage: 성문 1회 공격력 / damage: 영웅·병사 공격력
     // attackInterval: 공격 간격(초) / air: 공중 유닛(근접으로 막을 수 없음) / xp: 처치 경험치 / gold: 처치 골드
-    spider: { name: '거미', hp: 45, speed: 70, radius: 11, air: false, gateDamage: 4, damage: 7, attackInterval: 1.0, xp: 8, gold: 5 },
-    bat:    { name: '박쥐', hp: 30, speed: 92, radius: 12, air: true,  gateDamage: 3, damage: 5, attackInterval: 0.8, xp: 6, gold: 4 },
+    // armor: 물리 피해 감소 비율 (마법 피해는 무시)
+    spider: { name: '거미', hp: 45, speed: 70, radius: 11, air: false, armor: 0.1, gateDamage: 4, damage: 7, attackInterval: 1.0, xp: 8, gold: 5 },
+    bat:    { name: '박쥐', hp: 30, speed: 92, radius: 12, air: true,  armor: 0,   gateDamage: 3, damage: 5, attackInterval: 0.8, xp: 6, gold: 4 },
   },
 
   bases: {
@@ -319,6 +377,12 @@ function txt(ctx, s, x, y, size, color, align = 'left', o = {}) {
   ctx.textAlign = align; ctx.textBaseline = o.base || 'middle';
   if (o.stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = o.strokeW || Math.max(2, size * 0.2); ctx.strokeStyle = o.stroke; ctx.strokeText(s, x, y); }
   ctx.fillStyle = color; ctx.fillText(s, x, y);
+}
+// 칸 너비(maxW)를 넘으면 글자 크기를 줄여서 한 줄에 맞춤
+function fitTxt(ctx, s, x, y, size, maxW, color, align = 'left', o = {}) {
+  ctx.font = `${o.weight || 700} ${size}px ${FONT}`;
+  const w = ctx.measureText(s).width;
+  txt(ctx, s, x, y, w > maxW ? size * (maxW / w) : size, color, align, o);
 }
 function wrapLines(ctx, s, maxW, size, weight = 500) {
   ctx.font = `${weight} ${size}px ${FONT}`;
@@ -867,6 +931,10 @@ const Art = {
   },
 
   enemy(ctx, e) {
+    if (e.slowTimer > 0) {                                                  // 둔화 표시
+      ctx.strokeStyle = 'rgba(170,130,255,0.75)'; ctx.lineWidth = 2;
+      ellipse(ctx, e.x, e.y + 3, e.radius + 4, (e.radius + 4) * 0.5); ctx.stroke();
+    }
     if (e.type === 'spider') this.spider(ctx, e); else if (e.type === 'bat') this.bat(ctx, e);
     const top = e.y - (e.air ? AIR_HEIGHT : 0) - e.radius - 14;
     if (e.stun > 0) this.stunStars(ctx, e.x, top + 2, e.anim);
@@ -1013,7 +1081,160 @@ const Art = {
   },
 
   // ---------------- 건물 ----------------
-  building(ctx, t, rt) { if (t.type === 'archer') this.archerTower(ctx, t, rt); },
+  building(ctx, t, rt) {
+    if (t.type === 'archer') this.archerTower(ctx, t, rt);
+    else if (t.type === 'catapult') this.catapultTower(ctx, t, rt);
+    else if (t.type === 'mage') this.mageTower(ctx, t, rt);
+    else this.barracks(ctx, t, rt);
+  },
+
+  // 투석기: 1레벨 나무 / 2레벨 철 보강 / 3레벨 돌 받침 + 평형추(트레뷰셋)
+  catapultTower(ctx, t, rt) {
+    const L = t.level, sc = t.buildAnim > 0 ? clamp(1 - t.buildAnim * 1.6, 0.35, 1) : 1;
+    ctx.save(); ctx.translate(t.x, t.y); ctx.scale(sc, sc);
+    if (!this.img(ctx, 'catapult' + L, 0, -4, 70, 70, 0)) {
+      const P = L === 3 ? 25 : 22;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-P + 6, -P + 7, P * 2, P * 2);
+      if (L === 3) { ctx.fillStyle = '#a19c92'; ctx.fillRect(-P, -P, P * 2, P * 2); ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 2; ctx.strokeRect(-P + 1, -P + 1, P * 2 - 2, P * 2 - 2); }
+      else { ctx.fillStyle = '#8b6136'; ctx.fillRect(-P, -P, P * 2, P * 2); ctx.strokeStyle = 'rgba(60,35,15,0.5)'; ctx.lineWidth = 1; for (let y = -P + 6; y < P; y += 6) { ctx.beginPath(); ctx.moveTo(-P, y); ctx.lineTo(P, y); ctx.stroke(); } }
+      ctx.save(); ctx.rotate(t.aim);
+      const beam = L === 1 ? '#5c3a1c' : '#4a3424';
+      ctx.fillStyle = beam; ctx.fillRect(-16, -12, 30, 5); ctx.fillRect(-16, 7, 30, 5);                // 옆 틀
+      if (L >= 2) { ctx.fillStyle = '#7d8088'; for (const x of [-12, 0, 10]) { ctx.fillRect(x, -12, 2.5, 5); ctx.fillRect(x, 7, 2.5, 5); } }
+      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(-4, -12, 5, 24);                                          // 축
+      const p = t.fireAnim > 0 ? 1 - t.fireAnim / 0.35 : 0;
+      const reloaded = t.cd < t.stats.interval * 0.6;
+      const armEnd = t.fireAnim > 0 ? lerp(-20, 24, Math.min(1, p * 2.5)) : (reloaded ? -20 : lerp(24, -20, clamp(1 - (t.cd - t.stats.interval * 0.6) / (t.stats.interval * 0.4), 0, 1)));
+      ctx.fillStyle = L === 1 ? '#a0703e' : '#8a6a4a'; ctx.fillRect(Math.min(-2, armEnd), -2.5, Math.abs(armEnd + 2), 5);   // 던지는 팔
+      ctx.fillStyle = '#5a3a1c'; circle(ctx, armEnd, 0, 5); ctx.fill();
+      if (reloaded && t.fireAnim <= 0) { ctx.fillStyle = '#7a756b'; circle(ctx, armEnd, 0, 4); ctx.fill(); }
+      if (L === 3) { ctx.fillStyle = '#5a5650'; ctx.fillRect(-1, -7, 9, 14); ctx.fillStyle = '#e8c35a'; ctx.fillRect(-1, -1, 9, 2); }   // 평형추
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+
+  // 마법탑: 레벨이 오를수록 탑이 커지고 룬·떠다니는 구슬이 추가됨
+  mageTower(ctx, t, rt) {
+    const L = t.level, sc = t.buildAnim > 0 ? clamp(1 - t.buildAnim * 1.6, 0.35, 1) : 1, R = [21, 24, 27][L - 1];
+    ctx.save(); ctx.translate(t.x, t.y); ctx.scale(sc, sc);
+    if (!this.img(ctx, 'mage' + L, 0, -6, 70, 70)) {
+      ctx.fillStyle = 'rgba(0,0,0,0.33)'; circle(ctx, 7 + L * 2, 9 + L * 2, R); ctx.fill();
+      ctx.fillStyle = L === 3 ? '#9a94a8' : '#8a8496'; circle(ctx, 0, 0, R); ctx.fill();
+      ctx.fillStyle = '#4a2e80'; circle(ctx, 0, 0, R - 5); ctx.fill();
+      ctx.fillStyle = '#5e3c9e'; circle(ctx, -1, -1, R - 10); ctx.fill();
+      ctx.fillStyle = '#7752c0'; circle(ctx, -2, -2, R - 15); ctx.fill();
+      if (L >= 2) for (let i = 0; i < 8; i++) {                                           // 룬
+        const a = (i / 8) * TAU + rt * 0.3;
+        ctx.fillStyle = `rgba(200,170,255,${0.5 + 0.4 * Math.sin(rt * 3 + i)})`; circle(ctx, Math.cos(a) * (R - 2.5), Math.sin(a) * (R - 2.5), 1.6); ctx.fill();
+      }
+      if (L === 3) { ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 2; circle(ctx, 0, 0, R); ctx.stroke(); }
+      const glow = 0.6 + Math.sin(rt * 4) * 0.2 + (t.fireAnim > 0 ? t.fireAnim * 2 : 0);   // 수정
+      ctx.fillStyle = `rgba(190,150,255,${0.35 * glow})`; circle(ctx, 0, -6, 10 + glow * 4); ctx.fill();
+      ctx.fillStyle = '#d9c4ff'; ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(5, -6); ctx.lineTo(0, 3); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(2, -7); ctx.lineTo(0, -3); ctx.lineTo(-2, -7); ctx.closePath(); ctx.fill();
+      if (L === 3) for (let i = 0; i < 3; i++) {                                          // 떠다니는 구슬
+        const a = rt * 1.6 + (i / 3) * TAU;
+        ctx.fillStyle = '#b48cff'; circle(ctx, Math.cos(a) * (R + 6), Math.sin(a) * (R + 6) * 0.6 - 4, 3.2); ctx.fill();
+        ctx.fillStyle = '#fff'; circle(ctx, Math.cos(a) * (R + 6) - 1, Math.sin(a) * (R + 6) * 0.6 - 5, 1.1); ctx.fill();
+      }
+    }
+    ctx.restore();
+  },
+
+  // 병력생성소: 지붕 색으로 종류 구분 (보병 빨강 / 궁수 초록 / 기사단 파랑), 레벨별로 커지고 돌벽·금장식 추가
+  barracks(ctx, b, rt) {
+    const L = b.level, sc = b.buildAnim > 0 ? clamp(1 - b.buildAnim * 1.6, 0.35, 1) : 1;
+    const pal = { infantry: ['#b04a32', '#8e3a26'], archers: ['#4f8a3a', '#3c6c2c'], knights: ['#3e62b0', '#2f4c8c'] }[b.type];
+    const W = [46, 52, 58][L - 1], H = [36, 40, 44][L - 1];
+    ctx.save(); ctx.translate(b.x, b.y); ctx.scale(sc, sc);
+    if (!this.img(ctx, b.type + L, 0, -4, 72, 64)) {
+      ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(-W / 2 + 6, -H / 2 + 7, W, H);
+      ctx.fillStyle = L === 1 ? '#7a5530' : '#9a958a'; ctx.fillRect(-W / 2 - 2, -H / 2 - 2, W + 4, H + 4);           // 벽
+      ctx.fillStyle = pal[0]; ctx.fillRect(-W / 2, -H / 2, W, H / 2);                                              // 지붕
+      ctx.fillStyle = pal[1]; ctx.fillRect(-W / 2, 0, W, H / 2);
+      ctx.strokeStyle = L === 1 ? 'rgba(255,230,160,0.25)' : 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+      for (let y = -H / 2 + 5; y < H / 2; y += 5) { ctx.beginPath(); ctx.moveTo(-W / 2, y); ctx.lineTo(W / 2, y); ctx.stroke(); }
+      ctx.fillStyle = L === 3 ? '#e8c35a' : 'rgba(0,0,0,0.35)'; ctx.fillRect(-W / 2, -2, W, 4);                     // 용마루
+      ctx.fillStyle = '#2a1d12'; ctx.fillRect(-6, H / 2 - 1, 12, 5);                                                 // 문
+      ctx.fillStyle = '#f2e6c8'; circle(ctx, 0, -1, 9); ctx.fill();                                                  // 문장
+      ctx.strokeStyle = L === 3 ? '#e8c35a' : '#5a4630'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.save(); ctx.translate(0, -1);
+      if (b.type === 'infantry') { ctx.strokeStyle = '#5a5f66'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(5, 5); ctx.moveTo(5, -5); ctx.lineTo(-5, 5); ctx.stroke(); }
+      else if (b.type === 'archers') { ctx.strokeStyle = '#6b4220'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(-1, 0, 6, -1.2, 1.2); ctx.stroke(); ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(6, 0); ctx.stroke(); }
+      else { ctx.fillStyle = '#3e62b0'; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(5, -5); ctx.lineTo(5, 1); ctx.quadraticCurveTo(0, 7, -5, 1); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#f2c94c'; ctx.fillRect(-0.8, -4, 1.6, 7); }
+      ctx.restore();
+      if (L >= 2) this.flag(ctx, -W / 2 - 1, -H / 2 - 1, pal[0], rt, 0.8);
+      if (L === 3) this.flag(ctx, W / 2 - 4, -H / 2 - 1, pal[0], rt + 1, 0.8);
+    }
+    ctx.restore();
+  },
+
+  // 생산 게이지 + 병사 수
+  barracksGauge(ctx, b) {
+    const s = b.stats, full = b.units.length >= s.maxUnits, y = b.y - [36, 38, 40][b.level - 1] + 8;
+    if (!full) bar(ctx, b.x - 20, y, 40, 6, b.progress, b.capped ? '#a05a4a' : '#6fb7ff');
+    txt(ctx, `${b.units.length}/${s.maxUnits}`, b.x + (full ? 0 : 30), y + 3, 12, b.capped ? '#ff9a7a' : full ? '#ffe7a8' : '#d8ecff', full ? 'center' : 'left', { stroke: 'rgba(0,0,0,0.85)', weight: 800 });
+  },
+
+  // 병사: 레벨에 따라 장비가 바뀜 (가죽 → 사슬 → 판금·금장식)
+  soldier(ctx, s, rt) {
+    const L = s.level, bob = s.moving ? Math.sin(s.walkAnim * 12) * 1.2 : 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.26)'; ellipse(ctx, s.x + 1, s.y + 6, s.radius * 1.05, s.radius * 0.5); ctx.fill();
+    if (this.img(ctx, s.kind + L, s.x, s.y + bob, s.radius * 3, s.radius * 3, s.face)) return;
+    if (s.kind === 'archer') {
+      const cloak = ['#6b7f3a', '#3f6a3a', '#2c5b45'][L - 1];
+      this.archerFigure(ctx, s.x, s.y + bob, s.face, s.attackAnim > 0 ? s.attackAnim / 0.25 : 0, s.flash > 0 ? '#ffffff' : cloak, 0.85);
+      if (L === 3) { ctx.fillStyle = '#e8c35a'; circle(ctx, s.x, s.y + bob, 2); ctx.fill(); }
+      return;
+    }
+    const knight = s.kind === 'knight', sc = knight ? 1.15 : 1;
+    ctx.save(); ctx.translate(s.x, s.y + bob); ctx.scale(sc, sc); ctx.rotate(s.face);
+    const armor = knight ? ['#b8bec7', '#c9ced6', '#e2c46a'][L - 1] : ['#8a6a3e', '#a2a8b0', '#d0d5dc'][L - 1];
+    const tabard = knight ? '#a3271d' : L >= 2 ? '#2f5fb3' : null;
+    ctx.fillStyle = s.flash > 0 ? '#ffffff' : armor; ellipse(ctx, 0, 0, 8, 10); ctx.fill();
+    if (tabard) { ctx.fillStyle = tabard; ctx.fillRect(-4, -7, 8, 14); }
+    if (knight || L === 3) { ctx.fillStyle = '#f2c94c'; ctx.fillRect(-0.8, -5, 1.6, 10); }
+    const sw = s.attackAnim > 0 ? lerp(-1.6, 1.0, 1 - s.attackAnim / 0.25) : 0.35;                   // 칼
+    ctx.save(); ctx.translate(2, 8); ctx.rotate(sw);
+    ctx.fillStyle = '#d6dbe2'; ctx.fillRect(4, -1.2, knight ? 17 : 14, 2.4);
+    ctx.fillStyle = '#8a6a2a'; ctx.fillRect(2, -3, 2, 6); ctx.restore();
+    ctx.save(); ctx.translate(4, -8);                                                                   // 방패
+    if (knight) { ctx.fillStyle = '#a3271d'; ctx.strokeStyle = '#f2c94c'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(-5, -3.5); ctx.lineTo(5, -3.5); ctx.lineTo(5, 2); ctx.quadraticCurveTo(0, 7, -5, 2); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else { ctx.fillStyle = ['#7a5230', '#6e5034', '#2f5fb3'][L - 1]; circle(ctx, 0, 0, 5.2); ctx.fill(); ctx.strokeStyle = ['#4a3018', '#9aa0a8', '#f2c94c'][L - 1]; ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.restore();
+    const helm = knight ? '#9aa1ab' : ['#6b4a2a', '#8d939b', '#aab0b8'][L - 1];                         // 투구
+    ctx.fillStyle = helm; circle(ctx, 0, 0, 5.6); ctx.fill();
+    if (knight || L >= 2) { ctx.fillStyle = '#2b2e33'; ctx.fillRect(3, -2.4, 1.8, 4.8); }
+    if (knight || L === 3) { ctx.fillStyle = knight && L === 3 ? '#f2c94c' : '#c0392b'; ellipse(ctx, -5, 0, 4.5, 1.9); ctx.fill(); }
+    ctx.restore();
+  },
+
+  soldierBar(ctx, s) {
+    if (s.hp >= s.maxHp) return;
+    const w = s.radius * 2.6;
+    bar(ctx, s.x - w / 2, s.y - s.radius - 12, w, 4, s.hp / s.maxHp, '#6fd0ff');
+  },
+
+  projectile(ctx, p) {
+    if (p instanceof Boulder) this.boulder(ctx, p);
+    else if (p instanceof MagicBolt) this.bolt(ctx, p);
+    else this.arrow(ctx, p);
+  },
+  boulder(ctx, p) {
+    ctx.fillStyle = `rgba(0,0,0,${0.15 + 0.15 * (1 - p.z / 130)})`; ellipse(ctx, p.x, p.y + 2, 6, 3); ctx.fill();   // 땅 그림자
+    if (this.img(ctx, 'boulder', p.x, p.y - p.z, 14, 14, p.spin)) return;
+    ctx.save(); ctx.translate(p.x, p.y - p.z); ctx.rotate(p.spin);
+    ctx.fillStyle = '#6f6a61'; circle(ctx, 0, 0, 6.5); ctx.fill();
+    ctx.fillStyle = '#8f8a80'; circle(ctx, -2, -2, 3); ctx.fill();
+    ctx.restore();
+  },
+  bolt(ctx, p) {
+    p.trail.forEach((q, i) => { ctx.fillStyle = `rgba(180,140,255,${(i + 1) / p.trail.length * 0.35})`; circle(ctx, q.x, q.y, 2 + i * 0.6); ctx.fill(); });
+    ctx.fillStyle = 'rgba(170,120,255,0.45)'; circle(ctx, p.x, p.y, 9); ctx.fill();
+    ctx.fillStyle = '#c9a8ff'; circle(ctx, p.x, p.y, 5); ctx.fill();
+    ctx.fillStyle = '#ffffff'; circle(ctx, p.x, p.y, 2.2); ctx.fill();
+  },
 
   // 궁수탑: 1레벨 나무 망루 → 2레벨 돌탑 → 3레벨 금장식 큰 돌탑 (궁수 1→2→3명)
   archerTower(ctx, t, rt) {
@@ -1179,18 +1400,11 @@ const Icon = {
   buildIcon(ctx, type, x, y, s, rt) {
     const u = s / 40;
     ctx.save(); ctx.translate(x, y); ctx.scale(u, u);
-    if (type === 'archer') {
-      Art.archerTower(ctx, { x: 0, y: 0, level: 1, buildAnim: 0, aim: -Math.PI / 2, shootAnim: 0, shooter: -1, type: 'archer' }, rt);
-    } else if (type === 'catapult') {
-      ctx.fillStyle = '#7a5230'; ctx.fillRect(-16, -12, 6, 26); ctx.fillRect(10, -12, 6, 26); ctx.fillRect(-16, -2, 32, 6);
-      ctx.save(); ctx.rotate(-0.5); ctx.fillStyle = '#a07040'; ctx.fillRect(-3, -20, 6, 28); ctx.fillStyle = '#6c675e'; circle(ctx, 0, -20, 6); ctx.fill(); ctx.restore();
-    } else if (type === 'mage') {
-      ctx.fillStyle = '#7e7a86'; circle(ctx, 0, 0, 18); ctx.fill();
-      ctx.fillStyle = '#5b3a9a'; circle(ctx, 0, 0, 12); ctx.fill();
-      ctx.fillStyle = '#c9a8ff'; ctx.beginPath();
-      for (let j = 0; j < 10; j++) { const r = j % 2 ? 3 : 8, b = (j / 10) * TAU - Math.PI / 2; ctx.lineTo(Math.cos(b) * r, Math.sin(b) * r); }
-      ctx.closePath(); ctx.fill();
-    }
+    const fake = { x: 0, y: 0, level: 1, type, buildAnim: 0, aim: -Math.PI / 2, shootAnim: 0, shooter: -1, fireAnim: 0, cd: 0, stats: { interval: 1 }, units: [] };
+    if (type === 'archer') Art.archerTower(ctx, fake, rt);
+    else if (type === 'catapult') Art.catapultTower(ctx, fake, rt);
+    else if (type === 'mage') Art.mageTower(ctx, fake, rt);
+    else Art.barracks(ctx, fake, rt);
     ctx.restore();
   },
   focus(ctx, x, y, s) {
@@ -1375,7 +1589,7 @@ class Gate {
         const ox = MAP.castle.wallX + MAP.castle.wallW, oy = MAP.gate.y;
         if (G.enemies.some(e => e.alive && e.state === 'attack' && !e.air)) {
           this.oilTimer = c.oilInterval;
-          for (const e of G.enemies) if (e.alive && !e.air && dist(e.x, e.y, ox, oy) <= c.oilRadius) e.takeDamage(c.oilDamage, 'tower');
+          for (const e of G.enemies) if (e.alive && !e.air && dist(e.x, e.y, ox, oy) <= c.oilRadius) e.takeDamage(c.oilDamage, 'tower', true);
           for (let i = 0; i < 16; i++) {
             const a = rand(-1.3, 1.3), r = rand(10, c.oilRadius * 0.8);
             FX.puff(ox + Math.cos(a) * r, oy + Math.sin(a) * r, '#6b3510', rand(8, 15), 0.9, 0, 0, 0.7, 0.4);
@@ -1480,8 +1694,8 @@ class WallArcher {
 
 // ---------- 화살 (목표를 따라가며 포물선) ----------
 class Arrow {
-  constructor(x, y, target, damage, speed) {
-    this.x = x; this.y = y; this.target = target; this.damage = damage;
+  constructor(x, y, target, damage, speed, source) {
+    this.x = x; this.y = y; this.target = target; this.damage = damage; this.source = source || 'tower';
     this.tx = target.x; this.ty = target.y - (target.air ? AIR_HEIGHT : 0);
     this.speed = speed || CONFIG.wallArcher.arrowSpeed; this.traveled = 0;
     this.total = Math.max(1, dist(x, y, this.tx, this.ty));
@@ -1493,7 +1707,7 @@ class Arrow {
     const dx = this.tx - this.x, dy = this.ty - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
     if (d <= step + 2) {
       this.done = true;
-      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, 'tower'); FX.spark(this.tx, this.ty, '#fff3b0', 4); }
+      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source); FX.spark(this.tx, this.ty, '#fff3b0', 4); }
       return;
     }
     this.x += (dx / d) * step; this.y += (dy / d) * step; this.traveled += step;
@@ -1503,13 +1717,13 @@ class Arrow {
   }
 }
 
-// ---------- 방어타워 ----------
-class Tower {
+// ---------- 건물 공통 (레벨·투자금·업그레이드·판매) ----------
+function buildingCfg(type) { return CONFIG.towers[type] || CONFIG.barracks[type]; }
+class Building {
   constructor(type, spot) {
-    this.type = type; this.cfg = CONFIG.towers[type]; this.spot = spot;
+    this.type = type; this.cfg = buildingCfg(type); this.spot = spot;
     this.x = spot.x; this.y = spot.y; this.level = 1;
-    this.invested = this.cfg.levels[0].cost;
-    this.cd = 0.4; this.aim = -Math.PI / 2; this.shootAnim = 0; this.shooter = 0; this.buildAnim = 0.45;
+    this.invested = this.cfg.levels[0].cost; this.buildAnim = 0.45;
   }
   get stats() { return this.cfg.levels[this.level - 1]; }
   get maxed() { return this.level >= this.cfg.levels.length; }
@@ -1518,7 +1732,18 @@ class Tower {
   upgrade() {
     if (this.maxed) return false;
     this.invested += this.upgradeCost; this.level++; this.buildAnim = 0.3;
+    this.onUpgrade();
     return true;
+  }
+  onUpgrade() {}
+  onRemove() {}
+}
+
+// ---------- 방어타워: 궁수탑 / 투석기 / 마법탑 ----------
+class Tower extends Building {
+  constructor(type, spot) {
+    super(type, spot);
+    this.cd = 0.4; this.aim = -Math.PI / 2; this.shootAnim = 0; this.shooter = 0; this.fireAnim = 0;
   }
   findTarget() {
     const s = this.stats, r2 = s.range * s.range; let best = null, bs = -Infinity;
@@ -1530,19 +1755,237 @@ class Tower {
     }
     return best;
   }
+  findBase() {
+    for (const b of G.bases) if (b.enabled && b.alive && dist(this.x, this.y, b.x, b.y) - b.m.hitRadius * 0.8 <= this.stats.range) return b;
+    return null;
+  }
   update(dt) {
     if (this.buildAnim > 0) this.buildAnim -= dt;
     if (this.shootAnim > 0) this.shootAnim -= dt;
+    if (this.fireAnim > 0) this.fireAnim -= dt;
     this.cd -= dt;
     const t = this.findTarget();
+    const b = !t && this.cfg.canHitBase ? this.findBase() : null;
     if (t) this.aim = Math.atan2(t.y - (t.air ? AIR_HEIGHT : 0) - this.y, t.x - this.x);
-    if (this.cd <= 0) {
-      if (!t) { this.cd = 0; return; }
-      const s = this.stats;
-      this.cd = s.interval;
+    else if (b) this.aim = Math.atan2(b.y - this.y, b.x - this.x);
+    if (this.cd > 0) return;
+    if (!t && !b) { this.cd = 0; return; }
+    const s = this.stats;
+    this.cd = s.interval;
+    if (this.type === 'archer') {
       this.shooter = (this.shooter + 1) % this.level; this.shootAnim = 0.18;
       G.projectiles.push(new Arrow(this.x + Math.cos(this.aim) * 10, this.y - 6 + Math.sin(this.aim) * 10, t, s.damage, this.cfg.arrowSpeed));
+    } else if (this.type === 'catapult') {
+      this.fireAnim = 0.35;
+      let tx, ty;
+      if (t) {                                                        // 움직이는 적은 도착 지점을 예측해서 던짐
+        const flight = dist(this.x, this.y, t.x, t.y) / this.cfg.projectileSpeed + 0.2;
+        if (t.state === 'walk' && !t.stun) { const p = t.route.sample(Math.min(t.route.length, t.dist + t.spd * flight), TMP); tx = p.x - p.dy * t.lane; ty = p.y + p.dx * t.lane; }
+        else { tx = t.x; ty = t.y; }
+      } else { const a = Math.atan2(this.y - b.y, this.x - b.x), r = b.m.hitRadius * 0.45; tx = b.x + Math.cos(a) * r; ty = b.y + Math.sin(a) * r; }
+      G.projectiles.push(new Boulder(this.x + Math.cos(this.aim) * 14, this.y + Math.sin(this.aim) * 14, tx, ty, s, this.cfg));
+    } else if (this.type === 'mage') {
+      this.fireAnim = 0.3;
+      G.projectiles.push(new MagicBolt(this.x, this.y - 10, t, s, this.cfg));
     }
+  }
+}
+
+// ---------- 병력생성소: 일정 시간마다 병사 1명씩 생산 (상한까지) ----------
+class Barracks extends Building {
+  constructor(type, spot) {
+    super(type, spot);
+    this.units = [];
+    this.timer = this.stats.spawnTime * 0.35;      // 첫 병사는 조금 빨리
+    this.capped = false;
+  }
+  get progress() { return clamp(1 - this.timer / this.stats.spawnTime, 0, 1); }
+  onUpgrade() { for (const u of this.units) u.applyStats(this.level, this.stats); }
+  onRemove() { for (const u of this.units) if (!u.dead) { u.dead = true; u.releaseAll(); FX.poof(u.x, u.y, 10); } }
+  update(dt) {
+    if (this.buildAnim > 0) this.buildAnim -= dt;
+    compact(this.units, u => !u.dead);
+    const s = this.stats;
+    this.capped = false;
+    if (this.units.length >= s.maxUnits) { this.timer = s.spawnTime; return; }              // 상한 도달 → 생산 중지
+    if (G.soldiers.length >= CONFIG.soldiers.globalCap) { this.capped = true; return; }    // 전체 상한 → 대기
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = s.spawnTime;
+      const u = new Soldier(this);
+      this.units.push(u); G.soldiers.push(u);
+      FX.dust(u.x, u.y); FX.ring(u.x, u.y, 16, '255,240,180', 0.3);
+    }
+  }
+}
+
+// ---------- 병사 ----------
+// 행동 우선순위: 1) 주변 적과 싸움  2) 영웅이 적 기지를 공격 중이면 함께 공격
+//               3) 영웅 주위에 둥글게 대형 유지  4) 영웅 사망 중이면 성문 앞에 모임
+class Soldier {
+  constructor(barracks) {
+    this.barracks = barracks; this.kind = barracks.cfg.unit; this.cfg = CONFIG.soldiers[this.kind];
+    this.radius = this.cfg.radius; this.maxBlock = this.cfg.maxBlock;
+    this.applyStats(barracks.level, barracks.stats, true);
+    this.x = barracks.x + rand(-6, 6); this.y = barracks.y + 22; this.face = Math.PI / 2;
+    this.engaged = new Set(); this.target = null; this.retarget = 0;
+    this.atkTimer = rand(0, 0.5); this.attackAnim = 0; this.flash = 0;
+    this.lastHit = -999; this.dead = false; this.moving = false; this.walkAnim = Math.random() * 3;
+  }
+  applyStats(level, s, fresh) {
+    const ratio = fresh ? 1 : this.hp / this.maxHp;
+    this.level = level; this.maxHp = s.hp; this.hp = this.maxHp * ratio; this.damage = s.damage; this.armor = s.armor;
+  }
+  get dash() { return null; }
+  takeDamage(amount) {
+    if (this.dead) return;
+    this.hp -= amount * (1 - this.armor); this.lastHit = G.time; this.flash = 0.1;
+    if (this.hp <= 0) this.die();
+  }
+  releaseAll() { for (const e of [...this.engaged]) e.release(); this.engaged.clear(); }
+  die() { this.dead = true; this.hp = 0; this.releaseAll(); FX.poof(this.x, this.y, 10); }
+
+  // 대형 위치: 영웅 주위 동심원 (영웅이 죽었으면 성문 앞)
+  formationPos(i) {
+    const h = G.hero, alive = h && !h.dead;
+    const cx = alive ? h.x : MAP.heroSpawn.x + 60, cy = alive ? h.y : MAP.heroSpawn.y;
+    let idx = i;
+    for (const [r, n, off] of [[46, 7, 0], [76, 12, 0.26], [106, 16, 0.1]]) {
+      if (idx < n) { const a = (idx / n) * TAU + off; return Nav.clampTarget(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8); }
+      idx -= n;
+    }
+    return Nav.clampTarget(cx + ((i * 37) % 120) - 60, cy + ((i * 53) % 100) - 50);
+  }
+  anchorCenter() { const h = G.hero; return h && !h.dead ? h : { x: MAP.heroSpawn.x + 60, y: MAP.heroSpawn.y }; }
+
+  stepToward(tx, ty, dt) {
+    const wp = Nav.route(this, { x: tx, y: ty })[0];
+    const dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy);
+    if (d < 0.8) return;
+    const k = Math.min(1, (this.cfg.speed * dt) / d), nx = this.x + dx * k, ny = this.y + dy * k;
+    this.face = Math.atan2(dy, dx); this.moving = true; this.walkAnim += dt;
+    if (!Nav.blocked(nx, ny)) { this.x = nx; this.y = ny; }
+  }
+
+  findEnemy() {
+    const c = this.cfg, a = this.anchorCenter(); let best = null, bd = Infinity;
+    for (const e of this.engaged) { if (!e.alive) continue; const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
+    if (best) return best;
+    for (const e of G.enemies) {
+      if (!e.alive || (e.air && !c.canHitAir)) continue;
+      const d = dist(this.x, this.y, e.x, e.y);
+      if (d > c.detect || dist(e.x, e.y, a.x, a.y) > CONFIG.soldiers.leash) continue;
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  hit(t, isBase) {
+    this.face = Math.atan2(t.y - this.y, t.x - this.x);
+    if (this.atkTimer > 0) return;
+    this.atkTimer = this.cfg.attackInterval; this.attackAnim = 0.25;
+    if (this.cfg.ranged) {
+      if (isBase) { const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d); FX.spark(t.x + rand(-30, 30), t.y + rand(-20, 20), '#fff3b0', 2); }
+      else G.projectiles.push(new Arrow(this.x, this.y - 4, t, this.damage, 650, this));
+    } else if (isBase) {
+      const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d);
+      FX.spark(this.x + Math.cos(this.face) * 16, this.y + Math.sin(this.face) * 16, '#ffe08a', 2);
+    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 2); }
+  }
+
+  update(dt, idx) {
+    if (this.attackAnim > 0) this.attackAnim -= dt;
+    if (this.flash > 0) this.flash -= dt;
+    this.atkTimer -= dt; this.moving = false;
+    const c = this.cfg, S = CONFIG.soldiers;
+    if (G.time - this.lastHit >= S.regenDelay && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * S.regenRate * dt);
+    const a = this.anchorCenter();
+
+    // 1) 적과 싸움
+    if (this.target && (!this.target.alive || dist(this.target.x, this.target.y, a.x, a.y) > S.leash + 30)) this.target = null;
+    this.retarget -= dt;
+    if (!this.target || this.retarget <= 0) { this.retarget = 0.3; this.target = this.findEnemy(); }
+    const e = this.target;
+    if (e) {
+      const d = dist(this.x, this.y, e.x, e.y);
+      const reach = c.ranged ? c.range : this.radius + e.radius + c.range;
+      if (d > reach) this.stepToward(e.x, e.y, dt); else this.hit(e, false);
+      return;
+    }
+    // 2) 영웅이 적 기지를 공격 중이면 함께 공격
+    const h = G.hero, b = h && !h.dead ? h.siegeTarget : null;
+    if (b && b.alive) {
+      const bodyR = b.m.hitRadius * 0.8;
+      const ang = Math.atan2(this.y - b.y, this.x - b.x);
+      const want = c.ranged ? bodyR + c.range * 0.7 : bodyR + this.radius + 4;
+      const d = dist(this.x, this.y, b.x, b.y);
+      if (d > want + (c.ranged ? 20 : 6)) {
+        const spread = ((idx % 7) - 3) * 0.18;
+        this.stepToward(b.x + Math.cos(ang + spread) * want, b.y + Math.sin(ang + spread) * want, dt);
+      } else this.hit(b, true);
+      return;
+    }
+    // 3, 4) 대형 유지 (영웅 주위 / 영웅 사망 시 성문 앞)
+    const f = this.formationPos(idx);
+    if (dist(this.x, this.y, f.x, f.y) > 4) this.stepToward(f.x, f.y, dt);
+    else if (h && !h.dead) this.face = h.face;
+  }
+}
+
+// ---------- 투석기 돌 (포물선, 착지 지점 광역 피해) ----------
+class Boulder {
+  constructor(x, y, tx, ty, s, cfg) {
+    this.sx = x; this.sy = y; this.tx = tx; this.ty = ty; this.x = x; this.y = y; this.z = 0;
+    this.total = Math.max(1, dist(x, y, tx, ty)); this.dur = Math.max(0.55, this.total / cfg.projectileSpeed);
+    this.t = 0; this.s = s; this.done = false; this.spin = 0;
+  }
+  update(dt) {
+    this.t += dt; this.spin += dt * 8;
+    const p = Math.min(1, this.t / this.dur);
+    this.x = lerp(this.sx, this.tx, p); this.y = lerp(this.sy, this.ty, p);
+    this.z = Math.sin(p * Math.PI) * Math.min(130, this.total * 0.45);
+    if (p >= 1) this.impact();
+  }
+  impact() {
+    this.done = true;
+    const s = this.s;
+    for (const e of G.enemies) {
+      if (!e.alive || e.air) continue;
+      const d = dist(e.x, e.y, this.tx, this.ty);
+      if (d <= s.splash + e.radius) e.takeDamage(s.damage * (d < s.splash * 0.4 ? 1 : 0.7), 'tower');
+    }
+    for (const b of G.bases) {
+      if (!b.enabled || !b.alive) continue;
+      if (dist(this.tx, this.ty, b.x, b.y) - b.m.hitRadius * 0.85 <= s.splash * 0.5) {
+        b.takeDamage(s.baseDamage); FX.text(this.tx, this.ty - 30, '-' + s.baseDamage, '#ffd36b', 18, 0.8);
+      }
+    }
+    FX.ring(this.tx, this.ty, s.splash, '200,170,120', 0.4);
+    for (let i = 0; i < 7; i++) { const a = rand(0, TAU), v = rand(40, 120); FX.add({ k: 'debris', x: this.tx, y: this.ty, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 0, drag: 3, life: rand(0.4, 0.7), max: 0.7, size: rand(3, 6), color: '#6f6a61', rot: rand(0, TAU), spin: rand(-8, 8) }); }
+    for (let i = 0; i < 5; i++) FX.puff(this.tx + rand(-s.splash * 0.5, s.splash * 0.5), this.ty + rand(-s.splash * 0.4, s.splash * 0.4), '#a48a64', rand(8, 14), 0.6, rand(-15, 15), rand(-20, 0), 0.55);
+  }
+}
+
+// ---------- 마법탑 마법탄 (유도, 방어력 무시, 3레벨 둔화) ----------
+class MagicBolt {
+  constructor(x, y, target, s, cfg) {
+    this.x = x; this.y = y; this.target = target; this.s = s; this.speed = cfg.boltSpeed;
+    this.tx = target.x; this.ty = target.y - (target.air ? AIR_HEIGHT : 0); this.done = false; this.trail = [];
+  }
+  update(dt) {
+    if (this.target && this.target.alive) { this.tx = this.target.x; this.ty = this.target.y - (this.target.air ? AIR_HEIGHT : 0); }
+    this.trail.push({ x: this.x, y: this.y }); if (this.trail.length > 6) this.trail.shift();
+    const dx = this.tx - this.x, dy = this.ty - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
+    if (d <= step + 3) {
+      this.done = true;
+      if (this.target && this.target.alive) {
+        this.target.takeDamage(this.s.damage, 'tower', true);
+        if (this.s.slow) this.target.applySlow(this.s.slow, this.s.slowTime);
+      }
+      FX.spark(this.tx, this.ty, '#d6b8ff', 5); FX.ring(this.tx, this.ty, 16, '190,150,255', 0.25);
+      return;
+    }
+    this.x += (dx / d) * step; this.y += (dy / d) * step;
   }
 }
 
@@ -1554,6 +1997,7 @@ class Enemy {
     this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv)); this.hp = this.maxHp;
     this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv);
     this.speed = cfg.speed * rand(0.92, 1.08);
+    this.armor = cfg.armor || 0; this.slowAmt = 0; this.slowTimer = 0;
     this.radius = cfg.radius; this.air = cfg.air;
     this.damage = cfg.damage * Math.pow(esc.damageMul, lv);
     this.xp = cfg.xp * (1 + 0.1 * lv);
@@ -1568,21 +2012,30 @@ class Enemy {
     this.x = s.x - s.dy * lane; this.y = s.y + s.dx * lane; this.face = Math.atan2(s.dy, s.dx);
   }
   get reachedEnd() { return !!(this.slot || this.fallback); }
+  get spd() { return this.speed * (this.slowTimer > 0 ? 1 - this.slowAmt : 1); }     // 둔화 적용된 속도
+  applySlow(amount, time) { this.slowAmt = Math.max(this.slowTimer > 0 ? this.slowAmt : 0, amount); this.slowTimer = Math.max(this.slowTimer, time); }
 
   moveToward(tx, ty, dt) {
-    const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
+    const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy), step = this.spd * dt;
     if (d <= step) { this.x = tx; this.y = ty; return true; }
     this.x += (dx / d) * step; this.y += (dy / d) * step; this.face = Math.atan2(dy, dx);
     return false;
   }
 
-  // 영웅과 마주치면 멈춰서 싸움 (공중 유닛은 근접으로 막을 수 없음)
-  canEngage(h) { return !this.air && h && !h.dead && !h.dash && (h.engaged.size < h.cfg.maxBlock || this.taunt > 0); }
+  // 영웅·병사와 마주치면 멈춰서 싸움 (공중 유닛은 근접으로 막을 수 없음)
+  canEngage(b) { return !this.air && b && !b.dead && !b.dash && (b.engaged.size < b.maxBlock || (this.taunt > 0 && b === G.hero)); }
   tryEngage() {
+    if (this.air) return false;
+    let best = null, bd = Infinity;
     const h = G.hero;
-    if (!this.canEngage(h)) return false;
-    if (dist(this.x, this.y, h.x, h.y) > this.radius + h.radius + 10) return false;
-    this.engage(h); return true;
+    if (this.canEngage(h)) { const d = dist(this.x, this.y, h.x, h.y); if (d <= this.radius + h.radius + 10) { best = h; bd = d; } }
+    for (const u of G.soldiers) {
+      if (!this.canEngage(u)) continue;
+      const d = dist(this.x, this.y, u.x, u.y);
+      if (d <= this.radius + u.radius + 8 && d < bd) { best = u; bd = d; }
+    }
+    if (best) { this.engage(best); return true; }
+    return false;
   }
   engage(h) {
     if (this.foe === h) return;
@@ -1607,6 +2060,7 @@ class Enemy {
     if (this.flash > 0) this.flash -= dt;
     if (this.lunge > 0) this.lunge -= dt;
     if (this.taunt > 0) this.taunt -= dt;
+    if (this.slowTimer > 0) this.slowTimer -= dt;
     if (this.knock) {                                   // 밀려나는 중
       const k = this.knock;
       this.x = clamp(this.x + k.vx * dt, MAP.castle.wallX + MAP.castle.wallW + 8, CONFIG.world.width - 8);
@@ -1620,7 +2074,7 @@ class Enemy {
     switch (this.state) {
       case 'walk': {
         if (this.tryEngage()) break;
-        this.dist += this.speed * dt;
+        this.dist += this.spd * dt;
         if (this.dist >= this.route.length) {
           this.dist = this.route.length; this.state = 'toGate';
           this.slot = G.gate.claimSlot(this);
@@ -1668,9 +2122,10 @@ class Enemy {
     }
   }
 
-  takeDamage(amount, src) {
+  // magic = true 이면 방어력 무시 (마법탑, 끓는 기름)
+  takeDamage(amount, src, magic) {
     if (!this.alive) return;
-    this.hp -= amount; this.flash = 0.12;
+    this.hp -= magic ? amount : amount * (1 - this.armor); this.flash = 0.12;
     if (this.hp <= 0) this.die(src || true);
   }
   die(killer) {
@@ -1700,6 +2155,12 @@ const Nav = {
     const dx = x - b.x, dy = y - b.y, c = Math.cos(-b.angle), s = Math.sin(-b.angle);
     return Math.abs(dx * c - dy * s) <= b.len / 2 + 4 && Math.abs(dx * s + dy * c) <= b.wid / 2 + 2;
   },
+  // 다리 + 양쪽 입구 구역 (이 안에서는 항상 건너편으로 진행 → 입구에서 앞뒤로 흔들리지 않음)
+  inBridgeZone(x, y) {
+    const b = MAPDATA.bridge; if (!b) return false;
+    const dx = x - b.x, dy = y - b.y, c = Math.cos(-b.angle), s = Math.sin(-b.angle);
+    return Math.abs(dx * c - dy * s) <= b.len / 2 + 16 && Math.abs(dx * s + dy * c) <= b.wid / 2 + 10;
+  },
   inWater(x, y) { return !this.onBridge(x, y) && Math.abs(x - this.riverXAt(y)) < MAP.riverWidth / 2 + 4; },
   side(x, y) { return x < this.riverXAt(y) ? -1 : 1; },
   blocked(x, y) {
@@ -1722,7 +2183,7 @@ const Nav = {
     const s2 = this.side(to.x, to.y);
     const [A, B] = this.bridgeEnds();
     const near = this.side(A.x, A.y) === s2 ? B : A, far = near === A ? B : A;
-    if (this.onBridge(from.x, from.y)) return [far, to];
+    if (this.inBridgeZone(from.x, from.y)) return dist(from.x, from.y, far.x, far.y) < 3 ? [to] : [far, to];   // 다리 구역 안이면 건너편으로
     if (this.side(from.x, from.y) === s2) return [to];
     return [near, far, to];
   },
@@ -1750,6 +2211,7 @@ class Hero {
     this.damage = c.attack.damage + c.perLevel.damage * l;
     this.armor = Math.min(0.75, c.armor + c.perLevel.armor * l);
   }
+  get maxBlock() { return this.cfg.maxBlock; }
   get xpToNext() { return this.level >= CONFIG.heroLevels.max ? 0 : CONFIG.heroLevels.xpToNext[this.level - 1]; }
   skillValue(sk, key) { return sk[key] + (key === 'damage' && sk.perLevel ? sk.perLevel * (this.level - 1) : 0); }
 
@@ -1915,6 +2377,8 @@ class Hero {
     if (this.flash > 0) this.flash -= dt;
     this.atkTimer -= dt;
     this.moving = false;
+    // 병사들이 함께 공격할 적 기지 (기지를 공격하러 가는 중이거나 공격 중일 때)
+    this.siegeTarget = this.baseTarget && this.baseTarget.alive ? this.baseTarget : null;
     if (this.dead) { this.respawnTimer -= dt; if (this.respawnTimer <= 0) this.respawn(); return; }
     const c = this.cfg;
     if (G.time - this.lastHit >= c.regenDelay && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * c.regenRate * dt);   // 자연 회복
@@ -1944,6 +2408,7 @@ class Hero {
     }
     const b = this.findBase();
     if (b) {
+      this.siegeTarget = b;
       if (dist(this.x, this.y, b.x, b.y) - b.m.hitRadius * 0.8 > this.radius + c.attack.range) this.stepToward(b.x, b.y, dt);
       else this.strike(b, true);
       return;
@@ -2107,13 +2572,15 @@ const Input = {
     e.preventDefault();
     if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
     const v = this.toVirtual(e), item = UI.hit(v.x, v.y);
+    this.hoverScreen = v;
     this.pointers.set(e.pointerId, { sx: v.x, sy: v.y, lx: v.x, ly: v.y, moved: false, item });
     if (item && item.id) UI.pressed = item.id;
   },
   hover: null,      // 마우스 위치(지도 좌표) — 조준 미리보기용
+  hoverScreen: null, // 마우스 위치(화면 좌표) — 건설 메뉴 설명용
   move(e) {
     const v = this.toVirtual(e);
-    this.hover = Camera.toWorld(v.x, v.y);
+    this.hover = Camera.toWorld(v.x, v.y); this.hoverScreen = v;
     const p = this.pointers.get(e.pointerId); if (!p) return;
     if (!p.moved && Math.hypot(v.x - p.sx, v.y - p.sy) > this.threshold()) {
       p.moved = true;
@@ -2163,7 +2630,7 @@ function onWorldTap(w) {
   const spot = G.spots.find(s => dist(w.x, w.y, s.x, s.y) <= MAP.spotRadius + 4);
   if (spot) {
     const ref = spot.tower || spot;
-    G.sel = G.sel && G.sel.ref === ref ? null : { kind: spot.tower ? 'tower' : 'spot', ref, confirmSell: 0 };
+    G.sel = G.sel && G.sel.ref === ref ? null : { kind: spot.tower ? 'building' : 'spot', ref, confirmSell: 0 };
     return;
   }
   if (w.x < MAP.castle.wallX + MAP.castle.wallW + 8) { G.sel = G.sel && G.sel.kind === 'gate' ? null : { kind: 'gate', ref: G.gate }; return; }
@@ -2205,31 +2672,32 @@ function notEnoughGold(x, y) {
   FX.text(x, y - 44, '골드가 부족합니다', '#ff8a75', 18, 1.1);
   G.goldFlashUntil = realTime + 0.7;
 }
-function buildTower(spot, type) {
-  const cfg = CONFIG.towers[type]; if (!cfg || spot.tower) return;
+function buildBuilding(spot, type) {
+  const cfg = buildingCfg(type); if (!cfg || spot.tower) return;
   const cost = cfg.levels[0].cost;
   if (G.gold < cost) { notEnoughGold(spot.x, spot.y); return; }
   G.gold -= cost;
-  const t = new Tower(type, spot); spot.tower = t; G.towers.push(t);
+  const bd = CONFIG.towers[type] ? new Tower(type, spot) : new Barracks(type, spot);
+  spot.tower = bd; G.buildings.push(bd);
   for (let i = 0; i < 4; i++) FX.dust(spot.x + rand(-18, 18), spot.y + rand(-12, 14));
   FX.text(spot.x, spot.y - 40, `-${cost}`, '#ffd84a', 18);
-  G.sel = { kind: 'tower', ref: t, confirmSell: 0 };
+  G.sel = { kind: 'building', ref: bd, confirmSell: 0 };
 }
-function upgradeTower(t) {
-  if (t.maxed) return;
-  const cost = t.upgradeCost;
-  if (G.gold < cost) { notEnoughGold(t.x, t.y); return; }
-  G.gold -= cost; t.upgrade();
-  FX.ring(t.x, t.y, 40, '255,215,90', 0.5); FX.spark(t.x, t.y - 10, '#ffe08a', 10);
-  FX.text(t.x, t.y - 44, `Lv.${t.level}!`, '#ffd36b', 20);
+function upgradeBuilding(bd) {
+  if (bd.maxed) return;
+  const cost = bd.upgradeCost;
+  if (G.gold < cost) { notEnoughGold(bd.x, bd.y); return; }
+  G.gold -= cost; bd.upgrade();
+  FX.ring(bd.x, bd.y, 40, '255,215,90', 0.5); FX.spark(bd.x, bd.y - 10, '#ffe08a', 10);
+  FX.text(bd.x, bd.y - 44, `Lv.${bd.level}!`, '#ffd36b', 20);
 }
-function sellTower(t) {
+function sellBuilding(bd) {
   if (!(G.sel && G.sel.confirmSell > 0)) { if (G.sel) G.sel.confirmSell = 3; return; }   // 한 번 더 눌러야 판매 (실수 방지)
-  const v = t.sellValue;
-  G.gold += v; t.spot.tower = null;
-  G.towers.splice(G.towers.indexOf(t), 1);
-  for (let i = 0; i < 4; i++) FX.dust(t.x + rand(-18, 18), t.y + rand(-12, 14));
-  FX.text(t.x, t.y - 40, `+${v} 골드`, '#ffd84a', 18);
+  const v = bd.sellValue;
+  G.gold += v; bd.spot.tower = null; bd.onRemove();
+  G.buildings.splice(G.buildings.indexOf(bd), 1);
+  for (let i = 0; i < 4; i++) FX.dust(bd.x + rand(-18, 18), bd.y + rand(-12, 14));
+  FX.text(bd.x, bd.y - 40, `+${v} 골드`, '#ffd84a', 18);
   G.sel = null;
 }
 function upgradeGate() {
@@ -2387,6 +2855,10 @@ function drawBottomHUD(ctx) {
   const maxed = h.level >= CONFIG.heroLevels.max;
   bar(ctx, tx, py + 63 * k, bw, 11 * k, maxed ? 1 : h.xp / h.xpToNext, '#8f7bff');
   txt(ctx, maxed ? 'EXP  최대 레벨' : `EXP  ${Math.floor(h.xp)} / ${h.xpToNext}`, tx, py + 86 * k, 12 * k, '#c9c0ff', 'left', { weight: 600 });
+  if (G.soldiers.length || G.buildings.some(b => b instanceof Barracks)) {
+    const capped = G.soldiers.length >= CONFIG.soldiers.globalCap;
+    txt(ctx, `병사 ${G.soldiers.length} / ${CONFIG.soldiers.globalCap}`, tx + bw, py + 86 * k, 12 * k, capped ? '#ff9a7a' : '#9fd8ff', 'right', { weight: 700 });
+  }
 
   // --- 스킬 버튼 (오른쪽 아래) ---
   const bs = 92 * k, gap = 14 * k, by = VH - pad - bs;
@@ -2424,20 +2896,17 @@ function drawSkillButton(ctx, i, x, y, s, k) {
   }
 }
 
-// ---------- 선택 메뉴 (건설 자리 / 타워 / 성문) ----------
-const BUILD_OPTIONS = [
-  { type: 'archer' },
-  { type: 'catapult', name: '투석기', stage: 4 },
-  { type: 'mage', name: '마법탑', stage: 4 },
-];
+// ---------- 선택 메뉴 (건설 자리 / 건물 / 성문) ----------
+const BUILD_OPTIONS = ['archer', 'catapult', 'mage', 'infantry', 'archers', 'knights'];   // 위 줄: 방어타워, 아래 줄: 병력생성소
 function worldToScreen(x, y) { return { x: (x - Camera.x) * Camera.zoom, y: (y - Camera.y) * Camera.zoom }; }
 
 function drawSelectionPanel(ctx) {
   const s = G.sel; if (!s || G.state !== 'playing') return;
-  if (s.kind === 'tower' && !G.towers.includes(s.ref)) { G.sel = null; return; }
-  if (s.kind === 'spot' && s.ref.tower) { G.sel = { kind: 'tower', ref: s.ref.tower, confirmSell: 0 }; return; }
+  if (s.kind === 'building' && !G.buildings.includes(s.ref)) { G.sel = null; return; }
+  if (s.kind === 'spot' && s.ref.tower) { G.sel = { kind: 'building', ref: s.ref.tower, confirmSell: 0 }; return; }
   const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height;
-  const size = s.kind === 'spot' ? [356, 212] : s.kind === 'tower' ? [356, 240] : [404, 252];
+  const rows = s.kind === 'building' ? buildingRows(s.ref) : null;
+  const size = s.kind === 'spot' ? [356, 290] : s.kind === 'building' ? [356, 160 + rows.length * 28] : [404, 252];
   const w = size[0] * k, h = size[1] * k;
   const anchor = s.kind === 'gate' ? { x: MAP.castle.wallX + MAP.castle.wallW, y: MAP.gate.y } : s.ref;
   const a = worldToScreen(anchor.x, anchor.y), gap = 44 * Camera.zoom;
@@ -2454,31 +2923,48 @@ function drawSelectionPanel(ctx) {
   ctx.beginPath(); ctx.moveTo(cx + 13 * k, cy + 13 * k); ctx.lineTo(cx + cs - 13 * k, cy + cs - 13 * k);
   ctx.moveTo(cx + cs - 13 * k, cy + 13 * k); ctx.lineTo(cx + 13 * k, cy + cs - 13 * k); ctx.stroke();
   if (s.kind === 'spot') drawBuildMenu(ctx, s, px, py, w, h, k);
-  else if (s.kind === 'tower') drawTowerMenu(ctx, s, px, py, w, h, k);
+  else if (s.kind === 'building') drawBuildingMenu(ctx, s, rows, px, py, w, h, k);
   else drawGateMenu(ctx, s, px, py, w, h, k);
 }
 
 function drawBuildMenu(ctx, s, px, py, w, h, k) {
-  txt(ctx, '건설', px + 18 * k, py + 26 * k, 19 * k, '#ffe7b8');
-  const cw = 104 * k, ch = 132 * k, gap = (w - cw * 3) / 4, cy = py + 50 * k;
-  BUILD_OPTIONS.forEach((o, i) => {
-    const cx = px + gap + i * (cw + gap), cfg = CONFIG.towers[o.type], locked = !cfg;
-    const cost = locked ? 0 : cfg.levels[0].cost, afford = !locked && G.gold >= cost;
-    const pr = UI.button('build_' + o.type, cx, cy, cw, ch, () => { if (!locked) buildTower(s.ref, o.type); });
+  txt(ctx, '건설', px + 18 * k, py + 25 * k, 19 * k, '#ffe7b8');
+  const cw = 104 * k, ch = 100 * k, gap = (w - cw * 3) / 4;
+  let hovered = null;
+  BUILD_OPTIONS.forEach((type, i) => {
+    const cx = px + gap + (i % 3) * (cw + gap), cy = py + 46 * k + Math.floor(i / 3) * (ch + 8 * k);
+    const cfg = buildingCfg(type), cost = cfg.levels[0].cost, afford = G.gold >= cost;
+    const pr = UI.button('build_' + type, cx, cy, cw, ch, () => buildBuilding(s.ref, type));
+    const hv = Input.hoverScreen && Input.hoverScreen.x >= cx && Input.hoverScreen.x <= cx + cw && Input.hoverScreen.y >= cy && Input.hoverScreen.y <= cy + ch;
+    if (hv || pr) hovered = cfg;
     const off = pr ? 2 * k : 0;
     rr(ctx, cx, cy + off, cw, ch, 10 * k);
-    ctx.fillStyle = locked ? 'rgba(60,50,40,0.6)' : afford ? 'rgba(96,68,32,0.95)' : 'rgba(70,52,30,0.85)'; ctx.fill();
-    ctx.strokeStyle = locked ? '#6a5a44' : afford ? '#e8c35a' : '#9a7a4a'; ctx.lineWidth = 2 * k; ctx.stroke();
-    ctx.globalAlpha = locked ? 0.35 : 1;
-    Icon.buildIcon(ctx, o.type, cx + cw / 2, cy + 44 * k + off, 56 * k, realTime);
+    ctx.fillStyle = afford ? (hv ? 'rgba(120,86,40,0.98)' : 'rgba(96,68,32,0.95)') : 'rgba(70,52,30,0.85)'; ctx.fill();
+    ctx.strokeStyle = afford ? '#e8c35a' : '#9a7a4a'; ctx.lineWidth = 2 * k; ctx.stroke();
+    ctx.globalAlpha = afford ? 1 : 0.6;
+    Icon.buildIcon(ctx, type, cx + cw / 2, cy + 34 * k + off, 50 * k, realTime);
     ctx.globalAlpha = 1;
-    txt(ctx, locked ? o.name : cfg.name, cx + cw / 2, cy + 88 * k + off, 15 * k, locked ? '#a89a80' : '#f3e3bf', 'center');
-    if (locked) { Icon.lock(ctx, cx + cw / 2 - 20 * k, cy + 112 * k + off, 14 * k); txt(ctx, `${o.stage}단계`, cx + cw / 2 + 6 * k, cy + 113 * k + off, 13 * k, '#a89a80', 'center'); }
-    else { Icon.coin(ctx, cx + cw / 2 - 18 * k, cy + 112 * k + off, 17 * k); txt(ctx, cost + '', cx + cw / 2 - 6 * k, cy + 113 * k + off, 17 * k, afford ? '#ffe08a' : '#ff7a6a', 'left', { weight: 800 }); }
+    txt(ctx, cfg.name, cx + cw / 2, cy + 70 * k + off, 14 * k, '#f3e3bf', 'center');
+    Icon.coin(ctx, cx + cw / 2 - 18 * k, cy + 88 * k + off, 15 * k);
+    txt(ctx, cost + '', cx + cw / 2 - 7 * k, cy + 89 * k + off, 15 * k, afford ? '#ffe08a' : '#ff7a6a', 'left', { weight: 800 });
   });
-  txt(ctx, `${CONFIG.towers.archer.name}: ${CONFIG.towers.archer.desc}`, px + w / 2, py + h - 15 * k, 13 * k, '#cdbb98', 'center', { weight: 500 });
+  const foot = hovered ? `${hovered.name}: ${hovered.desc}` : '위: 방어타워 (직접 공격) · 아래: 병력생성소 (병사 생산)';
+  fitTxt(ctx, foot, px + w / 2, py + h - 15 * k, 12.5 * k, w - 24 * k, '#cdbb98', 'center', { weight: 500 });
 }
 
+// 건물별 능력치 표 [이름, 현재, 다음 레벨]
+function buildingRows(bd) {
+  const c = bd.stats, n = bd.maxed ? null : bd.cfg.levels[bd.level];
+  const v = f => (n ? f(n) : null), sec = x => x.toFixed(x < 10 ? 1 : 0) + '초', pct = x => Math.round(x * 100) + '%';
+  switch (bd.type) {
+    case 'archer': return [['공격력', c.damage, v(n => n.damage)], ['공격 간격', sec(c.interval), v(n => sec(n.interval))], ['사거리', c.range, v(n => n.range)]];
+    case 'catapult': return [['공격력 (광역)', c.damage, v(n => n.damage)], ['폭발 범위', c.splash, v(n => n.splash)], ['공격 간격', sec(c.interval), v(n => sec(n.interval))], ['사거리', c.range, v(n => n.range)], ['기지 피해', c.baseDamage, v(n => n.baseDamage)]];
+    case 'mage': { const sl = L => (L.slow ? `${pct(L.slow)} · ${L.slowTime}초` : '없음');
+      return [['마법 공격력', c.damage, v(n => n.damage)], ['공격 간격', sec(c.interval), v(n => sec(n.interval))], ['사거리', c.range, v(n => n.range)], ['둔화', sl(c), v(sl)]]; }
+    default: return [['병사 수', `${bd.units.length} / ${c.maxUnits}명`, v(n => n.maxUnits + '명')], ['생산 시간', sec(c.spawnTime), v(n => sec(n.spawnTime))],
+      ['병사 체력', c.hp, v(n => n.hp)], ['병사 공격력', c.damage, v(n => n.damage)], ['병사 방어력', pct(c.armor), v(n => pct(n.armor))]];
+  }
+}
 function drawStatRows(ctx, rows, x, y, w, k, curCol, nextCol) {
   rows.forEach((r, i) => {
     const yy = y + i * 28 * k;
@@ -2504,20 +2990,18 @@ function costButton(ctx, id, x, y, w, h, k, label, cost, enabled, onTap, style =
   txt(ctx, String(cost), x + w / 2 - cw / 2 + 19 * k, y + 39.5 * k + off, 15 * k, enabled ? '#ffe9a0' : '#ff9a8a', 'left', { stroke: 'rgba(60,30,5,0.85)', weight: 800 });
 }
 
-function drawTowerMenu(ctx, s, px, py, w, h, k) {
-  const t = s.ref, cur = t.stats, nxt = t.maxed ? null : t.cfg.levels[t.level];
+function drawBuildingMenu(ctx, s, rows, px, py, w, h, k) {
+  const t = s.ref;
   txt(ctx, `${t.cfg.name}  Lv.${t.level}`, px + 18 * k, py + 26 * k, 19 * k, '#ffe7b8');
-  drawStatRows(ctx, [
-    ['공격력', cur.damage, nxt && nxt.damage],
-    ['공격 간격', cur.interval.toFixed(2) + '초', nxt && nxt.interval.toFixed(2) + '초'],
-    ['사거리', cur.range, nxt && nxt.range],
-  ], px, py + 60 * k, w, k, 0.40, 0.70);
-  txt(ctx, t.cfg.desc, px + 18 * k, py + 60 * k + 3 * 28 * k + 2 * k, 13 * k, '#cdbb98', 'left', { weight: 500 });
+  drawStatRows(ctx, rows, px, py + 60 * k, w, k, 0.42, 0.72);
+  let note = t.cfg.desc;
+  if (t instanceof Barracks) note = t.capped ? `전체 병사 상한(${CONFIG.soldiers.globalCap}명)에 도달해 생산 대기 중` : `전체 병사 ${G.soldiers.length} / ${CONFIG.soldiers.globalCap}명 · ${t.cfg.desc}`;
+  fitTxt(ctx, note, px + 18 * k, py + 60 * k + rows.length * 28 * k + 2 * k, 12.5 * k, w - 36 * k, t.capped ? '#ff9a7a' : '#cdbb98', 'left', { weight: 500 });
   const bw = (w - 48 * k) / 2, bh = 56 * k, by = py + h - bh - 14 * k, ux = px + 16 * k, sx = ux + bw + 16 * k;
   if (t.maxed) costButton(ctx, 'upg', ux, by, bw, bh, k, '최대 레벨', null, false, () => {});
-  else costButton(ctx, 'upg', ux, by, bw, bh, k, '업그레이드', t.upgradeCost, G.gold >= t.upgradeCost, () => upgradeTower(t));
+  else costButton(ctx, 'upg', ux, by, bw, bh, k, '업그레이드', t.upgradeCost, G.gold >= t.upgradeCost, () => upgradeBuilding(t));
   const confirm = s.confirmSell > 0;
-  costButton(ctx, 'sell', sx, by, bw, bh, k, confirm ? '한 번 더 누르면 판매' : '판매', '+' + t.sellValue, true, () => sellTower(t),
+  costButton(ctx, 'sell', sx, by, bw, bh, k, confirm ? '한 번 더 누르면 판매' : '판매', '+' + t.sellValue, true, () => sellBuilding(t),
     confirm ? { c1: '#d0503a', c2: '#8a2a18', border: '#ffd0b0' } : { c1: '#9a6a52', c2: '#5e3a2c', border: '#f0c8a8' });
 }
 
@@ -2598,11 +3082,12 @@ function drawTitle(ctx, k) {
   txt(ctx, '성문을 지키고, 적의 기지를 무너뜨려라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
-    ['3단계 테스트 버전 — 영웅: 기사', '#ffcf6a'],
+    ['4단계 테스트 버전 — 영웅: 기사', '#ffcf6a'],
     ['· 빈 곳을 탭하면 기사가 이동하고, 동굴을 탭하면 달려가서 기지를 공격합니다.'],
     ['· 스킬: 방패 강타(Q) · 도발의 함성(W) · 돌진(E: 버튼 → 지도에서 방향 탭)'],
-    ['· 적을 처치하면 골드를 얻어요. 길가의 빈 터를 탭해 궁수탑을 짓고, 탑을 탭해 업그레이드·판매하세요.'],
-    ['· 성(성문)을 탭하면 성문 업그레이드: 에너지·목수·성벽 궁수 강화, 3레벨에 끓는 기름!'],
+    ['· 빈 터를 탭해 건설: 궁수탑 · 투석기(기지 공격 가능) · 마법탑 / 보병 · 궁수 · 기사단 막사'],
+    ['· 막사의 병사들은 영웅을 따라다니며 싸우고, 영웅이 기지를 공격하면 함께 공격해요.'],
+    ['· 성을 탭하면 성문 업그레이드 (3레벨: 끓는 기름)'],
     ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 동굴을 파괴하세요!'],
   ];
   let ly = y + 192 * k;
@@ -2716,8 +3201,9 @@ function createState() {
     state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, nextId: 1,
     gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
     gold: CONFIG.economy.startGold, goldFlashUntil: 0,
-    towers: [], spots: MAP.buildSpots.map(s => ({ x: s.x, y: s.y, tower: null })),
-    sel: null,          // 선택된 대상: { kind: 'spot' | 'tower' | 'gate', ref, confirmSell }
+    buildings: [], spots: MAP.buildSpots.map(s => ({ x: s.x, y: s.y, tower: null })),
+    soldiers: [],       // 아군 병사 (전체 상한 CONFIG.soldiers.globalCap)
+    sel: null,          // 선택된 대상: { kind: 'spot' | 'building' | 'gate', ref, confirmSell }
     pendingResult: null, endTimer: 0, banner: null, stats: { kills: 0 },
   };
 }
@@ -2742,7 +3228,9 @@ function update(dt) {
   if (th !== G.threat) { G.threat = th; showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4); }
   G.gate.update(dt);
   G.hero.update(dt);
-  for (const t of G.towers) t.update(dt);
+  for (const b of G.buildings) b.update(dt);
+  for (let i = 0; i < G.soldiers.length; i++) if (!G.soldiers[i].dead) G.soldiers[i].update(dt, i);
+  compact(G.soldiers, u => !u.dead);
   if (G.sel && G.sel.confirmSell > 0) G.sel.confirmSell -= dt;
   for (const b of G.bases) b.update(dt);
   for (const e of G.enemies) if (e.alive) e.update(dt);
@@ -2765,11 +3253,18 @@ function renderWorld(ctx) {
   const h = G.hero, sel = G.sel;
   // 선택 표시: 건설 자리 강조 + 사거리 미리보기
   if (sel && G.state === 'playing') {
-    if (sel.kind === 'spot') { Art.spotHighlight(ctx, sel.ref, realTime); Art.rangeCircle(ctx, sel.ref.x, sel.ref.y, CONFIG.towers.archer.levels[0].range, realTime); }
-    else if (sel.kind === 'tower') {
+    if (sel.kind === 'spot') {
+      Art.spotHighlight(ctx, sel.ref, realTime);
+      const hv = Input.hoverScreen && UI.items.find(it => it.id && it.id.startsWith('build_') && Input.hoverScreen.x >= it.x && Input.hoverScreen.x <= it.x + it.w && Input.hoverScreen.y >= it.y && Input.hoverScreen.y <= it.y + it.h);
+      const tc = hv && CONFIG.towers[hv.id.slice(6)];
+      if (tc) Art.rangeCircle(ctx, sel.ref.x, sel.ref.y, tc.levels[0].range, realTime);
+    } else if (sel.kind === 'building' && sel.ref instanceof Tower) {
       const t = sel.ref, nr = t.maxed ? 0 : t.cfg.levels[t.level].range;
       if (nr > t.stats.range) Art.rangeCircle(ctx, t.x, t.y, nr, realTime, '140,255,120');
       Art.rangeCircle(ctx, t.x, t.y, t.stats.range, realTime);
+    } else if (sel.kind === 'building') {
+      Art.spotHighlight(ctx, sel.ref, realTime);
+      for (const u of sel.ref.units) { ctx.strokeStyle = 'rgba(255,225,120,0.8)'; ctx.lineWidth = 2; ellipse(ctx, u.x, u.y + 6, u.radius + 4, (u.radius + 4) * 0.5); ctx.stroke(); }
     } else if (sel.kind === 'gate') {
       for (const a of G.gate.archers) Art.rangeCircle(ctx, a.x, a.y, G.gate.cfg.archerRange, realTime, '160,200,255');
     }
@@ -2781,21 +3276,25 @@ function renderWorld(ctx) {
   const ground = [];
   for (const e of G.enemies) if (!e.air) ground.push(e);
   for (const c of G.gate.carpenters) ground.push(c);
-  for (const t of G.towers) ground.push(t);
+  for (const b of G.buildings) ground.push(b);
+  for (const u of G.soldiers) ground.push(u);
   if (h) ground.push(h);
   ground.sort((a, b) => (a.dead ? a.deathY : a.y) - (b.dead ? b.deathY : b.y));
   for (const o of ground) {
     if (o instanceof Enemy) Art.enemy(ctx, o);
     else if (o instanceof Hero) Art.hero(ctx, o, realTime);
-    else if (o instanceof Tower) Art.building(ctx, o, realTime);
+    else if (o instanceof Building) Art.building(ctx, o, realTime);
+    else if (o instanceof Soldier) Art.soldier(ctx, o, realTime);
     else Art.carpenter(ctx, o);
   }
   for (const a of G.gate.archers) Art.wallArcher(ctx, a);
-  for (const p of G.projectiles) Art.arrow(ctx, p);
+  for (const p of G.projectiles) Art.projectile(ctx, p);
   for (const e of G.enemies) if (e.air) Art.enemy(ctx, e);
   FX.draw(ctx);
   for (const b of G.bases) Art.baseBar(ctx, b);
   for (const e of G.enemies) Art.enemyBar(ctx, e);
+  for (const u of G.soldiers) Art.soldierBar(ctx, u);
+  for (const b of G.buildings) if (b instanceof Barracks) Art.barracksGauge(ctx, b);
   if (h) Art.heroBar(ctx, h);
 }
 
@@ -2809,8 +3308,8 @@ function render() {
   ctx.restore();
   UI.begin();
   drawHUD(ctx);
-  drawSelectionPanel(ctx);
   drawBanner(ctx);
+  drawSelectionPanel(ctx);   // 메뉴는 안내 띠보다 위에
   drawAimHint(ctx);
   drawOverlay(ctx);
 }
