@@ -4650,7 +4650,7 @@ function drawResult(ctx, k) {
   const won = G.state === 'won', pw = 700 * k, ph = 520 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last;
   txt(ctx, won ? (last ? '왕국을 지켰습니다!' : '스테이지 클리어!') : '패배...', cx, y + 82 * k, (won ? 58 : 70) * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
-  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」가 열렸습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」${josa(CONFIG.stages[G.stageIdx + 1].name, '이', '가').slice(-1)} 열렸습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
   txt(ctx, `${G.stageIdx + 1}스테이지 ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
   divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
   const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
