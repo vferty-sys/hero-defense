@@ -784,6 +784,40 @@ function loadImages() {
   }
 }
 
+// ---------- 그림 파일(스프라이트): AI로 만든 그림으로 캐릭터를 그림 ----------
+// images/ 에 원본을 올리고 tools/prepare_images.py 를 실행하면 images/web/ 에 게임용 그림이 생깁니다.
+// 아래 목록에 있는 그림만 불러오고, 그림이 없는 캐릭터는 지금처럼 도형으로 그립니다.
+// 그림은 오른쪽을 바라보는 모습 (왼쪽으로 갈 때는 뒤집어 그림). 병사는 unit_<종류>_<단계>, 없는 단계는 낮은 단계 그림을 씀
+const SPRITE_NAMES = ['hero_knight', 'hero_archer', 'hero_mage', 'unit_footman_1', 'unit_archer_1'];
+const SPRITE_DIR = 'images/web/';
+const Sprites = {
+  list: {},
+  load() {
+    for (const n of SPRITE_NAMES) {
+      const im = new Image();
+      im.onload = () => this.prepare(n, im);
+      im.src = SPRITE_DIR + n + '.png';
+    }
+  },
+  prepare(n, im) {
+    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+    const half = mk(Math.round(im.width / 2), Math.round(im.height / 2)), hg = half.getContext('2d');
+    hg.imageSmoothingQuality = 'high'; hg.drawImage(im, 0, 0, half.width, half.height);       // 작게 그릴 때 쓰는 절반 크기
+    const flash = mk(im.width, im.height), fg = flash.getContext('2d');                         // 맞았을 때 하얀 실루엣
+    fg.drawImage(im, 0, 0); fg.globalCompositeOperation = 'source-in'; fg.fillStyle = '#ffffff'; fg.fillRect(0, 0, flash.width, flash.height);
+    let headX = 0.5;                                                                            // 초상화용 얼굴 위치 (위쪽 20%의 가운데)
+    try {
+      const c = mk(im.width, im.height), g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, Math.round(c.height * 0.2)).data; let sx = 0, cnt = 0;
+      for (let i = 3; i < d.length; i += 16) if (d[i] > 128) { sx += ((i - 3) / 4) % c.width; cnt++; }
+      if (cnt) headX = sx / cnt / c.width;
+    } catch (_) {}
+    this.list[n] = { img: im, half, flash, ar: im.width / im.height, headX };
+  },
+  get(n) { return this.list[n] || null; },
+  unit(kind, level) { for (let t = tierOf(level); t >= 1; t--) { const sp = this.list[`unit_${kind}_${t}`]; if (sp) return sp; } return null; },
+};
+
 function blobPath(ctx, bl) {
   const P = bl.P, n = P.length;
   ctx.beginPath();
@@ -804,6 +838,28 @@ const Art = {
     ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (flip) ctx.scale(-1, 1);
     ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore();
     return true;
+  },
+
+  // 그림 파일로 그리기: (x, y) = 발 위치, H = 키(지도 px). 움직임은 코드로 붙임
+  sprite(ctx, sp, x, y, H, o) {
+    const W = H * sp.ar, dir = o.flip ? -1 : 1, sq = o.sq || 0;
+    const im = H * pixelRatio * Camera.zoom < 150 ? sp.half : sp.img;                 // 작게 보일 때는 절반 크기 그림 (더 깔끔)
+    ctx.save(); ctx.translate(x + (o.dx || 0), y + (o.bob || 0));
+    if (o.tilt) ctx.rotate(o.tilt);
+    ctx.scale(dir * (1 + sq), 1 - sq);
+    ctx.drawImage(im, -W / 2, -H, W, H);
+    if (o.flash > 0) { ctx.globalAlpha = Math.min(0.75, o.flash * 7); ctx.drawImage(sp.flash, -W / 2, -H, W, H); }
+    ctx.restore();
+  },
+  // 걷기(통통 튀기·좌우 흔들림) / 공격(앞으로 숙이기) / 가만히(숨쉬기) / 기절(흔들흔들) / 방향(좌우 뒤집기)
+  spriteMotion(u, rt, atkDur = 0.25) {
+    const c = Math.cos(u.face); if (c < -0.25) u.flipX = true; else if (c > 0.25) u.flipX = false;
+    const dir = u.flipX ? -1 : 1, o = { flip: !!u.flipX, flash: u.flash || 0 };
+    if (u.moving) { const w = u.walkAnim * 11; o.bob = -Math.abs(Math.sin(w)) * 3; o.tilt = Math.sin(w) * 0.06; }
+    else o.sq = Math.sin(rt * 2.4 + (u.x % 7)) * 0.012;
+    if (u.attackAnim > 0) { const p = 1 - Math.min(1, u.attackAnim / atkDur), k = Math.sin(p * Math.PI); o.dx = dir * k * 6; o.tilt = (o.tilt || 0) + dir * k * 0.14; }
+    if (u.stun > 0) o.tilt = Math.sin(rt * 9) * 0.08;
+    return o;
   },
 
   // ---------------- 배경 (한 번만 그려서 캐시) ----------------
@@ -1622,7 +1678,7 @@ const Art = {
   status(ctx, u, rt) {
     this.supAura(ctx, u, rt);
     if (u.root > 0) { ctx.strokeStyle = 'rgba(240,240,240,0.85)'; ctx.lineWidth = 1.4; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(u.x, u.y + 2, u.radius + 3 + i * 2.2, i * 1.3, i * 1.3 + 2.6); ctx.stroke(); } }
-    if (u.stun > 0) this.stunStars(ctx, u.x, u.y - u.radius - 22, rt);
+    if (u.stun > 0) this.stunStars(ctx, u.x, u._top != null ? u._top - 18 : u.y - u.radius - 22, rt);
   },
 
   stunStars(ctx, x, y, t) {
@@ -1645,6 +1701,9 @@ const Art = {
     }
     ctx.strokeStyle = 'rgba(255,215,90,0.85)'; ctx.lineWidth = 2; ellipse(ctx, x, y + 9, 23, 10); ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, x + 2, y + 9, 19, 8); ctx.fill();
+    const sp = Sprites.get('hero_' + h.type);
+    if (sp) { const H = 74; this.sprite(ctx, sp, x, y + 9, H, this.spriteMotion(h, t)); h._top = y + 9 - H; return; }
+    h._top = null;
     const bob = h.moving ? Math.sin(h.walkAnim * 12) * 1.4 : 0;
     if (h.type !== 'knight') {                                   // 궁사·마법사
       if (!this.img(ctx, h.type + 'Hero', x, y + bob, 50, 50, h.face)) (h.type === 'archer' ? this.heroArcher : this.heroMage).call(this, ctx, h, x, y + bob, t);
@@ -1781,7 +1840,7 @@ const Art = {
 
   heroBar(ctx, h) {
     if (h.dead) return;
-    const w = 44, x = h.x - w / 2 + 7, y = h.y - 40;
+    const w = 44, x = h.x - w / 2 + 7, y = h._top != null ? h._top - 12 : h.y - 40;
     bar(ctx, x, y, w, 6, h.hp / h.maxHp, '#5cd04a');
     if (h.maxMana) bar(ctx, x, y + 6, w, 4, h.mana / h.maxMana, '#4a8cff');
     ctx.fillStyle = '#2a1d10'; circle(ctx, x - 7, y + 3, 7.5); ctx.fill();
@@ -1885,7 +1944,10 @@ const Art = {
     ctx.fillStyle = 'rgba(0,0,0,0.26)'; ellipse(ctx, s.x + 1, s.y + 6, s.radius * (horse ? 1.5 : 1.05), s.radius * 0.55); ctx.fill();
     if (s.root > 0) { ctx.strokeStyle = 'rgba(235,235,235,0.8)'; ctx.lineWidth = 1.2; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(s.x, s.y + 2, s.radius + 2 + i * 2, i, i + 2.4); ctx.stroke(); } }
     this.supAura(ctx, s, rt);
-    if (!this.img(ctx, s.kind + L, s.x, s.y + bob, s.radius * 3, s.radius * 3, s.face)) {
+    const sp = Sprites.unit(s.kind, s.level);
+    s._top = null;
+    if (sp) { const H = s.kind === 'knight' ? 58 : 46; this.sprite(ctx, sp, s.x, s.y + 6, H, this.spriteMotion(s, rt)); s._top = s.y + 6 - H; }
+    else if (!this.img(ctx, s.kind + L, s.x, s.y + bob, s.radius * 3, s.radius * 3, s.face)) {
       if (s.kind === 'archer') {
         const L = tierOf(s.level);
         const cloak = ['#6b7f3a', '#3f6a3a', '#2c5b45'][L - 1];
@@ -1897,12 +1959,12 @@ const Art = {
     }
     const stars = s.level >= CONFIG.army.passiveLevel ? 2 : s.level >= CONFIG.army.skillLevel ? 1 : 0;   // 5레벨 ★ (자동 스킬) / 10레벨 ★★ (패시브)
     for (let i = 0; i < stars; i++) {
-      const px = s.x - (stars - 1) * 4 + i * 8, py = s.y - s.radius - 7;
+      const px = s.x - (stars - 1) * 4 + i * 8, py = s._top != null ? s._top - 3 : s.y - s.radius - 7;
       ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = 'rgba(60,30,0,0.8)'; ctx.lineWidth = 1; ctx.beginPath();
       for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, r = j % 2 ? 1.6 : 3.8; ctx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
       ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    if (s.stun > 0) this.stunStars(ctx, s.x, s.y - s.radius - 8, rt);
+    if (s.stun > 0) this.stunStars(ctx, s.x, s._top != null ? s._top - 8 : s.y - s.radius - 8, rt);
   },
   // 보병 / 기사(말 탄 모습): 레벨에 따라 장비가 바뀜 (가죽 → 사슬 → 판금·금장식)
   swordsman(ctx, s, x, y, horse) {
@@ -1981,7 +2043,7 @@ const Art = {
   soldierBar(ctx, s) {
     if (s.hp >= s.maxHp) return;
     const w = s.radius * 2.6;
-    bar(ctx, s.x - w / 2, s.y - s.radius - 12, w, 4, s.hp / s.maxHp, '#6fd0ff');
+    bar(ctx, s.x - w / 2, s._top != null ? s._top - 7 : s.y - s.radius - 12, w, 4, s.hp / s.maxHp, '#6fd0ff');
   },
 
   projectile(ctx, p) {
@@ -2101,7 +2163,16 @@ const Icon = {
     ctx.fillStyle = '#7fd0ff'; circle(ctx, x + 11 * u, y - 4 * u, 2.4 * u); ctx.fill();                                   // 지팡이 수정
     ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.moveTo(x + 11 * u, y - 2 * u); ctx.lineTo(x + 11 * u, y + 12 * u); ctx.stroke();
   },
-  heroHead(ctx, type, x, y, s) { (type === 'archer' ? this.archerHead : type === 'mage' ? this.mageHead : this.knightHead).call(this, ctx, x, y, s); },
+  heroHead(ctx, type, x, y, s) {
+    const sp = Sprites.get('hero_' + type);
+    if (sp) {                                                       // 그림 파일이 있으면 얼굴 부분을 잘라서 초상화로
+      const im = sp.img, cs = im.height * 0.34, sx = clamp(im.width * sp.headX - cs / 2, 0, Math.max(0, im.width - cs));
+      ctx.save(); circle(ctx, x, y - s * 0.06, s * 0.79); ctx.clip();
+      ctx.drawImage(im, sx, 0, cs, cs, x - s * 0.82, y - s * 0.9, s * 1.64, s * 1.64);
+      ctx.restore(); return;
+    }
+    (type === 'archer' ? this.archerHead : type === 'mage' ? this.mageHead : this.knightHead).call(this, ctx, x, y, s);
+  },
   skill(ctx, id, x, y, s) {
     const u = s / 20;
     ctx.save(); ctx.translate(x, y);
@@ -2183,6 +2254,8 @@ const Icon = {
   },
   // 병사 아이콘 (아래 병력 칸): 실제 병사 그림을 크게
   unit(ctx, kind, level, x, y, s) {
+    const sp = Sprites.unit(kind, level);
+    if (sp) { const H = s * 1.18; Art.sprite(ctx, sp, x, y + H * 0.5, H, { flip: false }); return; }
     const c = CONFIG.soldiers[kind], u = s / (c.radius * (kind === 'knight' ? 3.4 : 2.6));
     const fake = { kind, level, x: 0, y: 0, radius: c.radius, face: kind === 'knight' ? -0.35 : -0.6, moving: false, walkAnim: 0, attackAnim: 0, flash: 0, stun: 0, root: 0 };
     ctx.save(); ctx.translate(x - (kind === 'knight' ? 2 * u : 0), y); ctx.scale(u, u); Art.soldier(ctx, fake, realTime); ctx.restore();
@@ -5739,6 +5812,7 @@ function frame(now) {
 
 // ---------- 시작 ----------
 loadImages();
+Sprites.load();
 newGame('title');
 resize();
 Input.init(canvas);
