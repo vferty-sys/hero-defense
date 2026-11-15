@@ -232,32 +232,43 @@ const CONFIG = {
     // spawnInterval: 생산 주기(초) / spawns: 한 번에 나오는 무리 (weight = 등장 비중)
     // defenders: 기지를 지키는 수비병 (count명으로 시작, 기지가 공격받으면 summon명 추가 소환, 최대 max명)
     cave: {
-      name: '동굴', enabled: true, maxHp: 1800, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
+      name: '동굴', maxHp: 1800, regenDelay: 6, regenRate: 8, xp: 300, gold: 300,
       firstSpawn: 3, spawnInterval: 7, groupGap: 0.35,
       spawns: [ { type: 'spider', count: 3, weight: 6 }, { type: 'bat', count: 2, weight: 4 } ],
       defenders: { type: 'spider', count: 2, hpMul: 1.8, damageMul: 1.3, summon: 2, summonCooldown: 12, max: 6, aggro: 170, leash: 260 },
     },
     goblin: {
-      name: '고블린 부락', enabled: true, maxHp: 3200, regenDelay: 6, regenRate: 10, xp: 400, gold: 400,
+      name: '고블린 부락', maxHp: 3200, regenDelay: 6, regenRate: 10, xp: 400, gold: 400,
       firstSpawn: 20, spawnInterval: 5.5, groupGap: 0.3,        // 생산 속도 빠름
       spawns: [ { type: 'goblin', count: 3, weight: 6 }, { type: 'goblinArcher', count: 2, weight: 3 }, { type: 'goblin', count: 5, weight: 1 } ],
       defenders: { type: 'goblin', count: 3, hpMul: 1.8, damageMul: 1.3, summon: 3, summonCooldown: 10, max: 9, aggro: 170, leash: 260 },
     },
     orc: {
-      name: '오크 요새', enabled: true, maxHp: 6500, regenDelay: 6, regenRate: 14, xp: 600, gold: 600,
+      name: '오크 요새', maxHp: 6500, regenDelay: 6, regenRate: 14, xp: 600, gold: 600,
       firstSpawn: 45, spawnInterval: 11, groupGap: 0.8,         // 가장 멀고 강함
       spawns: [ { type: 'orc', count: 2, weight: 6 }, { type: 'orc', count: 3, weight: 2 }, { type: 'troll', count: 1, weight: 2 } ],
       defenders: { type: 'orc', count: 3, hpMul: 1.6, damageMul: 1.3, summon: 3, summonCooldown: 12, max: 8, aggro: 180, leash: 280 },
     },
   },
 
-  // ---------------- 보스 ----------------
-  bosses: {
-    midFirst: 180, midInterval: 180,          // 중간보스: 3분부터 3분마다, 남은 기지 중 한 곳에서 등장
-    midByBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' },
-    final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5,     // 최종보스: 오크 요새 체력이 50% 이하가 되면 등장 (한 번)
-             protectBase: true },                                  // 드래곤이 살아 있는 동안 오크 요새는 피해를 받지 않음 (false로 끄기)
-  },
+  // ---------------- 스테이지 ---------------- (영웅 선택 화면에서 고름. 앞 스테이지를 깨면 다음 스테이지가 열림)
+  // map: 지도(MAPS) / bases: 나오는 적 기지 / power: 적·기지 체력과 공격력 배율 / startGold: 시작 골드 추가
+  // mid: 중간보스 — first초부터 interval초마다, 남은 기지 중 한 곳에서 그 기지의 보스(byBase) 등장
+  // final: 최종보스 — base 체력이 triggerHpRatio 이하가 되면 type 보스가 나와 기지를 지킴 (hpMul: 체력 배율, protectBase: 살아 있는 동안 기지 무적)
+  stages: [
+    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.0, startGold: 0,
+      desc: '기지 2곳 · 최종보스 고블린 주술사',
+      mid: { first: 150, interval: 170, byBase: { cave: 'spiderQueen' } },
+      final: { base: 'goblin', type: 'goblinShaman', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
+    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.15, startGold: 50,
+      desc: '기지 3곳 · 최종보스 오크 족장',
+      mid: { first: 160, interval: 170, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
+      final: { base: 'orc', type: 'orcChief', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
+    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.3, startGold: 100,
+      desc: '기지 3곳 · 최종보스 드래곤',
+      mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
+      final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1, protectBase: true } },
+  ],
 
   // ---------------- 아이템 ----------------
   items: {
@@ -296,10 +307,9 @@ const CONFIG = {
 };
 
 // ==========================================================================
-// 2. MAP — 지도 배치 (좌표 단위: 지도 px)
+// 2. MAP — 지도 배치 (좌표 단위: 지도 px). 스테이지마다 지도가 다르고, 성은 모두 같은 자리
 // ==========================================================================
-const MAP = {
-  seed: 1115,                     // 나무·장식 배치용 난수 시드 (바꾸면 숲 모양이 바뀜)
+const CASTLE_LAYOUT = {
   pathWidth: 46,
   riverWidth: 62,
   castle: { wallX: 128, wallW: 44, gateTop: 637, gateBottom: 713 },
@@ -311,29 +321,78 @@ const MAP = {
   keep: { x: 16, y: 601, w: 96, h: 148 },
   houses: [[18, 60, 80, 54], [30, 252, 70, 62], [14, 399, 88, 50], [24, 505, 76, 50], [30, 790, 70, 56],
            [24, 894, 78, 58], [40, 1050, 62, 52], [16, 1180, 86, 60], [22, 1280, 80, 50]],
-  bases: {
-    cave:   { x: 1452, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-    goblin: { x: 1855, y: 1072, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'm1m2', 'main'] },
-    orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'm1m2', 'main'] },
-  },
-  // 길 구간 (곡선으로 부드럽게 이어짐). 기지별 경로 = 구간들을 이어 붙인 것
-  segments: {
-    cave:   [[1452, 298], [1418, 435], [1300, 525], [1176, 597], [1096, 660]],
-    goblin: [[1798, 1024], [1735, 935], [1660, 830], [1592, 705]],
-    orc:    [[2132, 625], [1964, 669], [1833, 645], [1703, 702], [1592, 705]],
-    m1m2:   [[1592, 705], [1444, 758], [1266, 714], [1096, 660]],
-    main:   [[1096, 660], [933, 603], [762, 660], [592, 720], [421, 663], [290, 678], [186, 675]],
-  },
-  river: [[866, -60], [832, 165], [764, 382], [770, 600], [705, 840], [727, 1080], [671, 1410]],
-  forests: [
-    { x: 429, y: 292, r: 180, n: 90 },  { x: 429, y: 1072, r: 195, n: 100 },
-    { x: 1103, y: 322, r: 160, n: 66 }, { x: 1158, y: 1102, r: 188, n: 86 },
-    { x: 1932, y: 300, r: 218, n: 100 }, { x: 2212, y: 1155, r: 160, n: 60 },
-    { x: 1483, y: 1162, r: 130, n: 44 }, { x: 2020, y: 880, r: 110, n: 34 },
-    { x: 2330, y: 330, r: 110, n: 30 },  { x: 1700, y: 120, r: 120, n: 34 },
-  ],
-  scatterTrees: 120,
 };
+// 지도별: seed = 나무·장식 배치용 난수 (바꾸면 숲 모양이 바뀜) / grass = 풀밭 색
+// bases = 적 기지 위치와 경로 / segments = 길 구간 (곡선으로 이어짐, 기지별 경로 = 구간들을 이어 붙인 것, 성문까지 가는 마지막 구간 이름은 main)
+// river = 강 (main 길과 만나는 곳에 다리가 자동으로 놓임) / forests = 숲 (나무는 길·강을 자동으로 피함)
+const MAPS = {
+  forest: {                       // 1스테이지: 고요한 숲
+    ...CASTLE_LAYOUT, seed: 2207, grass: '#5e9238',
+    bases: {
+      cave:   { x: 1880, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
+      goblin: { x: 2060, y: 1075, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
+    },
+    segments: {
+      cave:   [[1880, 300], [1840, 430], [1730, 520], [1600, 590], [1490, 640]],
+      goblin: [[2005, 1027], [1900, 930], [1760, 800], [1610, 700], [1490, 640]],
+      main:   [[1490, 640], [1330, 600], [1190, 670], [1040, 712], [880, 660], [700, 720], [520, 650], [350, 690], [186, 675]],
+    },
+    river: [[1090, -60], [1050, 200], [1110, 450], [1040, 700], [1090, 950], [1030, 1200], [1070, 1410]],
+    forests: [
+      { x: 450, y: 300, r: 200, n: 100 }, { x: 450, y: 1060, r: 200, n: 100 }, { x: 820, y: 250, r: 150, n: 60 },
+      { x: 800, y: 1100, r: 160, n: 70 }, { x: 1350, y: 330, r: 170, n: 80 }, { x: 1350, y: 1050, r: 190, n: 90 },
+      { x: 1700, y: 1200, r: 140, n: 50 }, { x: 2250, y: 520, r: 150, n: 60 }, { x: 2250, y: 820, r: 120, n: 40 },
+      { x: 1600, y: 110, r: 120, n: 40 }, { x: 2320, y: 1250, r: 110, n: 30 },
+    ],
+    scatterTrees: 130,
+  },
+  canyon: {                       // 2스테이지: 오크 협곡 (메마른 풀밭)
+    ...CASTLE_LAYOUT, seed: 3301, grass: '#7a8a3e',
+    bases: {
+      goblin: { x: 1600, y: 230,  hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
+      cave:   { x: 1400, y: 1135, hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
+      orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'main'] },
+    },
+    segments: {
+      goblin: [[1560, 272], [1520, 400], [1420, 530], [1290, 650], [1200, 700]],
+      cave:   [[1385, 1092], [1330, 960], [1300, 820], [1200, 700]],
+      orc:    [[2132, 625], [1980, 700], [1810, 640], [1640, 720], [1450, 740], [1200, 700]],
+      main:   [[1200, 700], [1030, 640], [860, 700], [690, 735], [520, 660], [350, 700], [186, 675]],
+    },
+    river: [[620, -60], [690, 250], [630, 520], [700, 780], [640, 1050], [690, 1410]],
+    forests: [
+      { x: 400, y: 280, r: 170, n: 70 }, { x: 420, y: 1080, r: 180, n: 80 }, { x: 1000, y: 300, r: 150, n: 50 },
+      { x: 1000, y: 1080, r: 160, n: 60 }, { x: 1950, y: 330, r: 200, n: 80 }, { x: 1950, y: 1050, r: 200, n: 80 },
+      { x: 2320, y: 1000, r: 100, n: 30 }, { x: 1700, y: 950, r: 110, n: 35 },
+    ],
+    scatterTrees: 80,
+  },
+  dragon: {                       // 3스테이지: 용의 둥지
+    ...CASTLE_LAYOUT, seed: 1115, grass: '#53823a',
+    bases: {
+      cave:   { x: 1452, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
+      goblin: { x: 1855, y: 1072, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'm1m2', 'main'] },
+      orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'm1m2', 'main'] },
+    },
+    segments: {
+      cave:   [[1452, 298], [1418, 435], [1300, 525], [1176, 597], [1096, 660]],
+      goblin: [[1798, 1024], [1735, 935], [1660, 830], [1592, 705]],
+      orc:    [[2132, 625], [1964, 669], [1833, 645], [1703, 702], [1592, 705]],
+      m1m2:   [[1592, 705], [1444, 758], [1266, 714], [1096, 660]],
+      main:   [[1096, 660], [933, 603], [762, 660], [592, 720], [421, 663], [290, 678], [186, 675]],
+    },
+    river: [[866, -60], [832, 165], [764, 382], [770, 600], [705, 840], [727, 1080], [671, 1410]],
+    forests: [
+      { x: 429, y: 292, r: 180, n: 90 },  { x: 429, y: 1072, r: 195, n: 100 },
+      { x: 1103, y: 322, r: 160, n: 66 }, { x: 1158, y: 1102, r: 188, n: 86 },
+      { x: 1932, y: 300, r: 218, n: 100 }, { x: 2212, y: 1155, r: 160, n: 60 },
+      { x: 1483, y: 1162, r: 130, n: 44 }, { x: 2020, y: 880, r: 110, n: 34 },
+      { x: 2330, y: 330, r: 110, n: 30 },  { x: 1700, y: 120, r: 120, n: 34 },
+    ],
+    scatterTrees: 120,
+  },
+};
+let MAP = MAPS.dragon;            // 지금 지도 (스테이지를 고르면 바뀜)
 
 // ==========================================================================
 // 3. 유틸
@@ -491,6 +550,8 @@ function addGold(n) { G.gold += n; G.stats.goldEarned += n; }
 function shake(mag, dur) { if (mag >= G.shakeMag * (G.shakeT / G.shakeDur || 0)) { G.shakeMag = mag; G.shakeT = dur; G.shakeDur = dur; } }
 function dmgText(x, y, n, color, size) { FX.dmg(x, y, n, color, size); }
 
+// 한국어 조사: 받침이 있으면 a, 없으면 b (예: josa('드래곤', '을', '를') → '드래곤을')
+function josa(w, a, b) { const c = w.charCodeAt(w.length - 1); return w + (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b); }
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 const hpColor = r => (r > 0.6 ? '#5cc24a' : r > 0.3 ? '#e2b33a' : '#dd4a3a');
 
@@ -556,7 +617,7 @@ const Art = {
 
   grass(g, rng) {
     const W = CONFIG.world.width, H = CONFIG.world.height;
-    g.fillStyle = '#5b8a37'; g.fillRect(0, 0, W, H);
+    g.fillStyle = MAP.grass || '#5b8a37'; g.fillRect(0, 0, W, H);
     for (let i = 0; i < 260; i++) {
       g.fillStyle = rng() < 0.5 ? 'rgba(135,180,80,0.09)' : 'rgba(35,70,20,0.10)';
       circle(g, rng() * W, rng() * H, 30 + rng() * 100); g.fill();
@@ -2337,7 +2398,7 @@ function upgradeFacility(kind) {
   for (const u of G.soldiers) if (u.kind === kind) u.applyStats(A.lv[kind], st);
   const gx = MAP.castle.wallX + MAP.castle.wallW / 2;
   FX.ring(gx, MAP.gate.y, 70, '255,215,90', 0.5); FX.spark(gx, MAP.gate.y - 20, '#ffe08a', 10);
-  if (L === 0) { selectUnit(kind); showBanner(`${c.facility} 건설! 이제 성문에서 ${name}가 나옵니다`, '#ffe08a', 2.6); Sound.play('build'); }
+  if (L === 0) { selectUnit(kind); showBanner(`${c.facility} 건설! 이제 성문에서 ${josa(name, '이', '가')} 나옵니다`, '#ffe08a', 2.6); Sound.play('build'); }
   else { toast(`${c.facility} Lv.${L + 1} — ${name} 강화!`, '#ffd36b'); Sound.play('upgrade'); }
 }
 
@@ -2487,18 +2548,20 @@ function pushStep(u, dt) {
 }
 
 // ---------- 보스 등장 ----------
-function spawnBoss(type, base) {
+function spawnBoss(type, base, asFinal) {
   const e = new Enemy(type, base, 0, G.threat);
+  if (asFinal) { e.final = true; e.maxHp = e.hp = Math.round(e.maxHp * (G.stage.final.hpMul || 1)); }   // 스테이지 최종보스 (기지를 지킴)
   G.enemies.push(e);
   for (let i = 0; i < 4; i++) FX.dust(e.x + rand(-20, 20), e.y + rand(-10, 10));
-  const fin = e.cfg.final;
+  const fin = e.final;
   if (fin) {                                               // 최종보스: 요새 앞을 지키며 다가오는 영웅·병사와 싸움
     G.finalBoss = e;
     const a = Math.atan2(MAP.gate.y - base.y, MAP.gate.x - base.x), r = base.m.hitRadius * 0.8 + 130;
     e.post = Nav.clampTarget(base.x + Math.cos(a) * r, base.y + Math.sin(a) * r);
     e.guardCfg = { aggro: 340, leash: 560 }; e.state = 'guard';
   }
-  showBanner(fin ? (CONFIG.bosses.final.protectBase ? `최종 보스 ${e.cfg.name} 출현! 드래곤을 쓰러뜨려야 ${base.cfg.name}를 부술 수 있어요` : `최종 보스 ${e.cfg.name} 출현!`) : `중간보스 등장: ${e.cfg.name} (${base.cfg.name})`, fin ? '#ff6a4a' : '#ffae5a', 4);
+  const nm = e.cfg.name;
+  showBanner(fin ? (G.stage.final.protectBase ? `최종 보스 ${nm} 출현! ${josa(nm, '을', '를')} 쓰러뜨려야 ${josa(base.cfg.name, '을', '를')} 부술 수 있어요` : `최종 보스 ${nm} 출현!`) : `중간보스 등장: ${nm} (${base.cfg.name})`, fin ? '#ff6a4a' : '#ffae5a', 4);
   G.banner.warn = true;
   if (fin) G.redFlash = 0.7;
   Sound.play('bossWarn'); if (fin) setTimeout(() => Sound.play('roar'), 600);
@@ -2712,10 +2775,10 @@ function canDisable(a) { return !a.dead && !a.dash; }
 class Enemy {
   constructor(type, base, lane, threat) {
     const cfg = CONFIG.enemies[type], esc = CONFIG.escalation, lv = cfg.final ? 0 : threat - 1;   // 최종보스는 위협 레벨 영향 없음
-    this.id = G.nextId++; this.type = type; this.cfg = cfg; this.base = base; this.route = base.route;
-    const D = G.diff || CONFIG.difficulty.normal;                  // 난이도 배율
-    this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv) * D.enemyHp); this.hp = this.maxHp;
-    this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv) * D.enemyDmg;
+    this.id = G.nextId++; this.type = type; this.cfg = cfg; this.base = base; this.route = base.route; this.final = !!cfg.final;
+    const D = G.diff || CONFIG.difficulty.normal, P = G.stage ? G.stage.power : 1;   // 난이도 · 스테이지 배율
+    this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv) * D.enemyHp * P); this.hp = this.maxHp;
+    this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv) * D.enemyDmg * P;
     this.speed = cfg.speed * rand(0.92, 1.08);
     this.armor = cfg.armor || 0; this.slowAmt = 0; this.slowTimer = 0;
     this.root = 0; this.dot = null;         // 덫: 속박(이동 불가) 시간 / 지속 피해 {dps, t, src}
@@ -2727,7 +2790,7 @@ class Enemy {
     this.skillCd = (cfg.skills || []).map(k => (k.first != null ? k.first : k.cooldown * 0.5));
     this.casting = 0; this.bossDash = null; this.enraged = false;   // 보스: 스킬 준비 중(멈춤) / 돌격 중 / 분노
     this.radius = cfg.radius; this.air = cfg.air;
-    this.damage = cfg.damage * Math.pow(esc.damageMul, lv) * D.enemyDmg;
+    this.damage = cfg.damage * Math.pow(esc.damageMul, lv) * D.enemyDmg * P;
     this.skillMul = this.damage / cfg.damage;                      // 보스 스킬 피해 배율 (난이도·위협)
     this.dmgPop = 0; this.dmgPopT = 0; this.dmgMagic = false;       // 데미지 숫자 모으기
     this.xp = cfg.xp * (1 + 0.1 * lv);
@@ -2924,7 +2987,7 @@ class Enemy {
     if (this.enraged && Math.random() < dt * 25) FX.add({ k: 'flame', x: this.x + rand(-30, 30), y: this.y - AIR_HEIGHT * 1.6 + rand(-20, 10), vx: 0, vy: -30, g: 0, life: 0.4, max: 0.4, size: rand(5, 9) });   // 분노한 드래곤
     if (c.enrage && !this.enraged && this.hp <= this.maxHp * c.enrage.hpRatio) {     // 분노
       this.enraged = true; this.damage *= c.enrage.damageMul; this.skillMul *= c.enrage.damageMul;
-      showBanner(`${c.name}가 분노합니다!`, '#ff5a3a', 2.6); G.banner.warn = true; G.redFlash = 0.5;
+      showBanner(`${josa(c.name, '이', '가')} 분노합니다!`, '#ff5a3a', 2.6); G.banner.warn = true; G.redFlash = 0.5;
       Sound.play('roar'); shake(7, 0.6); FX.ring(this.x, this.y, 160, '255,80,40', 0.7);
     }
     if (c.skills) {                                            // 스킬: 쿨타임이 끝나고 쓸 대상이 있으면 사용
@@ -3161,9 +3224,9 @@ class Enemy {
     Sound.play(this.boss ? 'bossDeath' : 'death', this.x, this.y, this.boss ? 1 : 0.8);
     if (this.boss) {
       if (killer) G.stats.bossKills++;
-      showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6); shake(this.cfg.final ? 9 : 5, 0.5);
-      FX.explosion(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.cfg.final ? 1.2 : 0.7);
-      if (Math.random() < CONFIG.items.dropChance[this.cfg.final ? 'finalBoss' : 'midBoss']) dropItem(this.x, this.y, this.cfg.final);
+      showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6); shake(this.final ? 9 : 5, 0.5);
+      FX.explosion(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.final ? 1.2 : 0.7);
+      if (Math.random() < CONFIG.items.dropChance[this.final ? 'finalBoss' : 'midBoss']) dropItem(this.x, this.y, this.final);
     }
     if (killer) {
       G.stats.kills++;
@@ -3640,8 +3703,8 @@ function makeBaseArt(key) {
 class EnemyBase {
   constructor(key) {
     this.key = key; this.cfg = CONFIG.bases[key]; this.m = MAP.bases[key];
-    this.x = this.m.x; this.y = this.m.y; this.enabled = this.cfg.enabled;
-    this.maxHp = Math.round(this.cfg.maxHp * (G.diff || CONFIG.difficulty.normal).baseHp); this.hp = this.maxHp; this.alive = true;
+    this.x = this.m.x; this.y = this.m.y; this.enabled = true;
+    this.maxHp = Math.round(this.cfg.maxHp * (G.diff || CONFIG.difficulty.normal).baseHp * (G.stage ? G.stage.power : 1)); this.hp = this.maxHp; this.alive = true;
     this.route = MAPDATA.routes[key];
     this.spawnTimer = this.cfg.firstSpawn; this.queue = [];
     this.lastHit = -999; this.flash = 0; this.shake = 0; this.smokeTimer = 0;
@@ -3696,17 +3759,17 @@ class EnemyBase {
       }
     }
   }
-  // 드래곤이 지키는 중인지 (최종보스가 살아 있는 동안 오크 요새 무적)
-  get protectedByBoss() { const f = CONFIG.bosses.final; return f.protectBase && this.key === f.base && G.finalBoss && G.finalBoss.alive; }
+  // 최종보스가 지키는 중인지 (살아 있는 동안 그 기지는 무적)
+  get protectedByBoss() { const f = G.stage.final; return f.protectBase && this.key === f.base && G.finalBoss && G.finalBoss.alive; }
   takeDamage(amount) {
     if (!this.alive || !this.enabled) return;
     if (this.protectedByBoss) {
-      if (G.time - (this.protMsgT || -9) > 1.5) { this.protMsgT = G.time; FX.text(this.x, this.y - 60, '드래곤이 지키는 중!', '#ff8a6a', 18, 1.2); }
+      if (G.time - (this.protMsgT || -9) > 1.5) { this.protMsgT = G.time; FX.text(this.x, this.y - 60, `${josa(G.finalBoss.cfg.name, '이', '가')} 지키는 중!`, '#ff8a6a', 18, 1.2); }
       return;
     }
     this.hp -= amount; this.lastHit = G.time; this.flash = 0.12; this.shake = 0.2;
-    const f = CONFIG.bosses.final;                       // 최종보스: 오크 요새 체력 50% 이하
-    if (f && this.key === f.base && !G.finalSpawned && this.hp > 0 && this.hp <= this.maxHp * f.triggerHpRatio) { G.finalSpawned = true; spawnBoss(f.type, this); }
+    const f = G.stage.final;                             // 최종보스: 그 기지 체력이 triggerHpRatio 이하
+    if (f && this.key === f.base && !G.finalSpawned && this.hp > 0 && this.hp <= this.maxHp * f.triggerHpRatio) { G.finalSpawned = true; spawnBoss(f.type, this, true); }
     const d = this.cfg.defenders;                         // 공격받으면 수비병 추가 소환해 반격
     if (d && this.summonCd <= 0 && this.hp > 0) {
       this.summonCd = d.summonCooldown;
@@ -3868,7 +3931,8 @@ const Input = {
         e.preventDefault();
         if (G.state === 'title') openSelect();
         else if (G.state === 'select') startGame(selectedHero);
-        else if (G.state === 'won' || G.state === 'lost') startGame(G.heroType);
+        else if (G.state === 'won' && G.stageIdx < CONFIG.stages.length - 1) nextStage();
+        else if (G.state === 'won' || G.state === 'lost') startGame(G.heroType, G.stageIdx);
         else if (e.code === 'Space') togglePause();
         break;
       case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Numpad1': case 'Numpad2': case 'Numpad3': case 'Numpad4': {
@@ -3925,7 +3989,7 @@ function onWorldTap(w) {
   // 적 기지를 탭 → 영웅이 달려가서 기지 공격
   for (const b of G.bases) {
     if (b.enabled && b.alive && dist(w.x, w.y, b.x, b.y) <= b.m.hitRadius) {
-      if (b.protectedByBoss) FX.text(b.x, b.y - 60, '드래곤을 먼저 처치하세요!', '#ff8a6a', 20, 1.4);
+      if (b.protectedByBoss) FX.text(b.x, b.y - 60, `${josa(G.finalBoss.cfg.name, '을', '를')} 먼저 처치하세요!`, '#ff8a6a', 20, 1.4);
       h.commandAttackBase(b); return;
     }
   }
@@ -4369,7 +4433,7 @@ function drawMinimap(ctx) {
   ctx.fillStyle = '#9fd8ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1.5 * s, my(u.y) - 1.5 * s, 3 * s, 3 * s);
   for (const e of G.enemies) { ctx.fillStyle = e.post ? '#a02a20' : '#ff4a3a'; ctx.fillRect(mx(e.x) - 1.2 * s, my(e.y) - 1.2 * s, 2.4 * s, 2.4 * s); }
   ctx.fillStyle = '#bfe6ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1 * s, my(u.y) - 1 * s, 2 * s, 2 * s);
-  for (const e of G.enemies) if (e.boss) { circle(ctx, mx(e.x), my(e.y), (e.cfg.final ? 6 : 4.5) * s); ctx.fillStyle = e.cfg.final ? '#ff3a1a' : '#ff8a2a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2 * s; ctx.stroke(); }
+  for (const e of G.enemies) if (e.boss) { circle(ctx, mx(e.x), my(e.y), (e.final ? 6 : 4.5) * s); ctx.fillStyle = e.final ? '#ff3a1a' : '#ff8a2a'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2 * s; ctx.stroke(); }
   for (const d of G.drops) { ctx.fillStyle = rarityOf(d.item).color; ctx.fillRect(mx(d.x) - 2.5 * s, my(d.y) - 2.5 * s, 5 * s, 5 * s); }
   for (const b of G.bases) {
     if (!b.enabled) continue;
@@ -4390,14 +4454,14 @@ function drawMinimap(ctx) {
 }
 
 // ---------- 보스 체력바 (화면 위 가운데) ----------
-function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.cfg.final ? 1 : 0) - (a.cfg.final ? 1 : 0)).slice(0, 2); }
+function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.final ? 1 : 0) - (a.final ? 1 : 0)).slice(0, 2); }
 function drawBossBars(ctx) {
   if (G.state !== 'playing') return 0;
   const bs = bossBars(); if (!bs.length) return 0;
   const k = UI.k, VW = CONFIG.view.width, w = 470 * k, h = 38 * k, x = VW / 2 - w / 2;
   let y = (10 + 58 + 8) * UI.kt;
   for (const e of bs) {
-    const fin = e.cfg.final;
+    const fin = e.final;
     rr(ctx, x, y, w, h, 10 * k); ctx.fillStyle = fin ? 'rgba(60,10,6,0.9)' : 'rgba(40,16,10,0.88)'; ctx.fill();
     ctx.lineWidth = 2 * k; ctx.strokeStyle = fin ? '#ff6a4a' : '#d08a4a'; ctx.stroke();
     Icon.skull(ctx, x + 22 * k, y + h / 2, 22 * k);
@@ -4532,7 +4596,7 @@ function drawOverlay(ctx) {
   ctx.fillStyle = 'rgba(8,6,4,0.62)'; ctx.fillRect(0, 0, VW, VH);
   UI.block(0, 0, VW, VH);
   if (G.state === 'title') drawTitle(ctx, Math.min(UI.k, (VW - 40) / 800, (VH - 30) / 630));
-  else if (G.state === 'select') drawSelect(ctx, Math.min(UI.k, (VW - 30) / 1120, (VH - 30) / 700));
+  else if (G.state === 'select') drawSelect(ctx, Math.min(UI.k, (VW - 30) / 1120, (VH - 30) / 760));
   else if (G.state === 'won' || G.state === 'lost') drawResult(ctx, Math.min(UI.k, (VW - 40) / 700, (VH - 40) / 520));
   else drawPause(ctx, Math.min(UI.k, (VW - 40) / 760, (VH - 40) / 630));
 }
@@ -4544,13 +4608,13 @@ function drawTitle(ctx, k) {
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
     ['게임 방법', '#ffcf6a'],
-    ['· 적 기지 3곳: 동굴(거미·박쥐) · 고블린 부락(고블린·궁수) · 오크 요새(오크·트롤)'],
+    ['· 스테이지 3개: 고요한 숲 → 오크 협곡 → 용의 둥지 (앞 스테이지를 깨면 다음이 열려요)'],
     ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (수비병이 지키고, 공격받으면 더 불러와요)'],
+    ['· 아래 병력 칸: 성문에서 나올 병사 선택 · 같은 칸을 다시 누르면 훈련 시설 건설·강화'],
+    ['· 보스는 스킬을 씁니다. 바닥에 빨간 범위가 보이면 피하세요! (쓰러뜨리면 가끔 아이템)'],
     ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
-    ['· 3분마다 중간보스, 오크 요새 체력이 절반 이하면 최종보스 드래곤 등장'],
-    ['· 보스·기지에서 떨어진 아이템 위로 영웅을 이동해 획득 (오른쪽 장착 칸을 누르면 정보)'],
     ['· 소리: 첫 터치 후 재생 · 크기는 일시정지 메뉴, 음소거는 아래 스피커 버튼'],
-    ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 기지 3곳을 모두 파괴하세요!'],
+    ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 적 기지를 모두 파괴하세요!'],
   ];
   let ly = y + 192 * k;
   for (const [s, col] of lines) {
@@ -4565,9 +4629,10 @@ function drawTitle(ctx, k) {
 
 function drawResult(ctx, k) {
   const won = G.state === 'won', pw = 700 * k, ph = 520 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
-  txt(ctx, won ? '승리!' : '패배...', cx, y + 82 * k, 70 * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
-  txt(ctx, won ? '모든 적 기지를 파괴했습니다!' : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
-  txt(ctx, `${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
+  const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last;
+  txt(ctx, won ? (last ? '왕국을 지켰습니다!' : '스테이지 클리어!') : '패배...', cx, y + 82 * k, (won ? 58 : 70) * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
+  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」가 열렸습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, `${G.stageIdx + 1}스테이지 ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
   divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
   const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
   const rows = [                                                   // 통계 2열
@@ -4586,9 +4651,13 @@ function drawResult(ctx, k) {
     Icon.item(ctx, it, G.heroType, ix, y + 360 * k, 24 * k);
     fitTxt(ctx, it.name, ix + 18 * k, y + 360 * k, 13 * k, 128 * k, rarityOf(it).color, 'left', { weight: 700 });
   });
-  const bw = 250 * k, bh = 76 * k, by = y + ph - bh - 40 * k, gap = 24 * k, bx = cx - bw - gap / 2;
-  drawButton(ctx, bx, by, bw, bh, UI.button('restart', bx, by, bw, bh, () => startGame(G.heroType)), k, '다시 하기', { size: 28 * k });
-  drawButton(ctx, bx + bw + gap, by, bw, bh, UI.button('changeHero', bx + bw + gap, by, bw, bh, openSelect), k, '영웅 바꾸기', { size: 24 * k, c1: '#8a7a64', c2: '#5a4c3a', border: '#d8c8a4' });
+  const btns = [];
+  if (hasNext) btns.push(['nextStage', '다음 스테이지', nextStage, { size: 24 * k, c1: '#4a8a3a', c2: '#2e5e24', border: '#d0f0b0' }]);
+  btns.push(['restart', '다시 하기', () => startGame(G.heroType, G.stageIdx), { size: 26 * k }]);
+  btns.push(['changeHero', '선택 화면', openSelect, { size: 24 * k, c1: '#8a7a64', c2: '#5a4c3a', border: '#d8c8a4' }]);
+  const gap = 20 * k, bw = (btns.length === 3 ? 196 : 250) * k, bh = 74 * k, by = y + ph - bh - 40 * k;
+  let bx = cx - (bw * btns.length + gap * (btns.length - 1)) / 2;
+  for (const [id, label, fn, st] of btns) { drawButton(ctx, bx, by, bw, bh, UI.button(id, bx, by, bw, bh, fn), k, label, st); bx += bw + gap; }
 }
 
 // ---------- 영웅 선택 화면 ----------
@@ -4597,13 +4666,26 @@ let selectedHero = (() => { try { const h = localStorage.getItem('kg.hero'); ret
 let selectedDiff = (() => { try { const d = localStorage.getItem('kg.diff'); return CONFIG.difficulty[d] ? d : 'normal'; } catch (_) { return 'normal'; } })();
 function pickHero(type) { selectedHero = type; try { localStorage.setItem('kg.hero', type); } catch (_) {} }
 function pickDiff(key) { selectedDiff = key; try { localStorage.setItem('kg.diff', key); } catch (_) {} }
-function openSelect() { G.state = 'select'; G.paused = false; }
+function openSelect() { G.state = 'select'; G.paused = false; G.sel = null; G.aim = null; }
+// 스테이지: 깬 스테이지 수(kg.cleared)만큼 다음 스테이지가 열림
+let clearedStages = (() => { try { return clamp(+localStorage.getItem('kg.cleared') || 0, 0, CONFIG.stages.length); } catch (_) { return 0; } })();
+let selectedStage = (() => { try { const v = +localStorage.getItem('kg.stage') || 0; return clamp(v, 0, Math.min(clearedStages, CONFIG.stages.length - 1)); } catch (_) { return 0; } })();
+let selectMsg = null;
+function stageUnlocked(i) { return i <= clearedStages; }
+function markCleared(i) { if (i + 1 > clearedStages) { clearedStages = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.cleared', clearedStages); } catch (_) {} } }
+function pickStage(i) {
+  if (!stageUnlocked(i)) { selectMsg = { text: `${josa(CONFIG.stages[i - 1].name, '을', '를')} 깨면 열려요`, until: realTime + 1.8 }; Sound.play('error'); return; }
+  if (selectedStage === i) return;
+  selectedStage = i; try { localStorage.setItem('kg.stage', i); } catch (_) {}
+  newGame('select', selectedHero, selectedDiff, i);           // 뒤에 보이는 지도도 그 스테이지로
+}
 
 function drawSelect(ctx, k) {
-  const pw = 1120 * k, ph = 700 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
-  txt(ctx, '영웅 선택', cx, y + 52 * k, 42 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 7 * k, weight: 900 });
-  txt(ctx, '함께 싸울 영웅을 고르세요 (카드를 눌러 선택)', cx, y + 92 * k, 17 * k, '#d8c8a4', 'center', { weight: 500 });
-  const cw = 336 * k, ch = 420 * k, gap = 22 * k, x0 = cx - (cw * 3 + gap * 2) / 2, cy0 = y + 116 * k;
+  const pw = 1120 * k, ph = 760 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  txt(ctx, '영웅 · 스테이지 선택', cx, y + 52 * k, 40 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 7 * k, weight: 900 });
+  if (selectMsg && realTime < selectMsg.until) txt(ctx, selectMsg.text, cx, y + 92 * k, 18 * k, '#ff9a7a', 'center', { weight: 800 });
+  else txt(ctx, '함께 싸울 영웅과 스테이지를 고르세요 (카드를 눌러 선택)', cx, y + 92 * k, 17 * k, '#d8c8a4', 'center', { weight: 500 });
+  const cw = 336 * k, ch = 410 * k, gap = 22 * k, x0 = cx - (cw * 3 + gap * 2) / 2, cy0 = y + 116 * k;
   HERO_ORDER.forEach((type, i) => {
     const c = CONFIG.heroes[type], sel = selectedHero === type, X = x0 + i * (cw + gap), Y = cy0;
     const pr = UI.button('pick_' + type, X, Y, cw, ch, () => pickHero(type));
@@ -4630,13 +4712,28 @@ function drawSelect(ctx, k) {
       bar(ctx, X + 100 * k, sy - 6 * k, cw - 122 * k, 12 * k, clamp(v, 0.05, 1), '#e8b84a');
     });
     c.skills.forEach((sk, j) => {
-      const sy = Y + 356 * k + j * 21 * k;
+      const sy = Y + 350 * k + j * 21 * k;
       Icon.skill(ctx, sk.id, X + 32 * k, sy, 17 * k);
       txt(ctx, `${sk.key}  ${sk.name}${sk.mana ? `  (마나 ${sk.mana})` : ''}`, X + 50 * k, sy, 13.5 * k, '#f3e3bf', 'left', { weight: 600 });
     });
   });
+  // 스테이지
+  const stg = CONFIG.stages, sw = 252 * k, sh = 56 * k, sgap = 12 * k, sy = y + 540 * k, sx0 = cx - (sw * stg.length + sgap * (stg.length - 1)) / 2 + 44 * k;
+  txt(ctx, '스테이지', sx0 - 16 * k, sy + sh / 2, 16 * k, '#d8c8a4', 'right', { weight: 700 });
+  stg.forEach((sg, i) => {
+    const sx = sx0 + i * (sw + sgap), on = selectedStage === i, open = stageUnlocked(i), done = i < clearedStages;
+    const pr = UI.button('stage_' + i, sx - 5 * k, sy - 5 * k, sw + 10 * k, sh + 10 * k, () => pickStage(i));
+    const off = drawButton(ctx, sx, sy, sw, sh, pr, k, '', on ? { radius: 14, c1: '#d99a3a', c2: '#9a6020', border: '#fff1c0' } : open ? { radius: 14, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' } : { radius: 14, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
+    txt(ctx, `${i + 1}. ${sg.name}`, sx + 14 * k, sy + 20 * k + off, 17 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
+    fitTxt(ctx, open ? sg.desc : '앞 스테이지를 깨면 열려요', sx + 14 * k, sy + 40 * k + off, 12 * k, sw - 52 * k, open ? '#f0e0c0' : '#8a7a60', 'left', { weight: 600 });
+    if (!open) Icon.lock(ctx, sx + sw - 22 * k, sy + sh / 2 + off, 20 * k);
+    else if (done) {                                                 // 깬 스테이지: 초록 체크
+      const qx = sx + sw - 22 * k, qy = sy + sh / 2 + off; circle(ctx, qx, qy, 11 * k); ctx.fillStyle = '#3e8a2e'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * k; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(qx - 5 * k, qy); ctx.lineTo(qx - 1 * k, qy + 4 * k); ctx.lineTo(qx + 5 * k, qy - 4 * k); ctx.stroke();
+    }
+  });
   // 난이도
-  const dk = Object.keys(CONFIG.difficulty), dw = 130 * k, dh = 48 * k, dy = y + 550 * k;
+  const dk = Object.keys(CONFIG.difficulty), dw = 130 * k, dh = 46 * k, dy = y + 610 * k;
   txt(ctx, '난이도', cx - (dw * dk.length + 12 * k * (dk.length - 1)) / 2 - 16 * k, dy + dh / 2, 16 * k, '#d8c8a4', 'right', { weight: 700 });
   dk.forEach((key, i) => {
     const dx = cx - (dw * dk.length + 12 * k * (dk.length - 1)) / 2 + i * (dw + 12 * k), on = selectedDiff === key;
@@ -4644,7 +4741,7 @@ function drawSelect(ctx, k) {
     drawButton(ctx, dx, dy, dw, dh, UI.button('diff_' + key, dx - 5 * k, dy - 9 * k, dw + 10 * k, dh + 18 * k, () => pickDiff(key)), k, CONFIG.difficulty[key].name,   // 터치 영역은 조금 넓게
       on ? { size: 17 * k, radius: 20, c1: col[0], c2: col[1], border: '#fff1c0' } : { size: 16 * k, radius: 20, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
   });
-  const bw = 300 * k, bh = 62 * k, bx = cx - bw / 2, by = y + ph - bh - 20 * k;
+  const bw = 300 * k, bh = 58 * k, bx = cx - bw / 2, by = y + ph - bh - 18 * k;
   drawButton(ctx, bx, by, bw, bh, UI.button('go', bx, by, bw, bh, () => startGame(selectedHero)), k, `${CONFIG.heroes[selectedHero].name}로 출정!`, { size: 26 * k });
 }
 
@@ -4774,26 +4871,40 @@ function createState() {
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
     telegraphs: [], hazards: [],   // 보스 스킬 예고 표시 / 독 웅덩이
     drops: [], itemPrompt: null, itemInfo: null,   // 바닥 아이템 / 교체 선택 창 / 아이템 정보 창
-    midTimer: CONFIG.bosses.midFirst, finalSpawned: false, finalBoss: null, redFlash: 0,
+    midTimer: 0, finalSpawned: false, finalBoss: null, redFlash: 0,
     sel: null,          // 선택된 메뉴: { kind: 'gate' | 'facility', ref }
     pendingResult: null, endTimer: 0, banner: null,
     stats: { kills: 0, bossKills: 0, goldEarned: 0, itemsFound: 0, heroDeaths: 0, built: 0, trained: 0 },
     shakeT: 0, shakeDur: 1, shakeMag: 0,
   };
 }
-function newGame(state, heroType = 'knight', diffKey = 'normal') {
+function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = selectedStage) {
+  loadStage(stageIdx);
   G = createState();
+  G.stageIdx = stageIdx; G.stage = CONFIG.stages[stageIdx];
   G.heroType = heroType; G.diffKey = diffKey; G.diff = CONFIG.difficulty[diffKey] || CONFIG.difficulty.normal;
-  G.gold = G.diff.startGold;
+  G.gold = G.diff.startGold + (G.stage.startGold || 0);
+  G.midTimer = G.stage.mid.first;
   G.gate = new Gate();
   G.hero = new Hero(heroType);
-  G.bases = Object.keys(CONFIG.bases).map(k => new EnemyBase(k));
+  G.bases = G.stage.bases.map(k => new EnemyBase(k));
   G.state = state;
 }
-function startGame(heroType) {
-  newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff);
+function startGame(heroType, stageIdx = selectedStage) {
+  selectedStage = stageIdx; try { localStorage.setItem('kg.stage', stageIdx); } catch (_) {}
+  newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff, stageIdx);
   Camera.centerOn(MAP.startView.x, MAP.startView.y);
-  showBanner('적 기지 3곳을 모두 파괴하세요! (화면을 끌어서 지도 이동)', '#ffe08a', 3.2);
+  showBanner(`${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, '#ffe08a', 3.4);
+}
+function nextStage() {
+  const n = G.stageIdx + 1; if (n < CONFIG.stages.length) startGame(G.heroType, n);
+}
+// 지도 바꾸기 (스테이지마다 다른 지도): 배경·미니맵을 다시 그림
+let loadedMap = null;
+function loadStage(i) {
+  const key = CONFIG.stages[i].map; if (loadedMap === key) return;
+  loadedMap = key; MAP = MAPS[key]; MAPDATA = buildMapData(); bgCanvas = null;
+  if (Camera.inited) { resize(); Camera.centerOn(MAP.startView.x, MAP.startView.y); }
 }
 function togglePause() { if (G.state === 'playing') G.paused = !G.paused; }
 function toggleSpeed() { if (G.state === 'playing') G.speedIdx = (G.speedIdx + 1) % CONFIG.speeds.length; }
@@ -4825,15 +4936,18 @@ function update(dt) {
   if (G.redFlash > 0) G.redFlash -= dt;
   G.midTimer -= dt;                                       // 중간보스
   if (G.midTimer <= 0) {
-    G.midTimer = CONFIG.bosses.midInterval;
-    const cands = G.bases.filter(b => b.enabled && b.alive && CONFIG.bosses.midByBase[b.key]);
-    if (cands.length) { const b = cands[Math.floor(Math.random() * cands.length)]; spawnBoss(CONFIG.bosses.midByBase[b.key], b); }
+    const M = G.stage.mid; G.midTimer = M.interval;
+    const cands = G.bases.filter(b => b.enabled && b.alive && M.byBase[b.key]);
+    if (cands.length) { const b = cands[Math.floor(Math.random() * cands.length)]; spawnBoss(M.byBase[b.key], b); }
   }
   FX.update(dt);
   compact(G.enemies, e => e.alive);
   compact(G.projectiles, p => !p.done);
   if (G.banner && G.banner.t > 0) G.banner.t -= dt;
-  if (G.pendingResult) { G.endTimer -= dt; if (G.endTimer <= 0) { G.state = G.pendingResult; G.paused = false; Sound.play(G.state === 'won' ? 'victory' : 'defeat'); } }
+  if (G.pendingResult) {
+    G.endTimer -= dt;
+    if (G.endTimer <= 0) { G.state = G.pendingResult; G.paused = false; G.sel = null; G.aim = null; Sound.play(G.state === 'won' ? 'victory' : 'defeat'); if (G.state === 'won') markCleared(G.stageIdx); }
+  }
 }
 
 function renderWorld(ctx) {
@@ -4959,7 +5073,6 @@ function frame(now) {
 }
 
 // ---------- 시작 ----------
-MAPDATA = buildMapData();
 loadImages();
 newGame('title');
 resize();
@@ -4976,7 +5089,8 @@ requestAnimationFrame(frame);
 
 // 콘솔 디버그/밸런스 테스트용: GAME.simulate(60) → 60초 진행
 window.GAME = {
-  get G() { return G; }, CONFIG, MAP, Camera,
+  get G() { return G; }, get MAP() { return MAP; }, CONFIG, Camera,
+  unlockAll() { markCleared(CONFIG.stages.length - 1); },
   start: startGame, useSkill, tap: (x, y) => onWorldTap({ x, y }),
   simulate(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n && G.state === 'playing'; i++) update(STEP); },
 };
