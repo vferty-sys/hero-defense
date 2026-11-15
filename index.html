@@ -74,9 +74,9 @@ const CONFIG = {
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
   // (선택) spawnMul: 적 생산 간격 배율 / groupMul: 적 무리 크기 배율
   difficulty: {
-    easy:   { name: '쉬움',   enemyHp: 0.85, enemyDmg: 0.85, baseHp: 1.25, startGold: 450 },
-    normal: { name: '보통',   enemyHp: 1.1,  enemyDmg: 1.1,  baseHp: 1.6, startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.45, enemyDmg: 1.35, baseHp: 2.0, startGold: 300 },   // 보통을 모두 깨면 열림
+    easy:   { name: '쉬움',   enemyHp: 0.75, enemyDmg: 0.75, baseHp: 1.0,  startGold: 450 },
+    normal: { name: '보통',   enemyHp: 0.95, enemyDmg: 0.95, baseHp: 1.3,  startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.25, enemyDmg: 1.2,  baseHp: 1.6,  startGold: 300 },   // 보통을 모두 깨면 열림
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
@@ -87,7 +87,7 @@ const CONFIG = {
   // 훈련 시설: levels[0].cost = 건설 비용 (0 = 처음부터 있음), levels[1~2].cost = 강화 비용
   // 병사 능력치(hp, damage, armor)는 시설 레벨을 따르고, 강화하면 이미 나와 있는 병사도 바로 강해짐
   army: {
-    popCap: 50,                   // 최대 인구 (병사마다 인구를 차지: 보병·궁수 1 / 기사 4 / 마법사 3)
+    popCap: 25,                   // 최대 인구 (병사마다 인구를 차지: 보병·궁수 1 / 기사 4 / 마법사 3)
     order: ['footman', 'archer', 'knight', 'mage'],
     // skill: 최고 레벨(5)이 되면 생기는 자동 스킬 (cooldown초마다 저절로 사용)
     footman: { facility: '병영', pop: 1, desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
@@ -331,11 +331,11 @@ const CONFIG = {
       desc: '기지 4곳 · 리치', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 150, byBase: { cave: 'slimeKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.22, spawnMul: 2.0, startGold: 450,
+    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.14, spawnMul: 2.0, startGold: 450,
       desc: '기지 4곳 · 바위 거인', extraSpawns: { orc: [{ type: 'golem', count: 1, weight: 3 }], cave: [{ type: 'harpy', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 3, weight: 2 }] },
       mid: { first: 140, interval: 150, byBase: { graveyard: 'lich', cave: 'wolfKing', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.32, spawnMul: 1.95, startGold: 500,
+    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.16, spawnMul: 2.05, startGold: 500,
       desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
@@ -371,7 +371,7 @@ const CONFIG = {
   },
 
   // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.09, damageMul: 1.05, spawnIntervalMul: 0.93, minSpawnInterval: 2.5, groupGrowth: 0.1 },   // groupGrowth: 위협 레벨당 적 무리 크기 +10%
+  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.08, damageMul: 1.045, spawnIntervalMul: 0.935, minSpawnInterval: 2.5, groupGrowth: 0.08 },   // groupGrowth: 위협 레벨당 적 무리 크기 +8%
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -5029,7 +5029,7 @@ function drawTitle(ctx, k) {
     ['게임 방법', '#ffcf6a'],
     ['· 스테이지 10개 (앞 스테이지를 깨면 다음이 열려요 · 보통을 모두 깨면 어려움이 열려요)'],
     ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (수비병이 지키고, 공격받으면 더 불러와요)'],
-    ['· 아래 병력 칸: 성문에서 나올 병사 선택 (인구 50) · 같은 칸을 다시 누르면 시설 건설·강화'],
+    ['· 아래 병력 칸: 성문에서 나올 병사 선택 (인구 25) · 같은 칸을 다시 누르면 시설 건설·강화'],
     ['· 보스는 스킬을 씁니다. 바닥에 빨간 범위가 보이면 피하세요! (쓰러뜨리면 가끔 아이템)'],
     ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
     ['· 소리: 첫 터치 후 재생 · 크기는 일시정지 메뉴, 음소거는 아래 스피커 버튼'],
@@ -5193,7 +5193,7 @@ function drawSelect(ctx, k) {
 
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
-  ['아래 병력 칸', '성문에서 나올 병사 고르기 · 다시 누르면 시설 건설/강화'], ['인구 (최대 50)', '보병·궁수 1 · 기사 4 · 마법사 3 · 5레벨은 자동 스킬'],
+  ['아래 병력 칸', '성문에서 나올 병사 고르기 · 다시 누르면 시설 건설/강화'], ['인구 (최대 25)', '보병·궁수 1 · 기사 4 · 마법사 3 · 5레벨은 자동 스킬'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
   ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E 스킬 · 1~4 병력 · Space 일시정지 · F 배속 · 방향키'],
 ];
