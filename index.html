@@ -206,14 +206,25 @@ const CONFIG = {
     orc:          { name: '오크',      hp: 120, speed: 60, radius: 13, air: false, armor: 0.3,  gateDamage: 9,  damage: 14, attackInterval: 1.1, xp: 16, gold: 10 },
     troll:        { name: '트롤',      hp: 420, speed: 40, radius: 17, air: false, armor: 0.15, gateDamage: 30, damage: 28, attackInterval: 1.6, xp: 40, gold: 25, regen: 4 },
     // ---- 보스 ---- (drawScale: 그림 크기 배율)
+    // skills: 보스 스킬 (바닥에 빨간 예고 표시가 뜬 뒤 delay초 후 발동 → 표시 밖으로 피하면 안 맞음)
+    //   cooldown: 재사용(초) / first: 등장 후 첫 사용까지 / range: 대상 찾는 거리 / radius: 범위 / damage: 피해 (난이도·위협 배율 적용)
     spiderQueen:  { name: '거미 여왕',   boss: true, hp: 1600, speed: 48, radius: 22, air: false, armor: 0.2,  gateDamage: 25, damage: 28, attackInterval: 1.2, xp: 220, gold: 150,
-                    summon: { type: 'spider', count: 3, interval: 6 } },                               // 새끼 거미 소환
+                    summon: { type: 'spider', count: 3, interval: 6 },                                 // 새끼 거미 소환
+                    skills: [ { id: 'web',    name: '거미줄 발사', cooldown: 7,  first: 3, range: 280, radius: 62, delay: 0.8, damage: 30, root: 2.2 },     // 맞으면 묶여서 못 움직임
+                              { id: 'poison', name: '독 웅덩이',   cooldown: 11, first: 6, range: 240, radius: 78, delay: 0.7, dps: 24, duration: 5 } ] },
     goblinShaman: { name: '고블린 주술사', boss: true, hp: 1300, speed: 60, radius: 18, air: false, armor: 0.1, gateDamage: 20, damage: 26, attackInterval: 1.3, xp: 220, gold: 150,
-                    ranged: true, range: 160, drawScale: 1.8, heal: { radius: 130, amount: 14, interval: 2 } },     // 주변 적 치유
+                    ranged: true, range: 160, drawScale: 1.8, heal: { radius: 130, amount: 14, interval: 2 },      // 주변 적 치유
+                    skills: [ { id: 'lightning', name: '번개 사슬',   cooldown: 6,  first: 2, range: 290, delay: 0.6, damage: 60, jumps: 4, jumpRange: 130 },   // 여러 명에게 튀는 번개
+                              { id: 'frenzy',    name: '광란의 주문', cooldown: 15, first: 7, radius: 220, duration: 6, damageMul: 1.35, speedMul: 1.3 } ] },  // 주변 적 강화
     orcChief:     { name: '오크 족장',   boss: true, hp: 2000, speed: 50, radius: 22, air: false, armor: 0.3,  gateDamage: 40, damage: 40, attackInterval: 1.3, xp: 300, gold: 220,
-                    drawScale: 1.7, aura: { radius: 170, damageMul: 1.3, speedMul: 1.15 } },             // 주변 적 강화
+                    drawScale: 1.7, aura: { radius: 170, damageMul: 1.3, speedMul: 1.15 },               // 주변 적 강화
+                    skills: [ { id: 'slam',   name: '대지 강타', cooldown: 8,  first: 3, trigger: 115, radius: 125, delay: 1.0, damage: 95, stun: 1.6 },      // 주변 기절
+                              { id: 'charge', name: '돌격',      cooldown: 12, first: 8, range: 360, minRange: 120, width: 56, delay: 0.8, damage: 75, knock: 130, speed: 540 } ] },
     dragon:       { name: '드래곤',     boss: true, final: true, hp: 9000, speed: 52, radius: 34, air: true, lowFly: true, armor: 0.3, gateDamage: 90, damage: 50, attackInterval: 1.6, xp: 1200, gold: 800,
-                    breath: { interval: 4.5, range: 240, radius: 90, damage: 80 } },                       // 화염 범위 공격. lowFly: 낮게 날아서 근접 공격은 맞지만 붙잡을 수는 없음
+                    breath: { interval: 4.5, range: 240, radius: 90, damage: 80 },                         // 화염 범위 공격. lowFly: 낮게 날아서 근접 공격은 맞지만 붙잡을 수는 없음
+                    skills: [ { id: 'meteor', name: '화염 비',   cooldown: 12, first: 6,  range: 430, count: 5, spread: 150, radius: 66, delay: 1.3, damage: 85 },
+                              { id: 'gust',   name: '날개 바람', cooldown: 14, first: 10, trigger: 150, radius: 195, delay: 0.75, damage: 45, knock: 170 } ],
+                    enrage: { hpRatio: 0.35, damageMul: 1.25, cdMul: 0.7 } },                             // 체력 35% 이하: 분노 (공격력↑, 스킬·화염 더 자주)
   },
 
   bases: {
@@ -1132,6 +1143,7 @@ const Art = {
     if (e.post) { ctx.strokeStyle = 'rgba(200,40,30,0.75)'; ctx.lineWidth = 2; ellipse(ctx, e.x, e.y + 4, e.radius + 3, (e.radius + 3) * 0.5); ctx.stroke(); }   // 수비병 표시
     if (e.boss && !e.air) { ctx.strokeStyle = `rgba(255,200,80,${0.6 + Math.sin(e.anim * 5) * 0.3})`; ctx.lineWidth = 3; ellipse(ctx, e.x, e.y + 5, e.radius + 6, (e.radius + 6) * 0.5); ctx.stroke(); }
     if (e.auraT > 0 && !e.boss) { ctx.fillStyle = 'rgba(255,60,30,0.22)'; ellipse(ctx, e.x, e.y + 3, e.radius + 5, (e.radius + 5) * 0.55); ctx.fill(); }   // 족장 오라
+    if (e.frenzyT > 0) { ctx.strokeStyle = `rgba(255,70,40,${0.55 + Math.sin(e.anim * 12) * 0.3})`; ctx.lineWidth = 2.5; ellipse(ctx, e.x, e.y + 3, e.radius + 7, (e.radius + 7) * 0.55); ctx.stroke(); }   // 광란
     if (e.type === 'spider' || e.type === 'spiderQueen') this.spider(ctx, e);
     else if (e.type === 'bat') this.bat(ctx, e);
     else if (e.type === 'dragon') this.dragon(ctx, e);
@@ -1139,6 +1151,59 @@ const Art = {
     const top = e.y - (e.air ? AIR_HEIGHT : 0) - e.radius - 14;
     if (e.stun > 0) this.stunStars(ctx, e.x, top + 2, e.anim);
     else if (e.taunt > 0) { ctx.fillStyle = '#ff4a3a'; circle(ctx, e.x, top - 2, 5.5); ctx.fill(); txt(ctx, '!', e.x, top - 1.5, 9, '#fff', 'center', { weight: 900 }); }
+  },
+
+  // ---- 보스 스킬 예고 표시 (바닥) ----
+  telegraph(ctx, g, rt) {
+    const p = clamp(g.t / g.delay, 0, 1), pulse = 0.5 + 0.5 * Math.sin(rt * 14);
+    if (g.charge) { ctx.fillStyle = `rgba(${g.color},${0.2 + pulse * 0.25})`; circle(ctx, g.x, g.y - 24, g.r * (0.5 + p * 0.7)); ctx.fill(); return; }   // 시전 빛
+    if (g.shape === 'line') {
+      const a = Math.atan2(g.y2 - g.y, g.x2 - g.x), L = dist(g.x, g.y, g.x2, g.y2);
+      ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(a);
+      ctx.fillStyle = `rgba(${g.color},${0.12 + pulse * 0.1})`; ctx.fillRect(0, -g.w / 2, L, g.w);
+      ctx.fillStyle = `rgba(${g.color},0.32)`; ctx.fillRect(0, -g.w / 2, L * p, g.w);
+      ctx.strokeStyle = `rgba(${g.color},0.9)`; ctx.lineWidth = 2.5; ctx.setLineDash([10, 7]); ctx.strokeRect(0, -g.w / 2, L, g.w); ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(${g.color},0.8)`;
+      for (let i = 1; i <= 3; i++) { const x = L * i / 4; ctx.beginPath(); ctx.moveTo(x + 10, 0); ctx.lineTo(x - 6, -g.w * 0.3); ctx.lineTo(x - 6, g.w * 0.3); ctx.closePath(); ctx.fill(); }
+      ctx.restore(); return;
+    }
+    ctx.fillStyle = `rgba(${g.color},${0.1 + pulse * 0.08})`; ellipse(ctx, g.x, g.y, g.r, g.r * 0.8); ctx.fill();
+    ctx.fillStyle = `rgba(${g.color},0.3)`; ellipse(ctx, g.x, g.y, g.r * p, g.r * 0.8 * p); ctx.fill();
+    ctx.strokeStyle = `rgba(${g.color},0.9)`; ctx.lineWidth = 2.5; ctx.setLineDash([9, 6]); ellipse(ctx, g.x, g.y, g.r, g.r * 0.8); ctx.stroke(); ctx.setLineDash([]);
+    if (g.web) {
+      ctx.strokeStyle = 'rgba(245,245,245,0.5)'; ctx.lineWidth = 1.2;
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x + Math.cos(a) * g.r, g.y + Math.sin(a) * g.r * 0.8); ctx.stroke(); }
+    }
+  },
+  // 예고 표시 위에 그리는 것: 떨어지는 불덩이 / 날아가는 거미줄
+  telegraphTop(ctx, g, rt) {
+    const p = clamp(g.t / g.delay, 0, 1);
+    if (g.meteor) {
+      const z = (1 - p) * 360, mx = g.x + z * 0.35, my = g.y - z;
+      ctx.fillStyle = 'rgba(255,140,40,0.35)'; circle(ctx, mx, my, 16); ctx.fill();
+      ctx.fillStyle = '#ff7a2a'; circle(ctx, mx, my, 10); ctx.fill();
+      ctx.fillStyle = '#ffe08a'; circle(ctx, mx - 2, my - 2, 5); ctx.fill();
+    } else if (g.web && g.from && p < 0.75) {
+      const q = p / 0.75, x = lerp(g.from.x, g.x, q), y = lerp(g.from.y, g.y, q) - Math.sin(q * Math.PI) * 50;
+      ctx.strokeStyle = 'rgba(240,240,240,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.from.x, g.from.y); ctx.quadraticCurveTo((g.from.x + x) / 2, Math.min(g.from.y, y) - 30, x, y); ctx.stroke();
+      ctx.fillStyle = '#f4f4f4'; circle(ctx, x, y, 7); ctx.fill();
+      ctx.strokeStyle = '#bdbdbd'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI; ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * 9, y - Math.sin(a) * 9); ctx.lineTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); ctx.stroke(); }
+    }
+  },
+  // 독 웅덩이 등 바닥 위험 지역
+  hazard(ctx, z, rt) {
+    const f = Math.min(1, z.t * 3) * Math.min(1, (z.dur - z.t) * 2);
+    ctx.globalAlpha = f;
+    ctx.fillStyle = `rgba(${z.color},0.32)`; ellipse(ctx, z.x, z.y, z.r, z.r * 0.8); ctx.fill();
+    ctx.fillStyle = `rgba(${z.color},0.25)`; ellipse(ctx, z.x, z.y, z.r * 0.65, z.r * 0.5); ctx.fill();
+    ctx.fillStyle = 'rgba(200,255,140,0.5)';
+    for (let i = 0; i < 7; i++) { const a = i * 2.4 + rt * 0.6, r = z.r * (0.25 + (i % 3) * 0.2); circle(ctx, z.x + Math.cos(a) * r, z.y + Math.sin(a) * r * 0.8, 2 + ((rt * 3 + i) % 1) * 3); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  },
+  // 영웅 상태 표시 (묶임 / 기절)
+  status(ctx, u, rt) {
+    if (u.root > 0) { ctx.strokeStyle = 'rgba(240,240,240,0.85)'; ctx.lineWidth = 1.4; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(u.x, u.y + 2, u.radius + 3 + i * 2.2, i * 1.3, i * 1.3 + 2.6); ctx.stroke(); } }
+    if (u.stun > 0) this.stunStars(ctx, u.x, u.y - u.radius - 22, rt);
   },
 
   stunStars(ctx, x, y, t) {
@@ -1721,6 +1786,12 @@ const FX = {
   poof(x, y, r = 10) { for (let i = 0; i < 5; i++) { const a = Math.random() * TAU; this.puff(x, y, '#d8d4cc', r * rand(0.5, 0.9), 0.45, Math.cos(a) * 30, Math.sin(a) * 30 - 10); } },
   dust(x, y) { for (let i = 0; i < 3; i++) this.puff(x + rand(-6, 6), y + rand(-6, 6), '#b49a72', rand(4, 8), 0.5, rand(-25, 25), rand(-25, 10), 0.55); },
   ring(x, y, size = 24, color = '255,255,255', life = 0.35) { this.add({ k: 'ring', x, y, vx: 0, vy: 0, g: 0, life, max: life, size, color }); },
+  zap(x1, y1, x2, y2) {                                         // 번개 (지그재그 선)
+    const pts = [[x1, y1]], n = 7, nx = -(y2 - y1), ny = x2 - x1, L = Math.hypot(nx, ny) || 1;
+    for (let i = 1; i < n; i++) { const t = i / n, o = rand(-14, 14); pts.push([lerp(x1, x2, t) + nx / L * o, lerp(y1, y2, t) + ny / L * o]); }
+    pts.push([x2, y2]);
+    this.add({ k: 'zap', x: 0, y: 0, vx: 0, vy: 0, g: 0, life: 0.28, max: 0.28, pts });
+  },
   arc(x, y, a, r, arc, color = '255,235,170', life = 0.25) { this.add({ k: 'arc', x, y, vx: 0, vy: 0, g: 0, life, max: life, a, size: r, arc, color }); },
   explosion(x, y, s = 1) {
     this.ring(x, y, 110 * s, '255,220,140', 0.55);
@@ -1775,6 +1846,13 @@ const FX = {
           ctx.beginPath(); ctx.arc(p.x, p.y, r, p.a - p.arc / 2, p.a + p.arc / 2); ctx.stroke();
           break;
         }
+        case 'zap':
+          ctx.globalAlpha = f; ctx.lineJoin = 'round';
+          for (const [wd, col] of [[7, 'rgba(120,180,255,0.45)'], [2.5, '#eef6ff']]) {
+            ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.beginPath();
+            p.pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke();
+          }
+          break;
         case 'debris':
           ctx.globalAlpha = Math.min(1, f * 2); ctx.fillStyle = p.color;
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + (1 - f) * p.spin); ctx.fillRect(-p.size / 2, -p.size * 0.3, p.size, p.size * 0.6); ctx.restore();
@@ -1916,6 +1994,7 @@ const SFX = {
   heal:     { vol: 0.42, gap: 0.5, dur: 1.4, fn: (S, o, t) => { [72, 76, 79].forEach((m, i) => S.tone(o, t + i * 0.06, { f0: midiHz(m), dur: 1.0, vol: 0.35, attack: 0.05, vib: 5 })); S.tone(o, t + 0.25, { f0: midiHz(96), dur: 0.7, vol: 0.12 }); } },
   blizzard: { vol: 0.65, gap: 0.5, dur: 1.8, fn: (S, o, t) => { S.noise(o, t, { dur: 1.5, filter: 'bandpass', f0: 900, f1: 380, q: 3, vol: 0.8, attack: 0.25 }); [91, 96].forEach((m, i) => S.tone(o, t + 0.1 + i * 0.12, { f0: midiHz(m), dur: 0.5, vol: 0.12 })); } },
   sizzle:   { vol: 0.38, gap: 0.5, dur: 1.1, fn: (S, o, t) => { S.noise(o, t, { dur: 0.95, filter: 'highpass', f0: 3800, vol: 0.5, attack: 0.02 }); S.noise(o, t, { dur: 0.6, filter: 'lowpass', f0: 280, vol: 0.5 }); } },
+  zap:      { vol: 0.42, gap: 0.2, dur: 0.5, fn: (S, o, t) => { for (let i = 0; i < 3; i++) S.noise(o, t + i * 0.06, { dur: 0.08, filter: 'highpass', f0: 2200, vol: 0.7 }); S.tone(o, t, { type: 'sawtooth', f0: 900, f1: 120, dur: 0.3, vol: 0.3, filter: { f: 3000 } }); } },
   bossWarn: { vol: 0.5, gap: 1, dur: 1.4, fn: (S, o, t) => [0, 1, 2, 3].forEach(i => S.tone(o, t + i * 0.28, { type: 'square', f0: i % 2 ? 349 : 440, dur: 0.24, vol: 0.32, filter: { f: 1400 } })) },
   roar:     { vol: 0.7, gap: 1, dur: 1.8, fn: (S, o, t) => { S.tone(o, t, { type: 'sawtooth', f0: 120, f1: 55, dur: 1.4, vol: 0.6, attack: 0.08, filter: { f: 650 }, vib: 9 }); S.noise(o, t, { dur: 1.2, filter: 'lowpass', f0: 900, f1: 250, vol: 0.7, attack: 0.08 }); } },
   breath:   { vol: 0.48, gap: 0.5, dur: 1.0, fn: (S, o, t) => { S.noise(o, t, { dur: 0.85, filter: 'bandpass', f0: 650, f1: 280, q: 0.8, vol: 1, attack: 0.05 }); S.tone(o, t, { f0: 80, f1: 50, dur: 0.6, vol: 0.4 }); } },
@@ -2588,6 +2667,47 @@ class MagicBolt {
   }
 }
 
+// ---------- 보스 스킬 도우미 ----------
+// 아군(영웅 + 병사) 찾기
+function alliesIn(x, y, r) {
+  const out = [], h = G.hero;
+  if (h && !h.dead && dist(h.x, h.y, x, y) <= r + h.radius * 0.5) out.push(h);
+  for (const u of G.soldiers) if (!u.dead && dist(u.x, u.y, x, y) <= r + u.radius * 0.5) out.push(u);
+  return out;
+}
+function nearestAlly(x, y, range) {
+  let best = null, bd = range; const h = G.hero;
+  if (h && !h.dead) { const d = dist(x, y, h.x, h.y); if (d < bd) { bd = d; best = h; } }
+  for (const u of G.soldiers) { if (u.dead) continue; const d = dist(x, y, u.x, u.y); if (d < bd) { bd = d; best = u; } }
+  return best;
+}
+function gateFront() { return { x: MAP.castle.wallX + MAP.castle.wallW + 10, y: MAP.gate.y }; }
+
+// 예고 표시: 바닥에 범위를 보여주고 delay초 뒤 onHit 발동 (그 전에 보스가 죽으면 취소)
+// shape: 'circle' (x, y, r) / 'line' (x, y → x2, y2, 폭 w) · follow: 보스를 따라 움직임 · meteor: 하늘에서 떨어지는 불덩이 그림
+class Telegraph {
+  constructor(o) { Object.assign(this, { t: 0, done: false, shape: 'circle', color: '255,80,40' }, o); }
+  update(dt) {
+    if (this.owner && !this.owner.alive) { this.done = true; return; }
+    if (this.follow) { this.x = this.owner.x; this.y = this.owner.y; }
+    this.t += dt;
+    if (this.meteor && Math.random() < 0.6) { const z = (1 - Math.min(1, this.t / this.delay)) * 360; FX.add({ k: 'flame', x: this.x + z * 0.35 + rand(-5, 5), y: this.y - z + rand(-5, 5), vx: 20, vy: -40, g: 0, life: 0.3, max: 0.3, size: rand(5, 9) }); }
+    if (this.t >= this.delay) { this.done = true; this.onHit(this); }
+  }
+}
+// 독 웅덩이 등: 안에 있는 아군이 계속 피해
+class Hazard {
+  constructor(x, y, r, dps, dur, color) { Object.assign(this, { x, y, r, dps, dur, color, t: 0, tick: 0, done: false }); }
+  update(dt) {
+    this.t += dt; this.tick -= dt;
+    if (this.tick <= 0) { this.tick = 0.25; for (const a of alliesIn(this.x, this.y, this.r)) a.takeDamage(this.dps * 0.25); }
+    if (Math.random() < dt * 8) FX.puff(this.x + rand(-this.r, this.r) * 0.7, this.y + rand(-this.r, this.r) * 0.5, '#7bd04a', rand(4, 8), 0.8, 0, -18, 0.45, 1.3);
+    if (this.t >= this.dur) this.done = true;
+  }
+}
+// 밀려남·기절·묶임을 받을 수 있는지 (영웅 돌진 중에는 무시)
+function canDisable(a) { return !a.dead && !a.dash; }
+
 // ---------- 적 ----------
 class Enemy {
   constructor(type, base, lane, threat) {
@@ -2603,8 +2723,12 @@ class Enemy {
     this.summonT = cfg.summon ? cfg.summon.interval * 0.5 : 0; this.healT = cfg.heal ? cfg.heal.interval : 0;
     this.breathT = cfg.breath ? 2.5 : 0; this.breathAnim = 0; this.breathTo = null; this.auraTick = 0;
     this.auraT = 0; this.auraMul = 1; this.auraSpd = 1;           // 오크 족장 오라를 받는 중
+    this.frenzyT = 0; this.frenzyMul = 1; this.frenzySpd = 1;     // 고블린 주술사 광란의 주문을 받는 중
+    this.skillCd = (cfg.skills || []).map(k => (k.first != null ? k.first : k.cooldown * 0.5));
+    this.casting = 0; this.bossDash = null; this.enraged = false;   // 보스: 스킬 준비 중(멈춤) / 돌격 중 / 분노
     this.radius = cfg.radius; this.air = cfg.air;
     this.damage = cfg.damage * Math.pow(esc.damageMul, lv) * D.enemyDmg;
+    this.skillMul = this.damage / cfg.damage;                      // 보스 스킬 피해 배율 (난이도·위협)
     this.dmgPop = 0; this.dmgPopT = 0; this.dmgMagic = false;       // 데미지 숫자 모으기
     this.xp = cfg.xp * (1 + 0.1 * lv);
     this.lane = lane; this.dist = 0;
@@ -2620,8 +2744,8 @@ class Enemy {
     this.x = s.x - s.dy * lane; this.y = s.y + s.dx * lane; this.face = Math.atan2(s.dy, s.dx);
   }
   get reachedEnd() { return !!(this.slot || this.fallback); }
-  get spd() { return this.root > 0 ? 0 : this.speed * (this.slowTimer > 0 ? 1 - this.slowAmt : 1) * (this.auraT > 0 ? this.auraSpd : 1); }     // 속박·둔화·오라 적용된 속도
-  get dmgMul() { return this.auraT > 0 ? this.auraMul : 1; }
+  get spd() { return this.root > 0 ? 0 : this.speed * (this.slowTimer > 0 ? 1 - this.slowAmt : 1) * (this.auraT > 0 ? this.auraSpd : 1) * (this.frenzyT > 0 ? this.frenzySpd : 1); }     // 속박·둔화·오라·광란 적용된 속도
+  get dmgMul() { return (this.auraT > 0 ? this.auraMul : 1) * (this.frenzyT > 0 ? this.frenzyMul : 1); }
   applySlow(amount, time) { this.slowAmt = Math.max(this.slowTimer > 0 ? this.slowAmt : 0, amount); this.slowTimer = Math.max(this.slowTimer, time); }
 
   moveToward(tx, ty, dt) {
@@ -2679,7 +2803,12 @@ class Enemy {
     if (this.slowTimer > 0) this.slowTimer -= dt;
     if (this.root > 0) this.root -= dt;
     if (this.auraT > 0) this.auraT -= dt;
-    if (this.boss) { this.stun = Math.min(this.stun, 0.6); this.root = Math.min(this.root, 0.8); this.bossUpdate(dt); if (!this.alive) return; }
+    if (this.frenzyT > 0) this.frenzyT -= dt;
+    if (this.boss) {
+      this.stun = Math.min(this.stun, 0.6); this.root = Math.min(this.root, 0.8); this.bossUpdate(dt); if (!this.alive) return;
+      if (this.bossDash) { this.updateBossDash(dt); return; }
+      if (this.casting > 0) { this.casting -= dt; return; }       // 스킬 준비 중에는 멈춰 있음
+    }
     if (this.dot) {
       const d = this.dot; d.t -= dt; this.takeDamage(d.dps * dt, d.src);
       if (d.t <= 0) this.dot = null;
@@ -2789,10 +2918,152 @@ class Enemy {
         const gx = MAP.castle.wallX + MAP.castle.wallW + 20, gy = MAP.gate.y;
         if (t) this.breathAt(t.x, t.y);
         else if (dist(this.x, this.y, gx, gy) < b.range) this.breathAt(gx, gy);
-        this.breathT = t || dist(this.x, this.y, gx, gy) < b.range ? b.interval : 0.5;
+        this.breathT = t || dist(this.x, this.y, gx, gy) < b.range ? b.interval * (this.enraged ? c.enrage.cdMul : 1) : 0.5;
+      }
+    }
+    if (this.enraged && Math.random() < dt * 25) FX.add({ k: 'flame', x: this.x + rand(-30, 30), y: this.y - AIR_HEIGHT * 1.6 + rand(-20, 10), vx: 0, vy: -30, g: 0, life: 0.4, max: 0.4, size: rand(5, 9) });   // 분노한 드래곤
+    if (c.enrage && !this.enraged && this.hp <= this.maxHp * c.enrage.hpRatio) {     // 분노
+      this.enraged = true; this.damage *= c.enrage.damageMul; this.skillMul *= c.enrage.damageMul;
+      showBanner(`${c.name}가 분노합니다!`, '#ff5a3a', 2.6); G.banner.warn = true; G.redFlash = 0.5;
+      Sound.play('roar'); shake(7, 0.6); FX.ring(this.x, this.y, 160, '255,80,40', 0.7);
+    }
+    if (c.skills) {                                            // 스킬: 쿨타임이 끝나고 쓸 대상이 있으면 사용
+      const rate = this.enraged ? 1 / c.enrage.cdMul : 1;
+      for (let i = 0; i < c.skills.length; i++) if (this.skillCd[i] > 0) this.skillCd[i] -= dt * rate;
+      if (this.casting <= 0 && !this.bossDash && this.stun <= 0) {
+        for (let i = 0; i < c.skills.length; i++) {
+          if (this.skillCd[i] > 0) continue;
+          if (this.useSkill(c.skills[i])) { this.skillCd[i] = c.skills[i].cooldown; break; }
+          this.skillCd[i] = 0.4;                               // 대상이 없으면 잠시 후 다시 확인
+        }
       }
     }
   }
+
+  // ---------- 보스 스킬 ----------
+  skillSay(sk) {
+    FX.text(this.x, this.y - (this.air ? AIR_HEIGHT * 1.6 : 0) - this.radius * (this.cfg.drawScale || 1) - 20, sk.name + '!', '#ffb36b', 21, 1.2);
+  }
+  useSkill(sk) {
+    const m = this.skillMul, gf = gateFront();
+    const tele = o => G.telegraphs.push(new Telegraph(Object.assign({ owner: this }, o)));
+    switch (sk.id) {
+      case 'web': {                                            // 거미 여왕: 거미줄 → 범위 안 아군 묶임
+        const t = nearestAlly(this.x, this.y, sk.range); if (!t) return false;
+        this.face = Math.atan2(t.y - this.y, t.x - this.x); this.casting = 0.35; this.skillSay(sk); Sound.play('trapSet', this.x, this.y);
+        tele({ x: t.x, y: t.y, r: sk.radius, delay: sk.delay, color: '235,235,235', web: true, from: { x: this.x, y: this.y }, onHit: g => {
+          for (const a of alliesIn(g.x, g.y, g.r)) { a.takeDamage(sk.damage * m); if (canDisable(a)) a.root = Math.max(a.root || 0, sk.root); }
+          FX.ring(g.x, g.y, g.r, '245,245,245', 0.5); FX.spark(g.x, g.y, '#ffffff', 10); Sound.play('trapSnap', g.x, g.y);
+        } });
+        return true;
+      }
+      case 'poison': {                                         // 거미 여왕: 독 웅덩이
+        const t = nearestAlly(this.x, this.y, sk.range); if (!t) return false;
+        this.face = Math.atan2(t.y - this.y, t.x - this.x); this.casting = 0.4; this.skillSay(sk);
+        tele({ x: t.x, y: t.y, r: sk.radius, delay: sk.delay, color: '120,220,60', onHit: g => {
+          G.hazards.push(new Hazard(g.x, g.y, g.r, sk.dps * m, sk.duration, '110,200,60')); Sound.play('sizzle', g.x, g.y, 0.7);
+          for (let i = 0; i < 10; i++) FX.puff(g.x + rand(-g.r, g.r) * 0.6, g.y + rand(-g.r, g.r) * 0.4, '#5fae3a', rand(8, 14), 0.9, 0, -20, 0.6, 1.4);
+        } });
+        return true;
+      }
+      case 'lightning': {                                      // 고블린 주술사: 번개 사슬 (가까운 아군에게 차례로 튐)
+        const t0 = nearestAlly(this.x, this.y, sk.range); if (!t0) return false;
+        this.face = Math.atan2(t0.y - this.y, t0.x - this.x); this.casting = sk.delay; this.skillSay(sk);
+        tele({ x: this.x, y: this.y, r: 34, delay: sk.delay, follow: true, color: '130,190,255', charge: true, onHit: () => {
+          const hit = new Set(); let cur = t0.dead ? nearestAlly(this.x, this.y, sk.range) : t0, px = this.x, py = this.y - 26;
+          for (let j = 0; j < sk.jumps && cur; j++) {
+            hit.add(cur); cur.takeDamage(sk.damage * m * (j ? 0.75 : 1));
+            FX.zap(px, py, cur.x, cur.y - 8); FX.spark(cur.x, cur.y - 6, '#cfe6ff', 6);
+            px = cur.x; py = cur.y - 8;
+            let nb = null, nd = sk.jumpRange;
+            for (const a of alliesIn(px, py, sk.jumpRange)) if (!hit.has(a)) { const d = dist(px, py, a.x, a.y); if (d < nd) { nd = d; nb = a; } }
+            cur = nb;
+          }
+          Sound.play('zap', this.x, this.y);
+        } });
+        return true;
+      }
+      case 'frenzy': {                                         // 고블린 주술사: 주변 적 광란 (공격력·속도 증가)
+        const list = G.enemies.filter(e => e.alive && e !== this && !e.boss && dist(e.x, e.y, this.x, this.y) <= sk.radius);
+        if (list.length < 3) return false;
+        for (const e of list) { e.frenzyT = sk.duration; e.frenzyMul = sk.damageMul; e.frenzySpd = sk.speedMul; FX.spark(e.x, e.y - 6, '#ff6a4a', 2); }
+        this.casting = 0.5; this.skillSay(sk); FX.ring(this.x, this.y, sk.radius, '255,80,60', 0.7); Sound.play('warcry', this.x, this.y, 0.6);
+        return true;
+      }
+      case 'slam': {                                           // 오크 족장: 대지 강타 (주변 기절, 성문 앞이면 성문 피해)
+        const nearGate = dist(this.x, this.y, gf.x, gf.y) < sk.radius && !G.gate.destroyed;
+        if (!nearestAlly(this.x, this.y, sk.trigger) && !nearGate) return false;
+        this.casting = sk.delay; this.skillSay(sk); Sound.play('warcry', this.x, this.y, 0.5);
+        tele({ x: this.x, y: this.y, r: sk.radius, delay: sk.delay, follow: true, color: '255,110,40', onHit: g => {
+          for (const a of alliesIn(g.x, g.y, g.r)) { a.takeDamage(sk.damage * m); if (canDisable(a)) a.stun = Math.max(a.stun || 0, sk.stun); }
+          if (dist(g.x, g.y, gf.x, gf.y) <= g.r + 20) G.gate.takeDamage(sk.damage * m);
+          shake(5, 0.35); Sound.play('boom', g.x, g.y); FX.ring(g.x, g.y, g.r, '255,200,120', 0.5);
+          for (let i = 0; i < 14; i++) { const a = rand(0, TAU), v = rand(60, 200); FX.add({ k: 'debris', x: g.x, y: g.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 0, drag: 3, life: rand(0.4, 0.8), max: 0.8, size: rand(3, 7), color: '#7a6040', rot: rand(0, TAU), spin: rand(-8, 8) }); }
+          for (let i = 0; i < 8; i++) FX.puff(g.x + rand(-g.r, g.r) * 0.6, g.y + rand(-g.r, g.r) * 0.5, '#a48a64', rand(10, 16), 0.7, 0, -15, 0.6);
+        } });
+        return true;
+      }
+      case 'charge': {                                         // 오크 족장: 돌격 (일직선, 부딪힌 아군 피해 + 밀려남)
+        const t = nearestAlly(this.x, this.y, sk.range); if (!t) return false;
+        const d = dist(this.x, this.y, t.x, t.y); if (d < sk.minRange) return false;
+        const a = Math.atan2(t.y - this.y, t.x - this.x), L = Math.min(sk.range, d + 60);
+        if (this.foe) this.release();
+        this.face = a; this.casting = sk.delay; this.skillSay(sk); Sound.play('horn', this.x, this.y, 0.7);
+        tele({ shape: 'line', x: this.x, y: this.y, x2: this.x + Math.cos(a) * L, y2: this.y + Math.sin(a) * L, w: sk.width, delay: sk.delay, color: '255,110,40', onHit: () => {
+          this.bossDash = { vx: Math.cos(a) * sk.speed, vy: Math.sin(a) * sk.speed, left: L / sk.speed, hit: new Set(), sk };
+          Sound.play('charge', this.x, this.y);
+        } });
+        return true;
+      }
+      case 'meteor': {                                         // 드래곤: 화염 비 (영웅 주변에 불덩이 여러 개)
+        const h = G.hero, t = h && !h.dead && dist(this.x, this.y, h.x, h.y) <= sk.range ? h : nearestAlly(this.x, this.y, sk.range); if (!t) return false;
+        this.casting = 0.5; this.skillSay(sk); Sound.play('fireCast', this.x, this.y);
+        for (let i = 0; i < sk.count; i++) {
+          const a = rand(0, TAU), r = i ? rand(50, sk.spread) : 0;
+          tele({ x: t.x + Math.cos(a) * r, y: t.y + Math.sin(a) * r * 0.8, r: sk.radius, delay: sk.delay + i * 0.2, color: '255,90,30', meteor: true, onHit: g => {
+            for (const al of alliesIn(g.x, g.y, g.r)) al.takeDamage(sk.damage * m);
+            if (dist(g.x, g.y, gf.x, gf.y) <= g.r + 20) G.gate.takeDamage(sk.damage * m * 0.5);
+            FX.explosion(g.x, g.y, 0.42); Sound.play('boom', g.x, g.y, 0.8); shake(3, 0.2);
+          } });
+        }
+        return true;
+      }
+      case 'gust': {                                           // 드래곤: 날개 바람 (주변 아군 밀쳐냄)
+        if (!nearestAlly(this.x, this.y, sk.trigger)) return false;
+        this.casting = sk.delay; this.skillSay(sk); Sound.play('roar', this.x, this.y, 0.5);
+        tele({ x: this.x, y: this.y, r: sk.radius, delay: sk.delay, follow: true, color: '190,225,255', onHit: g => {
+          for (const al of alliesIn(g.x, g.y, g.r)) {
+            al.takeDamage(sk.damage * m);
+            if (canDisable(al)) { const a = Math.atan2(al.y - g.y, al.x - g.x); al.push = { vx: Math.cos(a) * sk.knock / 0.3, vy: Math.sin(a) * sk.knock / 0.3, t: 0.3 }; }
+          }
+          for (let i = 0; i < 18; i++) { const a = (i / 18) * TAU; FX.puff(g.x + Math.cos(a) * 30, g.y + Math.sin(a) * 24, '#e8f2ff', rand(8, 13), 0.6, Math.cos(a) * 260, Math.sin(a) * 200, 0.55, 1.5); }
+          Sound.play('blizzard', g.x, g.y, 0.7); shake(4, 0.3);
+        } });
+        return true;
+      }
+    }
+    return false;
+  }
+  updateBossDash(dt) {
+    const D = this.bossDash, nx = this.x + D.vx * dt, ny = this.y + D.vy * dt;
+    if (!this.air && Nav.blocked(nx, ny)) D.left = 0; else { this.x = nx; this.y = ny; }
+    this.face = Math.atan2(D.vy, D.vx); this.anim += dt * 2;
+    if (Math.random() < 0.5) FX.dust(this.x, this.y + 8);
+    const sp = Math.hypot(D.vx, D.vy);
+    for (const a of alliesIn(this.x, this.y, this.radius + D.sk.width / 2)) {
+      if (D.hit.has(a)) continue;
+      D.hit.add(a); a.takeDamage(D.sk.damage * this.skillMul); FX.spark(a.x, a.y, '#ffd0a0', 6); Sound.play('thud', a.x, a.y);
+      if (canDisable(a)) a.push = { vx: D.vx / sp * D.sk.knock / 0.25, vy: D.vy / sp * D.sk.knock / 0.25, t: 0.25 };
+    }
+    D.left -= dt;
+    if (D.left <= 0) {
+      this.bossDash = null;
+      if (this.post) this.state = 'guard';
+      else if (this.reachedEnd) this.state = 'toGate';
+      else { this.dist = this.route.nearestDist(this.x, this.y, this.dist); this.state = 'rejoin'; }
+    }
+  }
+
   breathAt(tx, ty) {
     const b = this.cfg.breath, dmg = b.damage * this.dmgMul;
     const h = G.hero;
@@ -2971,6 +3242,7 @@ class Hero {
     this.cooldowns = this.cfg.skills.map(() => 0);
     this.buffs = { warcry: 0, warcryRed: 0 };
     this.dash = null; this.burst = null; this.moving = false; this.walkAnim = 0; this.retarget = 0;
+    this.stun = 0; this.root = 0; this.push = null;      // 보스 스킬: 기절 / 묶임 / 밀려남
     this.mana = this.maxMana;
   }
   // 능력치 = 기본 + 레벨 성장 + 장착 아이템
@@ -3050,6 +3322,7 @@ class Hero {
   die() {
     this.hp = 0; this.dead = true; this.respawnTimer = this.cfg.respawn; G.stats.heroDeaths++; shake(4, 0.3); Sound.play('heroDeath');
     this.deathX = this.x; this.deathY = this.y; this.dash = null; this.burst = null; this.path = []; this.target = null; this.baseTarget = null;
+    this.stun = 0; this.root = 0; this.push = null;
     for (const e of [...this.engaged]) e.release();
     this.engaged.clear();
     if (G.aim) G.aim = null;
@@ -3196,6 +3469,7 @@ class Hero {
 
   // ----- 이동 -----
   stepToward(tx, ty, dt) {
+    if (this.root > 0) return false;
     const wp = Nav.route(this, { x: tx, y: ty })[0];
     const dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
     if (d < 0.5) return true;
@@ -3245,6 +3519,9 @@ class Hero {
     if (idle && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * c.regenRate * dt);   // 자연 회복
     if (this.maxMana) this.mana = Math.min(this.maxMana, this.mana + ((c.manaRegen || 0) + this.manaRegenBonus + (idle ? c.manaRegenIdle || 0 : 0)) * dt);   // 마나 회복
     if (this.dash) { this.updateDash(dt); return; }
+    if (this.root > 0) this.root -= dt;
+    if (this.push) { pushStep(this, dt); return; }       // 보스 스킬에 밀려나는 중
+    if (this.stun > 0) { this.stun -= dt; return; }      // 기절
     if (this.burst) {                                   // 연발 사격: 짧은 간격으로 화살 여러 발
       const B = this.burst; B.timer -= dt;
       if (B.timer <= 0) {
@@ -3259,7 +3536,7 @@ class Hero {
       }
     }
 
-    if (this.mode === 'move') {                         // 명령 이동 중에는 적을 무시하고 이동
+    if (this.mode === 'move' && this.root <= 0) {       // 명령 이동 중에는 적을 무시하고 이동 (묶이면 제자리)
       if (!this.path.length) { this.mode = 'guard'; }
       else {
         const wp = this.path[0], dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
@@ -4495,6 +4772,7 @@ function createState() {
     front: 0, fCount: 0, bCount: 0, fCenter: null,   // 대형 앞쪽 방향 (0 = 동쪽)
     toast: null,
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
+    telegraphs: [], hazards: [],   // 보스 스킬 예고 표시 / 독 웅덩이
     drops: [], itemPrompt: null, itemInfo: null,   // 바닥 아이템 / 교체 선택 창 / 아이템 정보 창
     midTimer: CONFIG.bosses.midFirst, finalSpawned: false, finalBoss: null, redFlash: 0,
     sel: null,          // 선택된 메뉴: { kind: 'gate' | 'facility', ref }
@@ -4539,7 +4817,9 @@ function update(dt) {
   for (const p of G.projectiles) p.update(dt);
   for (const z of G.zones) z.update(dt);
   for (const t of G.traps) t.update(dt);
-  compact(G.zones, z => !z.done); compact(G.traps, t => !t.done);
+  for (const t of G.telegraphs) t.update(dt);
+  for (const z of G.hazards) z.update(dt);
+  compact(G.zones, z => !z.done); compact(G.traps, t => !t.done); compact(G.telegraphs, t => !t.done); compact(G.hazards, z => !z.done);
   for (const d of G.drops) d.update(dt);
   compact(G.drops, d => !d.done);
   if (G.redFlash > 0) G.redFlash -= dt;
@@ -4572,6 +4852,8 @@ function renderWorld(ctx) {
   for (const tr of G.traps) Art.trap(ctx, tr);
   for (const d of G.drops) Art.drop(ctx, d, realTime);
   for (const z of G.zones) Art.zoneGround(ctx, z);
+  for (const z of G.hazards) Art.hazard(ctx, z, realTime);
+  for (const t of G.telegraphs) Art.telegraph(ctx, t, realTime);
 
   const h = G.hero, sel = G.sel;
   if (sel && G.state === 'playing' && sel.kind === 'gate') for (const a of G.gate.archers) Art.rangeCircle(ctx, a.x, a.y, G.gate.cfg.archerRange, realTime, '160,200,255');
@@ -4595,11 +4877,13 @@ function renderWorld(ctx) {
   for (const p of G.projectiles) if (vis(p)) Art.projectile(ctx, p);
   for (const e of G.enemies) if (e.air && (vis(e) || e.boss)) Art.enemy(ctx, e);
   for (const z of G.zones) Art.zoneTop(ctx, z);
+  for (const t of G.telegraphs) Art.telegraphTop(ctx, t, realTime);
   FX.draw(ctx);
   for (const b of G.bases) Art.baseBar(ctx, b);
   for (const e of G.enemies) if (vis(e)) Art.enemyBar(ctx, e);
   for (const u of G.soldiers) if (vis(u)) Art.soldierBar(ctx, u);
   if (h) Art.heroBar(ctx, h);
+  if (h && !h.dead) Art.status(ctx, h, realTime);
 }
 
 function render() {
