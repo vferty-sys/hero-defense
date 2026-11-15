@@ -5391,6 +5391,23 @@ function markCleared(i) {
   const d = G.diffKey;
   if (i + 1 > cleared[d]) { cleared[d] = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.progress', JSON.stringify(cleared)); } catch (_) {} }
 }
+// 진행 기록 초기화: 깬 스테이지(모든 난이도) · 저장된 장비 · 고른 영웅/스테이지/난이도. 소리·효과 설정은 그대로
+// 실수 방지: 3초 안에 한 번 더 눌러야 지워짐
+let resetArmUntil = 0;
+function resetProgress() {
+  if (realTime > resetArmUntil) {
+    resetArmUntil = realTime + 3;
+    selectMsg = { text: '한 번 더 누르면 깬 스테이지와 장비 기록이 모두 지워집니다', until: realTime + 3 }; Sound.play('error');
+    return;
+  }
+  resetArmUntil = 0;
+  for (const k in cleared) cleared[k] = 0;
+  SavedGear.mem = {};
+  try { for (const k of ['kg.progress', 'kg.cleared', 'kg.gear', 'kg.stage', 'kg.hero', 'kg.diff']) localStorage.removeItem(k); } catch (_) {}
+  selectedStage = 0; selectedDiff = 'normal'; selectedHero = 'knight';
+  newGame('select', selectedHero, selectedDiff, 0);
+  selectMsg = { text: '모든 기록을 지웠어요. 1스테이지부터 다시 시작합니다', until: realTime + 2.5 }; Sound.play('coin');
+}
 function pickStage(i) {
   if (!stageUnlocked(i)) { selectMsg = { text: `${CONFIG.difficulty[selectedDiff].name} 난이도에서 ${josa(CONFIG.stages[i - 1].name, '을', '를')} 깨면 열려요`, until: realTime + 1.8 }; Sound.play('error'); return; }
   if (selectedStage === i) return;
@@ -5401,6 +5418,11 @@ function pickStage(i) {
 function drawSelect(ctx, k) {
   const pw = 1120 * k, ph = 760 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '영웅 · 스테이지 선택', cx, y + 52 * k, 40 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 7 * k, weight: 900 });
+  {                                                                  // 기록 초기화 (오른쪽 위, 두 번 눌러야 지워짐)
+    const armed = realTime < resetArmUntil, rw = 136 * k, rh = 40 * k, rx = x + pw - rw - 26 * k, ry = y + 26 * k;
+    drawButton(ctx, rx, ry, rw, rh, UI.button('resetProgress', rx - 4 * k, ry - 4 * k, rw + 8 * k, rh + 8 * k, resetProgress), k, armed ? '정말 지우기' : '기록 초기화',
+      armed ? { size: 15 * k, radius: 16, c1: '#d0503a', c2: '#8a2a18', border: '#ffd0b0' } : { size: 14 * k, radius: 16, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+  }
   if (selectMsg && realTime < selectMsg.until) txt(ctx, selectMsg.text, cx, y + 92 * k, 18 * k, '#ff9a7a', 'center', { weight: 800 });
   else txt(ctx, '함께 싸울 영웅과 스테이지를 고르세요 (카드를 눌러 선택)', cx, y + 92 * k, 17 * k, '#d8c8a4', 'center', { weight: 500 });
   const cw = 336 * k, ch = 392 * k, gap = 22 * k, x0 = cx - (cw * 3 + gap * 2) / 2, cy0 = y + 116 * k;
