@@ -74,9 +74,9 @@ const CONFIG = {
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
   // (선택) spawnMul: 적 생산 간격 배율 / groupMul: 적 무리 크기 배율
   difficulty: {
-    easy:   { name: '쉬움',   enemyHp: 0.75, enemyDmg: 0.75, baseHp: 1.0,  startGold: 450 },
-    normal: { name: '보통',   enemyHp: 0.95, enemyDmg: 0.95, baseHp: 1.3,  startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.25, enemyDmg: 1.2,  baseHp: 1.6,  startGold: 300 },   // 보통을 모두 깨면 열림
+    easy:   { name: '쉬움',   enemyHp: 0.95, enemyDmg: 0.9,  baseHp: 0.7,  startGold: 450 },
+    normal: { name: '보통',   enemyHp: 1.2,  enemyDmg: 1.15, baseHp: 0.9,  startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.5,  enemyDmg: 1.4,  baseHp: 1.15, startGold: 300 },   // 보통을 모두 깨면 열림
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
@@ -375,15 +375,15 @@ const CONFIG = {
       desc: '기지 3곳 · 바위 거인', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 4 }], orc: [{ type: 'golem', count: 1, weight: 3 }], goblin: [{ type: 'harpy', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 160, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 1.6, protectBase: true } },
-    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.2, spawnMul: 2.0, startGold: 400,
+    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.08, spawnMul: 2.0, startGold: 400,
       desc: '기지 4곳 · 리치', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 150, interval: 150, byBase: { cave: 'slimeKing', goblin: 'goblinShaman', orc: 'orcChief' } },
       final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.14, spawnMul: 2.0, startGold: 450,
+    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.06, spawnMul: 2.0, startGold: 450,
       desc: '기지 4곳 · 바위 거인', extraSpawns: { orc: [{ type: 'golem', count: 1, weight: 3 }], cave: [{ type: 'harpy', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 3, weight: 2 }] },
       mid: { first: 140, interval: 150, byBase: { graveyard: 'lich', cave: 'wolfKing', goblin: 'goblinShaman' } },
       final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.16, spawnMul: 2.05, startGold: 500,
+    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.2, spawnMul: 2.05, startGold: 500,
       desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
@@ -419,7 +419,7 @@ const CONFIG = {
   },
 
   // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.08, damageMul: 1.045, spawnIntervalMul: 0.935, minSpawnInterval: 2.5, groupGrowth: 0.08 },   // groupGrowth: 위협 레벨당 적 무리 크기 +8%
+  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.05, damageMul: 1.03, spawnIntervalMul: 0.95, minSpawnInterval: 2.5, groupGrowth: 0.05 },   // groupGrowth: 위협 레벨당 적 무리 크기 +5%
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
