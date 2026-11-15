@@ -18,6 +18,7 @@
 | 영웅에게 화면 이동 | ◎ 버튼 또는 영웅 초상화 | H |
 | 아이템 | 떨어진 아이템 위로 영웅 이동 → 획득, 오른쪽 장착 칸 누르기 → 정보 | 교체 창: Enter 장착 / Esc 그대로 |
 | 일시정지 · 배속 | 오른쪽 위 버튼 | Space · F |
+| 소리 켜기/끄기 · 크기 | 아래 스피커 버튼 / 일시정지 메뉴의 효과음 · 배경음악 칸 (100 → 70 → 40 → 끔) | |
 
 ## 게임 요소
 - **영웅 3명**: 기사(탱커) · 궁사(딜러) · 마법사(마나). 사망 시 10초 뒤 성문 앞 부활, 최대 10레벨
@@ -27,12 +28,16 @@
 - **적 기지**: 기지별 몬스터 생산, 수비병과 추가 소환, 시간이 지날수록 + 기지가 파괴될수록 강해짐
 - **보스**: 3분마다 중간보스(거미 여왕 · 고블린 주술사 · 오크 족장), 오크 요새 체력 50% 이하에서 최종보스 드래곤 (살아 있는 동안 요새 무적)
 - **아이템**: 보스·기지에서 낮은 확률로 직업 전용 아이템 (일반 · 희귀 · 전설, 전설은 스킬 강화)
+- **소리**: 효과음 41종 + 중세풍 배경음악 3곡(평화 · 전투 · 보스)을 Web Audio로 직접 합성. 화면에서 먼 소리는 작게, 좌우 위치에 따라 스테레오로 들림. 브라우저 정책상 첫 터치/클릭 뒤부터 재생
 
 ## 수정하기
 `index.html` 맨 위만 고치면 됩니다.
-- **`CONFIG`**: 모든 수치. 주요 항목은 `heroes`(영웅·스킬), `enemies`(적·보스), `bases`(기지·생산·수비병), `towers` / `barracks` / `soldiers`(건물·병사), `gate`(성문 레벨), `bosses`(보스 등장), `items`(아이템·드랍 확률), `difficulty`(난이도), `escalation`(시간에 따른 강화), `effects`(데미지 숫자·화면 흔들림 기본값)
+- **`CONFIG`**: 모든 수치. 주요 항목은 `heroes`(영웅·스킬), `enemies`(적·보스), `bases`(기지·생산·수비병), `towers` / `barracks` / `soldiers`(건물·병사), `gate`(성문 레벨), `bosses`(보스 등장), `items`(아이템·드랍 확률), `difficulty`(난이도), `escalation`(시간에 따른 강화), `effects`(데미지 숫자·화면 흔들림·효과음/배경음악 기본 크기)
 - **`MAP`**: 지도 배치 (길 · 강 · 숲 · 건설 자리 · 기지 위치)
 - **`IMAGE_SOURCES`**: 그림을 이미지로 바꾸려면 키에 이미지 경로만 넣으면 됩니다. 사용할 수 있는 키 목록은 코드 주석에 있습니다.
+- **`SOUND_SOURCES`**: 합성음을 실제 음원으로 바꾸려면 키에 파일 경로를 넣습니다. 예: `bow: 'sounds/bow.mp3'`, `music_battle: 'music/battle.mp3'`
+  - 효과음 키: click, bow, hit, sword, claw, thud, gateHit, hammer, catapult, boom, explosion, magic, death, bossDeath, build, upgrade, coin, error, levelUp, heroDeath, respawn, bash, warcry, charge, rain, trapSet, trapSnap, fireCast, heal, blizzard, sizzle, bossWarn, roar, breath, drop, dropLegend, equip, horn, threat, victory, defeat
+  - 배경음악 키: music_calm(타이틀·영웅 선택), music_battle(게임 중), music_boss(보스 등장 중)
 
 콘솔 디버그: `GAME.simulate(60)` (60초 진행), `GAME.G` (게임 상태)
 
@@ -45,3 +50,4 @@
 - [x] 6단계: 궁사 · 마법사 · 영웅 선택 화면
 - [x] 7단계: 중간보스 · 최종보스 · 아이템 드랍
 - [x] 8단계: 데미지 숫자 · 타격 효과 · 화면 흔들림 · 난이도 · 성문 4~5레벨 · 통계 화면 · 조작 도움말 · 작은 화면 메뉴 배치 · 성능 최적화 · 아이템 드랍 확률 하향
+- [x] 추가: 효과음 · 배경음악 (Web Audio 합성, 음량 설정 · 음소거 · 실제 음원 교체 지원)

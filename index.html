@@ -84,7 +84,7 @@ const CONFIG = {
   },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
-  effects: { damageNumbers: true, screenShake: true },
+  effects: { damageNumbers: true, screenShake: true, sfxVolume: 0.7, musicVolume: 0.6, muted: false },   // 소리 크기 0~1
 
   // ---------------- 경제 ----------------
   economy: {
@@ -1862,6 +1862,14 @@ const Icon = {
     }
     ctx.restore();
   },
+  speaker(ctx, x, y, s, on) {
+    const u = s / 20;
+    ctx.fillStyle = '#fff8e6';
+    ctx.beginPath(); ctx.moveTo(x - 9 * u, y - 4 * u); ctx.lineTo(x - 4 * u, y - 4 * u); ctx.lineTo(x + 2 * u, y - 9 * u); ctx.lineTo(x + 2 * u, y + 9 * u); ctx.lineTo(x - 4 * u, y + 4 * u); ctx.lineTo(x - 9 * u, y + 4 * u); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = on ? '#fff8e6' : '#ff8a6a'; ctx.lineWidth = 2 * u; ctx.lineCap = 'round';
+    if (on) { for (const r of [5, 9]) { ctx.beginPath(); ctx.arc(x + 3 * u, y, r * u, -0.8, 0.8); ctx.stroke(); } }
+    else { ctx.beginPath(); ctx.moveTo(x + 5 * u, y - 5 * u); ctx.lineTo(x + 12 * u, y + 5 * u); ctx.moveTo(x + 12 * u, y - 5 * u); ctx.lineTo(x + 5 * u, y + 5 * u); ctx.stroke(); }
+  },
   skull(ctx, x, y, s) {
     const u = s / 20;
     ctx.fillStyle = '#ece6d2'; circle(ctx, x, y - 2 * u, 8 * u); ctx.fill(); ctx.fillRect(x - 5 * u, y + 3 * u, 10 * u, 5 * u);
@@ -1960,6 +1968,220 @@ const FX = {
 };
 
 // ==========================================================================
+// 5-1. 소리 — Web Audio API로 효과음·배경음악을 직접 합성 (외부 파일 없음)
+//      실제 음원으로 바꾸려면 SOUND_SOURCES 에 경로만 넣으세요.
+//      키: 효과음 이름(아래 SFX 목록) / 배경음악: music_calm, music_battle, music_boss
+// ==========================================================================
+const SOUND_SOURCES = {
+  // bow: 'sounds/bow.mp3', explosion: 'sounds/explosion.mp3', music_battle: 'music/battle.mp3',
+};
+
+const Sound = {
+  ctx: null, master: null, sfxBus: null, musicBus: null, noiseBuf: null,
+  unlocked: false, voices: 0, last: {}, files: {}, duckLevel: 1,
+
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = this.ctx = new AC();
+    const comp = c.createDynamicsCompressor();                 // 소리가 많이 겹쳐도 찢어지지 않게
+    comp.threshold.value = -16; comp.ratio.value = 6; comp.connect(c.destination);
+    this.master = c.createGain(); this.master.connect(comp);
+    this.sfxBus = c.createGain(); this.sfxBus.connect(this.master);
+    this.musicBus = c.createGain(); this.musicBus.connect(this.master);
+    const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.noiseBuf = buf;
+    for (const k in SOUND_SOURCES) { const a = new Audio(SOUND_SOURCES[k]); a.preload = 'auto'; this.files[k] = a; }
+    this.applyVolumes();
+  },
+  // 휴대폰은 사용자가 처음 화면을 누를 때 소리를 켤 수 있음
+  unlock() {
+    this.init(); if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (!this.unlocked) {
+      const s = this.ctx.createBufferSource(); s.buffer = this.ctx.createBuffer(1, 1, 22050); s.connect(this.ctx.destination); s.start(0);
+      this.unlocked = true; Music.start();
+    }
+  },
+  applyVolumes() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, m = SETTINGS.muted ? 0 : 1;
+    this.sfxBus.gain.setTargetAtTime(m * SETTINGS.sfxVolume, t, 0.05);
+    this.musicBus.gain.setTargetAtTime(m * SETTINGS.musicVolume * 0.65 * this.duckLevel, t, 0.2);
+  },
+  duck(on) { const v = on ? 0.35 : 1; if (v !== this.duckLevel) { this.duckLevel = v; this.applyVolumes(); } },
+
+  // 화면 위치에 따른 크기·좌우 (화면 밖이면 작게)
+  posAtten(x, y) {
+    const vw = Camera.viewW(), vh = Camera.viewH(), cx = Camera.x + vw / 2, cy = Camera.y + vh / 2;
+    const dx = Math.max(0, Math.abs(x - cx) - vw / 2), dy = Math.max(0, Math.abs(y - cy) - vh / 2), d = Math.hypot(dx, dy);
+    return { g: d <= 0 ? 1 : clamp(1 - d / 700, 0, 1) * 0.5, pan: clamp(((x - cx) / (vw / 2)) * 0.55, -0.7, 0.7) };
+  },
+  play(name, x, y, vol = 1) {
+    if (!this.ctx || !this.unlocked || SETTINGS.muted || SETTINGS.sfxVolume <= 0 || this.ctx.state !== 'running') return;
+    const def = SFX[name]; if (!def) return;
+    const now = this.ctx.currentTime;
+    if (now - (this.last[name] || -9) < (def.gap || 0.03)) return;     // 같은 소리가 너무 촘촘하면 생략
+    if (this.voices > 26) return;                                        // 동시에 너무 많으면 생략
+    let g = vol * (def.vol || 1), pan = 0;
+    if (x != null) { const a = this.posAtten(x, y); if (a.g < 0.06) return; g *= a.g; pan = a.pan; }
+    this.last[name] = now;
+    if (this.files[name]) { const a = this.files[name].cloneNode(); a.volume = clamp(g * SETTINGS.sfxVolume, 0, 1); a.play().catch(() => {}); return; }
+    const out = this.ctx.createGain(); out.gain.value = g;
+    if (this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = pan; out.connect(p); p.connect(this.sfxBus); } else out.connect(this.sfxBus);
+    this.voices++; setTimeout(() => { this.voices--; out.disconnect(); }, (def.dur || 0.5) * 1000 + 100);
+    def.fn(this, out, now + 0.005);
+  },
+
+  // ---- 합성 재료 ----
+  // 음: type(sine/triangle/square/sawtooth), f0→f1 Hz, dur초, vol, attack, filter {type, f, q}
+  tone(out, t, o) {
+    const c = this.ctx, osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f0, t);
+    if (o.f1 && o.f1 !== o.f0) osc.frequency.exponentialRampToValueAtTime(o.f1, t + o.dur);
+    if (o.vib) { const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = o.vib; lg.gain.value = o.f0 * 0.008; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.dur + 0.05); }
+    const a = o.attack || 0.005, v = o.vol == null ? 1 : o.vol;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+    let node = osc;
+    if (o.filter) { const f = c.createBiquadFilter(); f.type = o.filter.type || 'lowpass'; f.frequency.value = o.filter.f; f.Q.value = o.filter.q || 0.7; node.connect(f); node = f; }
+    node.connect(g); g.connect(out);
+    osc.start(t); osc.stop(t + o.dur + 0.05);
+  },
+  // 잡음: filter 종류, f0→f1 Hz, q, dur, vol
+  noise(out, t, o) {
+    const c = this.ctx, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = this.noiseBuf; src.playbackRate.value = o.rate || 1;
+    f.type = o.filter || 'lowpass'; f.Q.value = o.q || 0.8;
+    f.frequency.setValueAtTime(o.f0 || 1000, t);
+    if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t + o.dur);
+    const a = o.attack || 0.003, v = o.vol == null ? 1 : o.vol;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+    src.connect(f); f.connect(g); g.connect(out);
+    src.start(t, Math.random() * 1.5); src.stop(t + o.dur + 0.05);
+  },
+};
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// ---- 효과음 목록 (vol: 기본 크기 / gap: 같은 소리 최소 간격 / dur: 길이) ----
+const SFX = {
+  click:    { vol: 0.22, gap: 0.03, dur: 0.06, fn: (S, o, t) => S.tone(o, t, { type: 'triangle', f0: 1300, f1: 1100, dur: 0.04, vol: 0.6 }) },
+  bow:      { vol: 0.3, gap: 0.05, dur: 0.12, fn: (S, o, t) => { S.noise(o, t, { dur: 0.07, filter: 'highpass', f0: 2800, vol: 0.35 }); S.tone(o, t, { type: 'triangle', f0: 850 + rand(-90, 90), f1: 280, dur: 0.07, vol: 0.5 }); } },
+  hit:      { vol: 0.45, gap: 0.06, dur: 0.08, fn: (S, o, t) => S.noise(o, t, { dur: 0.045, filter: 'bandpass', f0: 1700, q: 1.6, vol: 0.9 }) },
+  sword:    { vol: 0.26, gap: 0.08, dur: 0.24, fn: (S, o, t) => { const f = 720 + rand(-120, 120); S.noise(o, t, { dur: 0.04, filter: 'highpass', f0: 2400, vol: 0.5 }); S.tone(o, t, { type: 'triangle', f0: f, f1: f * 0.97, dur: 0.17, vol: 0.32 }); S.tone(o, t, { f0: f * 2.71, dur: 0.11, vol: 0.12 }); } },
+  claw:     { vol: 0.22, gap: 0.09, dur: 0.15, fn: (S, o, t) => { S.noise(o, t, { dur: 0.09, filter: 'bandpass', f0: 900, f1: 500, q: 1.2, vol: 0.8 }); S.tone(o, t, { f0: 170, f1: 90, dur: 0.1, vol: 0.4 }); } },
+  thud:     { vol: 0.32, gap: 0.09, dur: 0.24, fn: (S, o, t) => { S.tone(o, t, { f0: 160, f1: 55, dur: 0.18, vol: 0.8 }); S.noise(o, t, { dur: 0.08, filter: 'lowpass', f0: 650, vol: 0.45 }); } },
+  gateHit:  { vol: 0.4, gap: 0.16, dur: 0.32, fn: (S, o, t) => { S.tone(o, t, { f0: 115, f1: 65, dur: 0.26, vol: 0.9 }); S.noise(o, t, { dur: 0.12, filter: 'lowpass', f0: 520, vol: 0.6 }); S.tone(o, t, { type: 'triangle', f0: 240, f1: 200, dur: 0.07, vol: 0.25 }); } },
+  hammer:   { vol: 0.2, gap: 0.13, dur: 0.12, fn: (S, o, t) => { S.tone(o, t, { type: 'triangle', f0: 1450, f1: 1250, dur: 0.06, vol: 0.6 }); S.noise(o, t, { dur: 0.03, filter: 'bandpass', f0: 3200, vol: 0.4 }); } },
+  catapult: { vol: 0.7, gap: 0.2, dur: 0.5, fn: (S, o, t) => { S.tone(o, t, { type: 'sawtooth', f0: 140, f1: 85, dur: 0.14, vol: 0.25, filter: { f: 500 } }); S.noise(o, t + 0.08, { dur: 0.36, filter: 'bandpass', f0: 350, f1: 1500, q: 1.5, vol: 0.55, attack: 0.05 }); } },
+  boom:     { vol: 0.45, gap: 0.09, dur: 0.7, fn: (S, o, t) => { S.tone(o, t, { f0: 130, f1: 35, dur: 0.5, vol: 1 }); S.noise(o, t, { dur: 0.45, filter: 'lowpass', f0: 1000, f1: 180, vol: 0.8 }); } },
+  explosion:{ vol: 0.75, gap: 0.3, dur: 1.7, fn: (S, o, t) => { S.tone(o, t, { f0: 95, f1: 24, dur: 1.2, vol: 1 }); S.noise(o, t, { dur: 1.4, filter: 'lowpass', f0: 1400, f1: 90, vol: 1 }); S.noise(o, t + 0.05, { dur: 0.35, filter: 'highpass', f0: 2000, vol: 0.35 }); } },
+  magic:    { vol: 0.2, gap: 0.07, dur: 0.3, fn: (S, o, t) => { S.tone(o, t, { f0: 620, f1: 1400, dur: 0.18, vol: 0.6 }); S.tone(o, t + 0.03, { f0: 930, f1: 2100, dur: 0.14, vol: 0.25 }); } },
+  death:    { vol: 0.28, gap: 0.06, dur: 0.22, fn: (S, o, t) => { S.noise(o, t, { dur: 0.14, filter: 'bandpass', f0: 750, q: 1, vol: 0.8 }); S.tone(o, t, { type: 'triangle', f0: 320, f1: 120, dur: 0.15, vol: 0.3 }); } },
+  bossDeath:{ vol: 0.7, gap: 0.5, dur: 1.8, fn: (S, o, t) => { S.tone(o, t, { type: 'sawtooth', f0: 170, f1: 45, dur: 1.2, vol: 0.5, filter: { f: 700 } }); S.noise(o, t, { dur: 1.5, filter: 'lowpass', f0: 1200, f1: 80, vol: 0.9 }); } },
+  build:    { vol: 0.45, gap: 0.2, dur: 0.75, fn: (S, o, t) => { SFX.thud.fn(S, o, t); SFX.thud.fn(S, o, t + 0.17); S.tone(o, t + 0.36, { type: 'triangle', f0: 880, dur: 0.3, vol: 0.35 }); S.tone(o, t + 0.42, { type: 'triangle', f0: 1320, dur: 0.3, vol: 0.3 }); } },
+  upgrade:  { vol: 0.42, gap: 0.2, dur: 0.8, fn: (S, o, t) => [72, 76, 79, 84].forEach((m, i) => S.tone(o, t + i * 0.075, { type: 'triangle', f0: midiHz(m), dur: 0.3, vol: 0.5 })) },
+  coin:     { vol: 0.55, gap: 0.08, dur: 0.4, fn: (S, o, t) => { S.tone(o, t, { type: 'square', f0: 1318, dur: 0.06, vol: 0.18, filter: { f: 4000 } }); S.tone(o, t + 0.07, { type: 'square', f0: 1760, dur: 0.28, vol: 0.18, filter: { f: 4000 } }); } },
+  error:    { vol: 0.3, gap: 0.3, dur: 0.32, fn: (S, o, t) => { S.tone(o, t, { type: 'square', f0: 190, dur: 0.12, vol: 0.3, filter: { f: 900 } }); S.tone(o, t + 0.14, { type: 'square', f0: 150, dur: 0.15, vol: 0.3, filter: { f: 900 } }); } },
+  levelUp:  { vol: 0.5, gap: 0.3, dur: 1.1, fn: (S, o, t) => { [72, 76, 79, 84, 88].forEach((m, i) => S.tone(o, t + i * 0.08, { type: 'triangle', f0: midiHz(m), dur: 0.45, vol: 0.45 })); S.tone(o, t + 0.4, { f0: midiHz(96), dur: 0.6, vol: 0.15, vib: 6 }); } },
+  heroDeath:{ vol: 0.5, gap: 0.5, dur: 1.2, fn: (S, o, t) => { S.tone(o, t, { type: 'triangle', f0: 440, f1: 110, dur: 0.95, vol: 0.5 }); S.tone(o, t + 0.1, { type: 'triangle', f0: 330, f1: 82, dur: 0.95, vol: 0.35 }); } },
+  respawn:  { vol: 0.4, gap: 0.5, dur: 0.9, fn: (S, o, t) => { S.tone(o, t, { f0: 523, f1: 1047, dur: 0.45, vol: 0.4 }); [79, 84].forEach((m, i) => S.tone(o, t + 0.25 + i * 0.1, { type: 'triangle', f0: midiHz(m), dur: 0.4, vol: 0.35 })); } },
+  bash:     { vol: 0.5, gap: 0.2, dur: 0.4, fn: (S, o, t) => { SFX.thud.fn(S, o, t); SFX.sword.fn(S, o, t + 0.02); } },
+  warcry:   { vol: 0.5, gap: 0.5, dur: 1.0, fn: (S, o, t) => { S.tone(o, t, { type: 'sawtooth', f0: 147, f1: 185, dur: 0.8, vol: 0.5, attack: 0.06, filter: { f: 900 }, vib: 5 }); S.tone(o, t, { type: 'sawtooth', f0: 220, f1: 277, dur: 0.8, vol: 0.32, attack: 0.06, filter: { f: 1100 } }); } },
+  charge:   { vol: 0.45, gap: 0.3, dur: 0.5, fn: (S, o, t) => { S.noise(o, t, { dur: 0.42, filter: 'bandpass', f0: 350, f1: 1700, q: 1.2, vol: 0.8, attack: 0.04 }); S.tone(o, t, { f0: 110, f1: 70, dur: 0.3, vol: 0.4 }); } },
+  rain:     { vol: 0.32, gap: 0.5, dur: 1.4, fn: (S, o, t) => { for (let i = 0; i < 12; i++) { const tt = t + i * 0.09 + Math.random() * 0.05; S.noise(o, tt, { dur: 0.05, filter: 'highpass', f0: 3000, vol: 0.25 }); S.tone(o, tt, { type: 'triangle', f0: 700 + Math.random() * 300, f1: 250, dur: 0.06, vol: 0.2 }); } } },
+  trapSet:  { vol: 0.32, gap: 0.2, dur: 0.3, fn: (S, o, t) => { S.tone(o, t, { type: 'square', f0: 2100, dur: 0.025, vol: 0.2, filter: { f: 5000 } }); S.tone(o, t + 0.07, { type: 'triangle', f0: 950, f1: 880, dur: 0.08, vol: 0.4 }); } },
+  trapSnap: { vol: 0.5, gap: 0.15, dur: 0.4, fn: (S, o, t) => { S.noise(o, t, { dur: 0.06, filter: 'highpass', f0: 2600, vol: 0.7 }); S.tone(o, t, { type: 'triangle', f0: 620, f1: 480, dur: 0.22, vol: 0.4 }); S.tone(o, t, { type: 'square', f0: 1500, dur: 0.03, vol: 0.15 }); } },
+  fireCast: { vol: 0.8, gap: 0.2, dur: 0.5, fn: (S, o, t) => S.noise(o, t, { dur: 0.4, filter: 'bandpass', f0: 280, f1: 1300, q: 1, vol: 0.8, attack: 0.03 }) },
+  heal:     { vol: 0.42, gap: 0.5, dur: 1.4, fn: (S, o, t) => { [72, 76, 79].forEach((m, i) => S.tone(o, t + i * 0.06, { f0: midiHz(m), dur: 1.0, vol: 0.35, attack: 0.05, vib: 5 })); S.tone(o, t + 0.25, { f0: midiHz(96), dur: 0.7, vol: 0.12 }); } },
+  blizzard: { vol: 0.65, gap: 0.5, dur: 1.8, fn: (S, o, t) => { S.noise(o, t, { dur: 1.5, filter: 'bandpass', f0: 900, f1: 380, q: 3, vol: 0.8, attack: 0.25 }); [91, 96].forEach((m, i) => S.tone(o, t + 0.1 + i * 0.12, { f0: midiHz(m), dur: 0.5, vol: 0.12 })); } },
+  sizzle:   { vol: 0.38, gap: 0.5, dur: 1.1, fn: (S, o, t) => { S.noise(o, t, { dur: 0.95, filter: 'highpass', f0: 3800, vol: 0.5, attack: 0.02 }); S.noise(o, t, { dur: 0.6, filter: 'lowpass', f0: 280, vol: 0.5 }); } },
+  bossWarn: { vol: 0.5, gap: 1, dur: 1.4, fn: (S, o, t) => [0, 1, 2, 3].forEach(i => S.tone(o, t + i * 0.28, { type: 'square', f0: i % 2 ? 349 : 440, dur: 0.24, vol: 0.32, filter: { f: 1400 } })) },
+  roar:     { vol: 0.7, gap: 1, dur: 1.8, fn: (S, o, t) => { S.tone(o, t, { type: 'sawtooth', f0: 120, f1: 55, dur: 1.4, vol: 0.6, attack: 0.08, filter: { f: 650 }, vib: 9 }); S.noise(o, t, { dur: 1.2, filter: 'lowpass', f0: 900, f1: 250, vol: 0.7, attack: 0.08 }); } },
+  breath:   { vol: 0.48, gap: 0.5, dur: 1.0, fn: (S, o, t) => { S.noise(o, t, { dur: 0.85, filter: 'bandpass', f0: 650, f1: 280, q: 0.8, vol: 1, attack: 0.05 }); S.tone(o, t, { f0: 80, f1: 50, dur: 0.6, vol: 0.4 }); } },
+  drop:     { vol: 0.4, gap: 0.3, dur: 0.9, fn: (S, o, t) => [91, 96, 100].forEach((m, i) => S.tone(o, t + i * 0.07, { f0: midiHz(m), dur: 0.5, vol: 0.25 })) },
+  dropLegend:{ vol: 0.5, gap: 0.3, dur: 1.4, fn: (S, o, t) => { [86, 91, 95, 98, 103].forEach((m, i) => S.tone(o, t + i * 0.07, { type: 'triangle', f0: midiHz(m), dur: 0.7, vol: 0.3 })); S.tone(o, t + 0.35, { f0: midiHz(74), dur: 0.9, vol: 0.2, vib: 5 }); } },
+  equip:    { vol: 0.4, gap: 0.2, dur: 0.6, fn: (S, o, t) => { SFX.sword.fn(S, o, t); S.tone(o, t + 0.1, { type: 'triangle', f0: 1047, dur: 0.35, vol: 0.3 }); } },
+  horn:     { vol: 0.32, gap: 1, dur: 0.9, fn: (S, o, t) => S.tone(o, t, { type: 'sawtooth', f0: 98, f1: 110, dur: 0.7, vol: 0.5, attack: 0.08, filter: { f: 600 } }) },
+  threat:   { vol: 0.45, gap: 1, dur: 0.9, fn: (S, o, t) => { [0, 0.22].forEach(d => { S.tone(o, t + d, { f0: 75, f1: 40, dur: 0.45, vol: 0.9 }); S.noise(o, t + d, { dur: 0.25, filter: 'lowpass', f0: 220, vol: 0.6 }); }); } },
+  victory:  { vol: 0.55, gap: 2, dur: 2.8, fn: (S, o, t) => [[62, 0, 0.25], [66, 0.18, 0.25], [69, 0.36, 0.25], [74, 0.54, 0.5], [69, 1.0, 0.2], [74, 1.18, 1.2]].forEach(([m, d, l]) => { S.tone(o, t + d, { type: 'triangle', f0: midiHz(m + 12), dur: l + 0.2, vol: 0.45 }); S.tone(o, t + d, { type: 'square', f0: midiHz(m), dur: l + 0.15, vol: 0.12, filter: { f: 1800 } }); }) },
+  defeat:   { vol: 0.5, gap: 2, dur: 2.8, fn: (S, o, t) => [[69, 0], [65, 0.45], [62, 0.9], [57, 1.4]].forEach(([m, d], i) => S.tone(o, t + d, { type: 'triangle', f0: midiHz(m), dur: i === 3 ? 1.4 : 0.6, vol: 0.45, vib: 4 })) },
+};
+
+// ---- 배경음악: 중세풍 (D 단조, 류트 + 피리 + 저음 + 북). 화면에 따라 calm / battle / boss ----
+const Music = {
+  mode: 'none', pending: 'none', step: 0, nextTime: 0, timer: null, audio: null,
+  chords: [[50, 53, 57], [48, 52, 55], [46, 50, 53], [45, 49, 52], [50, 53, 57], [53, 57, 60], [48, 52, 55], [45, 49, 52]],   // Dm C B♭ A Dm F C A
+  melody: [                                                                                       // 마디별 [음, 길이(8분음표)]
+    [[74, 2], [77, 1], [76, 1], [74, 2], [69, 2]], [[72, 2], [76, 1], [74, 1], [72, 2], [67, 2]],
+    [[70, 2], [74, 1], [72, 1], [70, 2], [65, 2]], [[69, 3], [73, 1], [76, 4]],
+    [[74, 1], [76, 1], [77, 2], [76, 1], [74, 1], [72, 2]], [[72, 1], [74, 1], [77, 2], [81, 2], [77, 2]],
+    [[79, 2], [76, 2], [72, 2], [76, 2]], [[73, 2], [76, 2], [69, 4]],
+  ],
+  bpm: { calm: 76, battle: 104, boss: 126 },
+  start() { if (!this.timer) this.timer = setInterval(() => this.schedule(), 60); },
+  setMode(m) { this.pending = m; },
+  schedule() {
+    const S = Sound; if (!S.ctx || !S.unlocked || S.ctx.state !== 'running') return;
+    if (this.pending !== this.mode && (this.step % 4 === 0 || this.mode === 'none')) {     // 반 마디 단위로 분위기 전환
+      this.mode = this.pending; this.step = 0; this.nextTime = Math.max(this.nextTime, S.ctx.currentTime + 0.05); this.useFile();
+    }
+    if (this.mode === 'none' || this.audio) return;
+    const ahead = S.ctx.currentTime + 0.2;
+    if (this.nextTime < S.ctx.currentTime - 0.5) this.nextTime = S.ctx.currentTime + 0.05;  // 탭 전환 등으로 밀렸으면 다시 맞춤
+    while (this.nextTime < ahead) { this.playStep(this.step, this.nextTime); this.nextTime += 60 / this.bpm[this.mode] / 2; this.step++; }
+  },
+  useFile() {                                                    // SOUND_SOURCES에 음악 파일이 있으면 그것을 재생
+    if (this.audio) { this.audio.pause(); this.audio = null; }
+    const src = SOUND_SOURCES['music_' + this.mode]; if (!src) return;
+    this.audio = new Audio(src); this.audio.loop = true; this.audio.volume = clamp(SETTINGS.musicVolume * (SETTINGS.muted ? 0 : 1), 0, 1); this.audio.play().catch(() => {});
+  },
+  // 악기
+  lute(t, m, v) { const S = Sound, o = S.musicBus; S.tone(o, t, { type: 'triangle', f0: midiHz(m), dur: 0.55, vol: v, filter: { f: 2200 } }); S.tone(o, t, { f0: midiHz(m + 12), dur: 0.25, vol: v * 0.25 }); },
+  flute(t, m, len, v) { Sound.tone(Sound.musicBus, t, { f0: midiHz(m), dur: len * 0.95, vol: v, attack: 0.05, vib: 5 }); },
+  bass(t, m, len, v) { Sound.tone(Sound.musicBus, t, { type: 'sawtooth', f0: midiHz(m), dur: len, vol: v, attack: 0.08, filter: { f: 320 } }); },
+  kick(t, v) { Sound.tone(Sound.musicBus, t, { f0: 120, f1: 45, dur: 0.22, vol: v }); },
+  drum(t, v) { const S = Sound; S.noise(S.musicBus, t, { dur: 0.12, filter: 'lowpass', f0: 900, vol: v }); S.tone(S.musicBus, t, { f0: 200, f1: 130, dur: 0.1, vol: v * 0.6 }); },
+  tamb(t, v) { Sound.noise(Sound.musicBus, t, { dur: 0.045, filter: 'highpass', f0: 6500, vol: v }); },
+  playStep(i, t) {
+    const mode = this.mode, bar = Math.floor(i / 8) % 8, s = i % 8, ch = this.chords[bar], e8 = 60 / this.bpm[mode] / 2;
+    const arp = [ch[0], ch[1], ch[2], ch[0] + 12, ch[2], ch[1], ch[2], ch[0] + 12];
+    if (s === 0) this.bass(t, ch[0] - 12, e8 * 8, mode === 'calm' ? 0.12 : 0.16);
+    if (mode === 'calm') {
+      if (s % 2 === 0) this.lute(t, arp[s] + 12, 0.16);
+      if (Math.floor(i / 64) % 2 === 1) this.melodyAt(bar, s, t, e8, 0.09);   // 잔잔: 피리는 한 바퀴 걸러
+      return;
+    }
+    this.lute(t, arp[s] + 12, mode === 'boss' ? 0.13 : 0.15);
+    this.melodyAt(bar, s, t, e8, mode === 'boss' ? 0.1 : 0.11, mode === 'boss' ? 0 : 0);
+    if (s === 0 || s === 4) this.kick(t, 0.55);
+    if (s === 2 || s === 6) this.drum(t, 0.3);
+    if (s % 2 === 1) this.tamb(t, 0.12);
+    if (mode === 'boss') {
+      if (s === 3 || s === 7) this.kick(t, 0.4);
+      this.tamb(t + e8 / 2, 0.08);
+      if (s === 0) Sound.tone(Sound.musicBus, t, { type: 'sawtooth', f0: midiHz(ch[0]), dur: e8 * 1.5, vol: 0.1, filter: { f: 900 } });
+    }
+  },
+  melodyAt(bar, s, t, e8, v) {
+    let pos = 0;
+    for (const [m, len] of this.melody[bar]) { if (pos === s) { this.flute(t, m, len * e8, v); return; } pos += len; }
+  },
+  // 매 프레임: 게임 상태에 맞춰 분위기 선택
+  update() {
+    if (!Sound.unlocked) return;
+    let m = 'calm';
+    if (G.state === 'playing') m = G.enemies.some(e => e.alive && e.boss) ? 'boss' : 'battle';
+    else if (G.state === 'lost') m = 'none';
+    if (m !== this.pending) this.setMode(m);
+    Sound.duck(G.paused || !!G.itemPrompt);
+    if (this.audio) this.audio.volume = clamp(SETTINGS.musicVolume * (SETTINGS.muted ? 0 : 1) * Sound.duckLevel, 0, 1);
+  },
+};
+
+// ==========================================================================
 // 6. 엔티티
 // ==========================================================================
 
@@ -1988,7 +2210,7 @@ class Gate {
     this.level++; this.applyLevel(false);
     const fx = MAP.castle.wallX + MAP.castle.wallW / 2;
     FX.ring(fx, MAP.gate.y, 80, '255,215,90', 0.6); FX.spark(fx, MAP.gate.y, '#ffe08a', 12);
-    FX.text(fx + 40, MAP.gate.y - 70, `성문 Lv.${this.level}!`, '#ffd36b', 22, 1.6);
+    FX.text(fx + 40, MAP.gate.y - 70, `성문 Lv.${this.level}!`, '#ffd36b', 22, 1.6); Sound.play('upgrade');
     return true;
   }
 
@@ -2029,11 +2251,12 @@ class Gate {
   takeDamage(amount) {
     if (this.destroyed) return;
     this.hp -= amount; this.lastHit = G.time; this.flash = 0.12;
+    Sound.play('gateHit', MAP.gate.x, MAP.gate.y);
     for (const k of this.carpenters) k.goHome();       // 공격받으면 목수는 성 안으로
     if (Math.random() < 0.35) FX.dust(MAP.castle.wallX + MAP.castle.wallW + 4, MAP.gate.y + rand(-30, 30));
     if (this.hp <= 0) {
       this.hp = 0; this.destroyed = true;
-      FX.explosion(MAP.gate.x + 10, MAP.gate.y, 0.9); shake(10, 0.6);
+      FX.explosion(MAP.gate.x + 10, MAP.gate.y, 0.9); shake(10, 0.6); Sound.play('explosion');
       showBanner('성문이 무너졌습니다!', '#ff6a55', 3);
       if (!G.pendingResult) { G.pendingResult = 'lost'; G.endTimer = 1.8; }
     }
@@ -2058,7 +2281,7 @@ class Gate {
             FX.add({ k: 'flame', x: ox + Math.cos(a) * r, y: oy + Math.sin(a) * r, vx: 0, vy: -20, g: 0, life: rand(0.3, 0.6), max: 0.6, size: rand(6, 11) });
             if (i % 2) FX.puff(ox + Math.cos(a) * r, oy + Math.sin(a) * r, '#efe8dc', rand(8, 14), 1.4, rand(-6, 6), -30, 0.4, 1.4);
           }
-          FX.text(ox + 50, oy - 70, '끓는 기름!', '#ffae5a', 20, 1.2);
+          FX.text(ox + 50, oy - 70, '끓는 기름!', '#ffae5a', 20, 1.2); Sound.play('sizzle', ox, oy);
         } else this.oilTimer = 0.3;
       }
     }
@@ -2121,7 +2344,7 @@ class Carpenter {
     else if (this.state === 'work') {
       this.face = Math.PI; this.phase += dt;
       const sw = Math.floor((this.phase * 9) / TAU);
-      if (sw !== this.swings) { this.swings = sw; FX.spark(MAP.castle.wallX + MAP.castle.wallW + 1, this.y + rand(-4, 4), '#ffe6a0', 3); }
+      if (sw !== this.swings) { this.swings = sw; Sound.play('hammer', this.x, this.y); FX.spark(MAP.castle.wallX + MAP.castle.wallW + 1, this.y + rand(-4, 4), '#ffe6a0', 3); }
     } else if (this.state === 'in') { if (this.moveTo(this.home, dt)) this.done = true; }
   }
 }
@@ -2149,6 +2372,7 @@ class WallArcher {
       if (target) {
         this.cd = gcfg.archerInterval * rand(0.9, 1.1); this.shootAnim = 0.18;
         G.projectiles.push(new Arrow(this.x + Math.cos(this.aim) * 10, this.y + Math.sin(this.aim) * 10, target, gcfg.archerDamage));
+        Sound.play('bow', this.x, this.y, 0.6);
       } else this.cd = 0;
     }
   }
@@ -2170,7 +2394,7 @@ class Arrow {
     const dx = this.tx - this.x, dy = this.ty - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
     if (d <= step + 2) {
       this.done = true;
-      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source, false, this.crit); FX.spark(this.tx, this.ty, '#fff3b0', 4); }
+      if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source, false, this.crit); FX.spark(this.tx, this.ty, '#fff3b0', 4); if (!this.hostile) Sound.play('hit', this.tx, this.ty, 0.7); }
       return;
     }
     this.x += (dx / d) * step; this.y += (dy / d) * step; this.traveled += step;
@@ -2236,10 +2460,10 @@ class Tower extends Building {
     const s = this.stats;
     this.cd = s.interval;
     if (this.type === 'archer') {
-      this.shooter = (this.shooter + 1) % this.level; this.shootAnim = 0.18;
+      this.shooter = (this.shooter + 1) % this.level; this.shootAnim = 0.18; Sound.play('bow', this.x, this.y, 0.7);
       G.projectiles.push(new Arrow(this.x + Math.cos(this.aim) * 10, this.y - 6 + Math.sin(this.aim) * 10, t, s.damage, this.cfg.arrowSpeed));
     } else if (this.type === 'catapult') {
-      this.fireAnim = 0.35;
+      this.fireAnim = 0.35; Sound.play('catapult', this.x, this.y);
       let tx, ty;
       if (t) {                                                        // 움직이는 적은 도착 지점을 예측해서 던짐
         const flight = dist(this.x, this.y, t.x, t.y) / this.cfg.projectileSpeed + 0.2;
@@ -2248,7 +2472,7 @@ class Tower extends Building {
       } else { const a = Math.atan2(this.y - b.y, this.x - b.x), r = b.m.hitRadius * 0.45; tx = b.x + Math.cos(a) * r; ty = b.y + Math.sin(a) * r; }
       G.projectiles.push(new Boulder(this.x + Math.cos(this.aim) * 14, this.y + Math.sin(this.aim) * 14, tx, ty, s, this.cfg));
     } else if (this.type === 'mage') {
-      this.fireAnim = 0.3;
+      this.fireAnim = 0.3; Sound.play('magic', this.x, this.y);
       G.projectiles.push(new MagicBolt(this.x, this.y - 10, t, s, this.cfg));
     }
   }
@@ -2351,10 +2575,11 @@ class Soldier {
     if (this.cfg.ranged) {
       if (isBase) { const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d); FX.spark(t.x + rand(-30, 30), t.y + rand(-20, 20), '#fff3b0', 2); }
       else G.projectiles.push(new Arrow(this.x, this.y - 4, t, this.damage, 650, this));
+      Sound.play('bow', this.x, this.y, 0.45);
     } else if (isBase) {
-      const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d);
+      const d = Math.round(this.damage * this.cfg.baseDamageMul); t.takeDamage(d); Sound.play('thud', t.x, t.y, 0.5);
       FX.spark(this.x + Math.cos(this.face) * 16, this.y + Math.sin(this.face) * 16, '#ffe08a', 2);
-    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 2); FX.arc(t.x, t.y, this.face, 11, 1.2, '255,255,255', 0.12); }
+    } else { t.takeDamage(this.damage, this); FX.spark(t.x, t.y, '#ffffff', 2); FX.arc(t.x, t.y, this.face, 11, 1.2, '255,255,255', 0.12); Sound.play('sword', t.x, t.y, 0.5); }
   }
 
   update(dt, idx) {
@@ -2411,6 +2636,7 @@ function spawnBoss(type, base) {
   showBanner(fin ? (CONFIG.bosses.final.protectBase ? `최종 보스 ${e.cfg.name} 출현! 드래곤을 쓰러뜨려야 ${base.cfg.name}를 부술 수 있어요` : `최종 보스 ${e.cfg.name} 출현!`) : `중간보스 등장: ${e.cfg.name} (${base.cfg.name})`, fin ? '#ff6a4a' : '#ffae5a', 4);
   G.banner.warn = true;
   if (fin) G.redFlash = 0.7;
+  Sound.play('bossWarn'); if (fin) setTimeout(() => Sound.play('roar'), 600);
   shake(fin ? 10 : 5, fin ? 0.8 : 0.4);
   return e;
 }
@@ -2436,7 +2662,7 @@ function dropItem(x, y, final) {
   const p = Nav.clampTarget(x, y), it = makeItem(G.heroType, final);
   G.drops.push(new Drop(p.x, p.y, it));
   FX.ring(p.x, p.y, 40, '255,230,150', 0.6);
-  FX.text(p.x, p.y - 50, `${rarityOf(it).name} 아이템!`, rarityOf(it).color, 18, 1.6);
+  FX.text(p.x, p.y - 50, `${rarityOf(it).name} 아이템!`, rarityOf(it).color, 18, 1.6); Sound.play(it.rarity === 'legendary' ? 'dropLegend' : 'drop');
 }
 // 바닥에 떨어진 아이템: 영웅이 위로 지나가면 획득
 class Drop {
@@ -2451,7 +2677,7 @@ class Drop {
 function pickupDrop(d) {
   const h = G.hero, it = d.item, cur = h.items[it.slot];
   if (!cur) {
-    h.equip(it); d.done = true; G.stats.itemsFound++;
+    h.equip(it); d.done = true; G.stats.itemsFound++; Sound.play('equip');
     FX.text(h.x, h.y - 50, `획득: ${it.name}`, rarityOf(it).color, 18, 1.8);
     return;
   }
@@ -2461,7 +2687,7 @@ function resolveItemPrompt(take) {
   const P = G.itemPrompt; if (!P) return;
   const h = G.hero, sold = take ? P.cur : P.item, gold = rarityOf(sold).sell;
   if (take) h.equip(P.item);
-  addGold(gold); P.drop.done = true; G.itemPrompt = null; G.stats.itemsFound++;
+  addGold(gold); P.drop.done = true; G.itemPrompt = null; G.stats.itemsFound++; Sound.play(take ? 'equip' : 'coin');
   FX.text(h.x, h.y - 50, take ? `장착: ${P.item.name}  (+${gold} 골드)` : `+${gold} 골드`, take ? rarityOf(P.item).color : '#ffd84a', 17, 1.8);
 }
 
@@ -2513,7 +2739,7 @@ class Trap {
     }
     this.done = true;
     FX.spark(this.x, this.y, '#d0d0d0', 8); FX.ring(this.x, this.y, this.r + 10, '230,230,230', 0.3);
-    FX.text(this.x, this.y - 30, '속박!', '#e8e0c8', 16, 0.9);
+    FX.text(this.x, this.y - 30, '속박!', '#e8e0c8', 16, 0.9); Sound.play('trapSnap', this.x, this.y);
   }
 }
 
@@ -2541,7 +2767,7 @@ class Fireball {
       if (!b.enabled || !b.alive) continue;
       if (dist(this.tx, this.ty, b.x, b.y) - b.m.hitRadius * 0.85 <= sk.radius) { b.takeDamage(sk.baseDamage); FX.text(this.tx, this.ty - 40, '-' + sk.baseDamage, '#ffb35a', 22, 1); }
     }
-    FX.explosion(this.tx, this.ty, 0.55); FX.ring(this.tx, this.ty, sk.radius, '255,170,80', 0.4);
+    FX.explosion(this.tx, this.ty, 0.55); FX.ring(this.tx, this.ty, sk.radius, '255,170,80', 0.4); Sound.play('boom', this.tx, this.ty, 1);
     this.booms--;
     if (this.booms > 0) this.wait = 0.4; else this.done = true;
   }
@@ -2563,6 +2789,7 @@ class Boulder {
   }
   impact() {
     this.done = true;
+    Sound.play('boom', this.tx, this.ty, 0.6);
     const s = this.s;
     for (const e of G.enemies) {
       if (!e.alive || e.air) continue;
@@ -2816,7 +3043,7 @@ class Enemy {
     if (h && !h.dead && dist(h.x, h.y, tx, ty) <= b.radius) h.takeDamage(dmg);
     for (const u of G.soldiers) if (!u.dead && dist(u.x, u.y, tx, ty) <= b.radius) u.takeDamage(dmg);
     if (dist(tx, ty, MAP.castle.wallX + MAP.castle.wallW, MAP.gate.y) <= b.radius + 20) G.gate.takeDamage(dmg);
-    this.breathAnim = 0.7; this.breathTo = { x: tx, y: ty }; this.face = Math.atan2(ty - this.y, tx - this.x);
+    this.breathAnim = 0.7; this.breathTo = { x: tx, y: ty }; Sound.play('breath', tx, ty); this.face = Math.atan2(ty - this.y, tx - this.x);
     const sx = this.x + Math.cos(this.face) * 30, sy = this.y - AIR_HEIGHT * 1.6 + Math.sin(this.face) * 30;
     for (let i = 0; i < 26; i++) {
       const p = Math.random(), x = lerp(sx, tx, p) + rand(-10, 10) * p, y = lerp(sy, ty, p) + rand(-10, 10) * p;
@@ -2883,7 +3110,7 @@ class Enemy {
     if (d <= contact + 6) {
       this.face = Math.atan2(h.y - this.y, h.x - this.x);
       this.atkTimer -= dt;
-      if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; h.takeDamage(this.damage * this.dmgMul, this); }
+      if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; h.takeDamage(this.damage * this.dmgMul, this); Sound.play('claw', this.x, this.y, 0.6); }
     }
   }
 
@@ -2904,6 +3131,7 @@ class Enemy {
     if (this.slot) { this.slot[this.air ? 'air' : 'ground'] = null; this.slot = null; }
     if (this.foe) { this.foe.engaged.delete(this); this.foe = null; }
     FX.poof(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.radius);
+    Sound.play(this.boss ? 'bossDeath' : 'death', this.x, this.y, this.boss ? 1 : 0.8);
     if (this.boss) {
       if (killer) G.stats.bossKills++;
       showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6); shake(this.cfg.final ? 9 : 5, 0.5);
@@ -3033,7 +3261,7 @@ class Hero {
       const before = this.maxHp, mb = this.maxMana; this.recalc(); this.hp = Math.min(this.maxHp, this.hp + (this.maxHp - before) + this.maxHp * 0.25);
       this.mana = Math.min(this.maxMana, this.mana + (this.maxMana - mb));
       FX.ring(this.x, this.y, 50, '255,215,90', 0.6); FX.spark(this.x, this.y - 10, '#ffe08a', 10);
-      FX.text(this.x, this.y - 44, `레벨 업! Lv.${this.level}`, '#ffd36b', 20, 1.4);
+      FX.text(this.x, this.y - 44, `레벨 업! Lv.${this.level}`, '#ffd36b', 20, 1.4); Sound.play('levelUp');
     }
     if (this.level >= CONFIG.heroLevels.max) this.xp = 0;
   }
@@ -3064,7 +3292,7 @@ class Hero {
     if (this.hp <= 0) this.die();
   }
   die() {
-    this.hp = 0; this.dead = true; this.respawnTimer = this.cfg.respawn; G.stats.heroDeaths++; shake(4, 0.3);
+    this.hp = 0; this.dead = true; this.respawnTimer = this.cfg.respawn; G.stats.heroDeaths++; shake(4, 0.3); Sound.play('heroDeath');
     this.deathX = this.x; this.deathY = this.y; this.dash = null; this.burst = null; this.path = []; this.target = null; this.baseTarget = null;
     for (const e of [...this.engaged]) e.release();
     this.engaged.clear();
@@ -3077,7 +3305,7 @@ class Hero {
     this.x = MAP.heroSpawn.x; this.y = MAP.heroSpawn.y; this.face = 0;
     this.guard = { x: this.x, y: this.y }; this.mode = 'guard';
     FX.ring(this.x, this.y, 46, '255,240,180', 0.6); FX.spark(this.x, this.y, '#fff2b0', 10);
-    showBanner(`${this.cfg.name} 부활!`, '#ffe08a', 1.8);
+    showBanner(`${this.cfg.name} 부활!`, '#ffe08a', 1.8); Sound.play('respawn');
   }
 
   // ----- 스킬 -----
@@ -3116,20 +3344,20 @@ class Hero {
   }
   castArrowRain(sk, tx, ty) {
     G.zones.push(new Zone('arrowRain', tx, ty, sk.radius * (this.hasPerk('rainPlus') ? 1.4 : 1), sk.duration, { dps: this.skillValue(sk, 'dps'), src: this }));
-    this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.25;
+    this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.25; Sound.play('rain', tx, ty);
   }
   castTrap(sk, tx, ty) {
     const p = nearestPathPoint(tx, ty);                          // 덫은 길 위에 설치
     const plus = this.hasPerk('trapPlus'), mine = G.traps.filter(t => t.src === this);
     if (mine.length >= (plus ? 5 : sk.maxTraps)) G.traps.splice(G.traps.indexOf(mine[0]), 1);   // 오래된 덫부터 교체
     G.traps.push(new Trap(p.x, p.y, plus ? { ...sk, root: 3 } : sk, this.skillValue(sk, 'dps'), this));
-    FX.dust(p.x, p.y); FX.ring(p.x, p.y, sk.radius, '220,200,160', 0.35);
+    FX.dust(p.x, p.y); FX.ring(p.x, p.y, sk.radius, '220,200,160', 0.35); Sound.play('trapSet', p.x, p.y);
   }
 
   // ----- 마법사 스킬 -----
   castFireball(sk, tx, ty) {
     G.projectiles.push(new Fireball(this.x, this.y - 10, tx, ty, this.hasPerk('fireballPlus') ? { ...sk, explosions: 2 } : sk, this.skillValue(sk, 'damage'), this));
-    this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.3;
+    this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.3; Sound.play('fireCast', this.x, this.y);
   }
   castHeal(sk) {
     const amt = this.skillValue(sk, 'amount') * (this.hasPerk('healPlus') ? 2 : 1);
@@ -3141,11 +3369,12 @@ class Hero {
       const before = G.gate.hp; G.gate.hp = Math.min(G.gate.maxHp, G.gate.hp + amt);
       FX.text(gx + 40, gy - 60, '+' + Math.round(G.gate.hp - before), '#7dff6a', 18, 1.1); FX.ring(gx, gy, 60, '140,255,140', 0.6);
     }
-    FX.ring(this.x, this.y, sk.radius, '140,255,140', 0.6); FX.ring(this.x, this.y, sk.radius * 0.5, '220,255,200', 0.45);
+    FX.ring(this.x, this.y, sk.radius, '140,255,140', 0.6); FX.ring(this.x, this.y, sk.radius * 0.5, '220,255,200', 0.45); Sound.play('heal', this.x, this.y);
     for (let i = 0; i < 18; i++) { const a = rand(0, TAU), r = rand(0, sk.radius * 0.8); FX.add({ k: 'spark', x: this.x + Math.cos(a) * r, y: this.y + Math.sin(a) * r, vx: 0, vy: -50, g: 0, life: 0.7, max: 0.7, color: '#b8ff9a', size: 7 }); }
     this.attackAnim = 0.3;
   }
   castBlizzard(sk, tx, ty) {
+    Sound.play('blizzard', tx, ty);
     G.zones.push(new Zone('blizzard', tx, ty, sk.radius, sk.duration * (this.hasPerk('blizzardPlus') ? 1.5 : 1), { dps: this.skillValue(sk, 'dps'), slow: sk.slow, src: this }));
     this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.3;
   }
@@ -3167,7 +3396,7 @@ class Hero {
       if (!b.enabled || !b.alive) continue;
       if (dist(this.x, this.y, b.x, b.y) - b.m.hitRadius * 0.8 <= sk.range) { const bd2 = Math.round(dmg * this.cfg.baseDamageMul); b.takeDamage(bd2); FX.text(this.x + Math.cos(this.face) * 40, this.y + Math.sin(this.face) * 40 - 20, '-' + bd2, '#ffd36b', 20); }
     }
-    this.attackAnim = 0.25;
+    this.attackAnim = 0.25; Sound.play('bash', this.x, this.y);
     FX.arc(this.x, this.y, this.face, range + 10, half * 2);
   }
   castWarcry(sk) {
@@ -3175,12 +3404,12 @@ class Hero {
     let n = 0;
     for (const e of G.enemies) if (e.alive && !e.air && dist(this.x, this.y, e.x, e.y) <= sk.radius) { e.taunted(this, sk.duration); n++; }
     FX.ring(this.x, this.y, sk.radius, '255,120,70', 0.55); FX.ring(this.x, this.y, sk.radius * 0.6, '255,200,120', 0.4);
-    FX.text(this.x, this.y - 40, n ? `도발! (${n})` : '도발!', '#ff9a6a', 20, 1.1);
+    FX.text(this.x, this.y - 40, n ? `도발! (${n})` : '도발!', '#ff9a6a', 20, 1.1); Sound.play('warcry', this.x, this.y);
   }
   castCharge(sk, tx, ty) {
     const a = Math.atan2(ty - this.y, tx - this.x);
     const plus = this.hasPerk('chargePlus');
-    this.dash = { a, left: sk.distance * (plus ? 1.4 : 1), hit: new Set(), sk, mul: plus ? 2 : 1 };
+    this.dash = { a, left: sk.distance * (plus ? 1.4 : 1), hit: new Set(), sk, mul: plus ? 2 : 1 }; Sound.play('charge', this.x, this.y);
     this.face = a; this.path = []; this.target = null; this.baseTarget = null;
     for (const e of [...this.engaged]) if (e.taunt <= 0) e.release();
   }
@@ -3315,17 +3544,18 @@ class Hero {
     if (A.ranged) {                                     // 원거리: 궁사는 화살, 마법사는 마법탄 (방어력 무시)
       const dmg = (isBase ? Math.round(this.damage * this.cfg.baseDamageMul) : this.damage) * (crit ? 2 : 1);
       const sx = this.x + Math.cos(this.face) * 12, sy = this.y + Math.sin(this.face) * 12 - 4;
+      Sound.play(A.magic ? 'magic' : 'bow', this.x, this.y);
       if (A.magic) G.projectiles.push(new MagicBolt(sx, sy, t, { damage: dmg }, { boltSpeed: A.projectileSpeed }, this, '#7fd0ff'));
       else { const ar = new Arrow(sx, sy, t, dmg, A.projectileSpeed, this); ar.crit = crit; G.projectiles.push(ar); }
       return;
     }
     if (isBase) {
       const d = Math.round(this.damage * this.cfg.baseDamageMul);
-      t.takeDamage(d);
+      t.takeDamage(d); Sound.play('thud', t.x, t.y);
       const hx = this.x + Math.cos(this.face) * 30, hy = this.y + Math.sin(this.face) * 30;
       FX.spark(hx, hy, '#ffe08a', 4); FX.text(hx, hy - 16, '-' + d, '#ffd36b', 16, 0.7);
     } else {
-      t.takeDamage(this.damage * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3);
+      t.takeDamage(this.damage * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3); Sound.play('sword', t.x, t.y);
       FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, 16, 1.4, '255,255,255', 0.14);   // 베기 효과
     }
   }
@@ -3449,7 +3679,7 @@ class EnemyBase {
       this.summonCd = d.summonCooldown;
       const before = this.defenders.filter(e => e.alive).length;
       this.spawnDefenders(d.summon, true);
-      if (this.defenders.length > before) FX.text(this.x, this.y - 40, '수비병 소환!', '#ff8a6a', 18, 1.3);
+      if (this.defenders.length > before) { FX.text(this.x, this.y - 40, '수비병 소환!', '#ff8a6a', 18, 1.3); Sound.play('horn', this.x, this.y); }
     }
     if (this.hp <= 0) this.destroy();
   }
@@ -3460,7 +3690,7 @@ class EnemyBase {
       e.post = null; e.guardCfg = null; e.hunt = null;
       if (e.state !== 'fight') { e.dist = e.route.nearestDist(e.x, e.y, 0, 1e9); e.state = 'rejoin'; }
     }
-    FX.explosion(this.x, this.y, 1.5); shake(8, 0.6);
+    FX.explosion(this.x, this.y, 1.5); shake(8, 0.6); Sound.play('explosion'); setTimeout(() => Sound.play('coin'), 500);
     const left = G.bases.filter(b => b.enabled && b.alive).length;
     showBanner(left ? `${this.cfg.name} 파괴!  남은 기지들이 분노합니다 (위협 +${CONFIG.escalation.baseLostBonus || 0})` : `${this.cfg.name} 파괴!`, '#ffd36b', 3);
     if (G.hero && !G.hero.dead) G.hero.gainXp(this.cfg.xp || 0);
@@ -3537,6 +3767,7 @@ const Input = {
   threshold() { return (10 * CONFIG.view.width) / canvas.getBoundingClientRect().width; },   // 10 CSS px
   down(e) {
     e.preventDefault();
+    Sound.unlock();                                          // 첫 터치/클릭에 소리 켜기 (휴대폰 정책)
     if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
     const v = this.toVirtual(e), item = UI.hit(v.x, v.y);
     this.hoverScreen = v;
@@ -3583,13 +3814,14 @@ const Input = {
     if (this.pinch && [...this.pointers.values()].filter(q => !q.item).length < 2) this.pinch = null;
     const v = this.toVirtual(e);
     if (!p.moved) {
-      if (p.item) { if (p.item.id) { const it = UI.hit(v.x, v.y); if (it && it.id === p.item.id && it.onTap) it.onTap(); } }
+      if (p.item) { if (p.item.id) { const it = UI.hit(v.x, v.y); if (it && it.id === p.item.id && it.onTap) { Sound.play('click'); it.onTap(); } } }
       else onWorldTap(Camera.toWorld(v.x, v.y));
     }
     UI.pressed = null;
   },
   cancel(e) { this.pointers.delete(e.pointerId); this.pinch = null; UI.pressed = null; },
   key(e) {   // 키보드는 보조 단축키
+    Sound.unlock();
     if (e.code.startsWith('Arrow')) { this.keys.add(e.code); e.preventDefault(); return; }
     if (e.repeat) return;
     if (G.itemPrompt) { if (e.code === 'Enter' || e.code === 'NumpadEnter') resolveItemPrompt(true); else if (e.code === 'Escape') resolveItemPrompt(false); e.preventDefault(); return; }
@@ -3678,7 +3910,7 @@ function useSkill(i) {
 }
 // ---------- 건설 / 업그레이드 / 판매 ----------
 function notEnoughGold(x, y) {
-  FX.text(x, y - 44, '골드가 부족합니다', '#ff8a75', 18, 1.1);
+  FX.text(x, y - 44, '골드가 부족합니다', '#ff8a75', 18, 1.1); Sound.play('error');
   G.goldFlashUntil = realTime + 0.7;
 }
 function buildBuilding(spot, type) {
@@ -3689,7 +3921,7 @@ function buildBuilding(spot, type) {
   const bd = CONFIG.towers[type] ? new Tower(type, spot) : new Barracks(type, spot);
   spot.tower = bd; G.buildings.push(bd); G.stats.built++;
   for (let i = 0; i < 4; i++) FX.dust(spot.x + rand(-18, 18), spot.y + rand(-12, 14));
-  FX.text(spot.x, spot.y - 40, `-${cost}`, '#ffd84a', 18);
+  FX.text(spot.x, spot.y - 40, `-${cost}`, '#ffd84a', 18); Sound.play('build');
   G.sel = { kind: 'building', ref: bd, confirmSell: 0 };
 }
 function upgradeBuilding(bd) {
@@ -3698,7 +3930,7 @@ function upgradeBuilding(bd) {
   if (G.gold < cost) { notEnoughGold(bd.x, bd.y); return; }
   G.gold -= cost; bd.upgrade();
   FX.ring(bd.x, bd.y, 40, '255,215,90', 0.5); FX.spark(bd.x, bd.y - 10, '#ffe08a', 10);
-  FX.text(bd.x, bd.y - 44, `Lv.${bd.level}!`, '#ffd36b', 20);
+  FX.text(bd.x, bd.y - 44, `Lv.${bd.level}!`, '#ffd36b', 20); Sound.play('upgrade');
 }
 function sellBuilding(bd) {
   if (!(G.sel && G.sel.confirmSell > 0)) { if (G.sel) G.sel.confirmSell = 3; return; }   // 한 번 더 눌러야 판매 (실수 방지)
@@ -3706,7 +3938,7 @@ function sellBuilding(bd) {
   G.gold += v; bd.spot.tower = null; bd.onRemove();
   G.buildings.splice(G.buildings.indexOf(bd), 1);
   for (let i = 0; i < 4; i++) FX.dust(bd.x + rand(-18, 18), bd.y + rand(-12, 14));
-  FX.text(bd.x, bd.y - 40, `+${v} 골드`, '#ffd84a', 18);
+  FX.text(bd.x, bd.y - 40, `+${v} 골드`, '#ffd84a', 18); Sound.play('coin');
   G.sel = null;
 }
 function upgradeGate() {
@@ -3881,10 +4113,18 @@ function drawBottomHUD(ctx) {
   for (let i = 0; i < h.cfg.skills.length; i++) drawSkillButton(ctx, i, left + i * (bs + gap), by, bs, k);
 
   // --- 영웅에게 화면 이동 (지도를 움직일 수 있는 화면에서만) ---
+  let mxR = left - gap;
   if (Camera.canPan()) {
     const fs = 66 * k, fx = left - gap - fs, fy = VH - pad - fs;
     const off = drawButton(ctx, fx, fy, fs, fs, UI.button('focus', fx, fy, fs, fs, focusHero), k, '', { radius: 33, c1: '#4a6aa8', c2: '#2a3f6e', border: '#c9d8ff' });
     Icon.focus(ctx, fx + fs / 2, fy + fs / 2 + off, 34 * k);
+    mxR = fx - gap;
+  }
+  const ms = 54 * k, mx = mxR - ms, my = VH - pad - ms;            // 음소거 버튼
+  if (mx > px + pw + gap) {
+    const off = drawButton(ctx, mx, my, ms, ms, UI.button('mute', mx, my, ms, ms, () => { SETTINGS.muted = !SETTINGS.muted; saveSettings(); Sound.unlock(); Sound.applyVolumes(); }), k, '',
+      { radius: 27, c1: SETTINGS.muted ? '#6a5040' : '#4a6aa8', c2: SETTINGS.muted ? '#3a2a20' : '#2a3f6e', border: SETTINGS.muted ? '#c8a080' : '#c9d8ff' });
+    Icon.speaker(ctx, mx + ms / 2, my + ms / 2 + off, 28 * k, !SETTINGS.muted);
   }
 }
 
@@ -4254,24 +4494,25 @@ function drawOverlay(ctx) {
   if (G.state === 'playing' && !G.paused) return;
   ctx.fillStyle = 'rgba(8,6,4,0.62)'; ctx.fillRect(0, 0, VW, VH);
   UI.block(0, 0, VW, VH);
-  if (G.state === 'title') drawTitle(ctx, Math.min(UI.k, (VW - 40) / 780, (VH - 40) / 590));
+  if (G.state === 'title') drawTitle(ctx, Math.min(UI.k, (VW - 40) / 800, (VH - 30) / 630));
   else if (G.state === 'select') drawSelect(ctx, Math.min(UI.k, (VW - 30) / 1120, (VH - 30) / 700));
   else if (G.state === 'won' || G.state === 'lost') drawResult(ctx, Math.min(UI.k, (VW - 40) / 700, (VH - 40) / 520));
-  else drawPause(ctx, Math.min(UI.k, (VW - 40) / 760, (VH - 40) / 560));
+  else drawPause(ctx, Math.min(UI.k, (VW - 40) / 760, (VH - 40) / 630));
 }
 
 function drawTitle(ctx, k) {
-  const pw = 780 * k, ph = 590 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  const pw = 800 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '왕국 수호자', cx, y + 74 * k, 60 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 9 * k, weight: 900 });
   txt(ctx, '성문을 지키고, 적의 기지를 무너뜨려라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
     ['게임 방법', '#ffcf6a'],
     ['· 적 기지 3곳: 동굴(거미·박쥐) · 고블린 부락(고블린·궁수) · 오크 요새(오크·트롤)'],
-    ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (기지마다 수비병이 있고, 공격받으면 더 불러와요)'],
+    ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (수비병이 지키고, 공격받으면 더 불러와요)'],
     ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
-    ['· 3분마다 중간보스, 오크 요새 체력이 절반 아래로 떨어지면 최종보스 드래곤이 나타나요'],
+    ['· 3분마다 중간보스, 오크 요새 체력이 절반 이하면 최종보스 드래곤 등장'],
     ['· 보스·기지에서 떨어진 아이템 위로 영웅을 이동해 획득 (오른쪽 장착 칸을 누르면 정보)'],
+    ['· 소리: 첫 터치 후 재생 · 크기는 일시정지 메뉴, 음소거는 아래 스피커 버튼'],
     ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 기지 3곳을 모두 파괴하세요!'],
   ];
   let ly = y + 192 * k;
@@ -4377,7 +4618,7 @@ const HELP = [
   ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E 스킬 · Space 일시정지 · F 배속 · 방향키 이동'],
 ];
 function drawPause(ctx, k) {
-  const pw = 760 * k, ph = 560 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
+  const pw = 760 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '일시정지', cx, y + 56 * k, 42 * k, '#ffd36b', 'center', { stroke: '#2a1405', strokeW: 7 * k, weight: 900 });
   divider(ctx, cx, y + 92 * k, pw - 120 * k, k);
   HELP.forEach(([a, b], i) => {                                   // 조작 도움말
@@ -4390,6 +4631,18 @@ function drawPause(ctx, k) {
     `${label}: ${SETTINGS[key] ? '켜짐' : '꺼짐'}`, SETTINGS[key] ? { size: 17 * k, radius: 23, c1: '#4a7a3a', c2: '#2e5224', border: '#c8f0b0' } : { size: 17 * k, radius: 23, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
   tog('optDmg', '데미지 숫자', 'damageNumbers', cx - tw - 10 * k);
   tog('optShake', '화면 흔들림', 'screenShake', cx + 10 * k);
+  // 소리 크기: 누를 때마다 100% → 70% → 40% → 끔
+  const vy = ty + th + 16 * k, lv = [1, 0.7, 0.4, 0];
+  const vol = (id, label, key, vx) => {
+    const v = SETTINGS[key], on = v > 0 && !SETTINGS.muted;
+    drawButton(ctx, vx, vy, tw, th, UI.button(id, vx, vy - 8 * k, tw, th + 16 * k, () => {
+      const i = lv.findIndex(q => q <= v + 0.01); SETTINGS[key] = lv[(i + 1) % lv.length]; SETTINGS.muted = false; saveSettings(); Sound.unlock(); Sound.applyVolumes();
+      if (key === 'sfxVolume') setTimeout(() => Sound.play('coin'), 50);
+    }), k, `${label}: ${v > 0 ? Math.round(v * 100) + '%' : '끔'}${SETTINGS.muted ? ' (음소거)' : ''}`,
+    on ? { size: 17 * k, radius: 23, c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' } : { size: 17 * k, radius: 23, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+  };
+  vol('optSfx', '효과음', 'sfxVolume', cx - tw - 10 * k);
+  vol('optMusic', '배경음악', 'musicVolume', cx + 10 * k);
   const bw = 300 * k, bh = 64 * k, bx = cx - bw - 10 * k;
   let by = y + ph - bh - 28 * k;
   drawButton(ctx, bx, by, bw, bh, UI.button('resume', bx, by, bw, bh, togglePause), k, '계속하기', { size: 24 * k });
@@ -4510,7 +4763,7 @@ function update(dt) {
   const esc = CONFIG.escalation, lost = G.bases.filter(b => b.enabled && !b.alive).length;
   const timeTh = 1 + Math.floor(G.time / esc.interval), th = timeTh + lost * (esc.baseLostBonus || 0);
   if (th !== G.threat) {
-    if (timeTh !== G.threatTime) showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4);
+    if (timeTh !== G.threatTime) { showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4); Sound.play('threat'); }
     G.threat = th; G.threatTime = timeTh;
   }
   G.gate.update(dt);
@@ -4538,7 +4791,7 @@ function update(dt) {
   compact(G.enemies, e => e.alive);
   compact(G.projectiles, p => !p.done);
   if (G.banner && G.banner.t > 0) G.banner.t -= dt;
-  if (G.pendingResult) { G.endTimer -= dt; if (G.endTimer <= 0) { G.state = G.pendingResult; G.paused = false; } }
+  if (G.pendingResult) { G.endTimer -= dt; if (G.endTimer <= 0) { G.state = G.pendingResult; G.paused = false; Sound.play(G.state === 'won' ? 'victory' : 'defeat'); } }
 }
 
 function renderWorld(ctx) {
@@ -4668,6 +4921,7 @@ function frame(now) {
   Input.panKeys(dt);
   if (G.shakeT > 0 && !G.paused && !G.itemPrompt) G.shakeT -= dt;
   Camera.glide(dt);
+  Music.update();
   if (G.state === 'playing' && !G.paused && !G.itemPrompt) {
     acc += dt * CONFIG.speeds[G.speedIdx];
     let n = 0;
@@ -4687,7 +4941,11 @@ Input.init(canvas);
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 250));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
-document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing') G.paused = true; });  // 앱 전환 시 자동 일시정지
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && G.state === 'playing') G.paused = true;          // 앱 전환 시 자동 일시정지
+  if (Sound.ctx) { if (document.hidden) Sound.ctx.suspend(); else if (Sound.unlocked) Sound.ctx.resume(); }   // 소리도 멈춤
+});
+for (const ev of ['touchend', 'click']) document.addEventListener(ev, () => Sound.unlock(), { passive: true });   // iOS 소리 켜기 보조
 requestAnimationFrame(frame);
 
 // 콘솔 디버그/밸런스 테스트용: GAME.simulate(60) → 60초 진행
