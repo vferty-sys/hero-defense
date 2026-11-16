@@ -3329,8 +3329,15 @@ function pickupDrop(d) {
     FX.text(h.x, h.y - 50, `획득: ${it.name}`, rarityOf(it).color, 18, 1.8);
     return;
   }
-  G.itemPrompt = { drop: d, item: it, cur };     // 같은 슬롯 → 교체할지 선택 (그동안 게임 일시정지)
+  if (rankOf(it) < rankOf(cur)) {                // 지금 장비보다 등급이 낮으면 묻지 않고 골드로
+    const gold = rarityOf(it).sell;
+    addGold(gold); d.done = true; G.stats.itemsFound++; Sound.play('coin');
+    FX.text(h.x, h.y - 50, `${rarityOf(it).name} ${it.baseName || it.name} → +${gold} 골드`, '#ffd84a', 17, 1.8);
+    return;
+  }
+  G.itemPrompt = { drop: d, item: it, cur };     // 같은 슬롯 · 같거나 높은 등급 → 교체할지 선택 (그동안 게임 일시정지)
 }
+function rankOf(item) { return CONFIG.items.rarities.findIndex(r => r.id === item.rarity); }   // 일반 0 · 희귀 1 · 전설 2
 function resolveItemPrompt(take) {
   const P = G.itemPrompt; if (!P) return;
   const h = G.hero, sold = take ? P.cur : P.item, gold = rarityOf(sold).sell;
