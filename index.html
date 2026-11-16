@@ -58,6 +58,7 @@ const CONFIG = {
   },
   world: { width: 2400, height: 1350 }, // 지도 크기 (화면보다 넓음 → 드래그로 이동, 미니맵)
   speeds: [1, 2],                        // 배속 버튼 단계
+  prepTime: 5,                           // 스테이지 시작 후 준비 시간(초): 적·시간이 멈추고 병력 대기열만 만들 수 있음
 
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
@@ -181,70 +182,75 @@ const CONFIG = {
   // ---------------- 영웅 ----------------
   heroes: {
     knight: {
-      name: '기사', role: '탱커', desc: '높은 체력과 방어력으로 적을 붙잡는 탱커. 칼을 휘둘러 주변 적도 함께 베어요.',
-      hp: 650, armor: 0.35,           // armor: 받는 피해 감소 비율 (0.35 = 35% 감소)
-      speed: 95, radius: 16,
-      attack: { damage: 30, interval: 0.9, range: 24, cleave: { radius: 45, ratio: 0.5 } },   // range: 몸 가장자리 사이 거리 (근접) / cleave: 주변 적에게 50% 휩쓸기 피해
+      name: '기사', role: '탱커', desc: '아주 단단하지만 느린 탱커. 적을 4명까지 붙잡고 휩쓸어 벱니다. 기술은 스태미너 (쉬면 빨리 참).',
+      hp: 900, armor: 0.45,           // armor: 받는 피해 감소 비율 (0.45 = 45% 감소)
+      speed: 88, radius: 16,
+      attack: { damage: 26, interval: 1.0, range: 24, cleave: { radius: 45, ratio: 0.5 } },   // range: 몸 가장자리 사이 거리 (근접) / cleave: 주변 적에게 50% 휩쓸기 피해
       canHitAir: false,               // 근접이라 공중 유닛(박쥐)은 공격 불가
       baseDamageMul: 2.0,             // 적 기지 공격 배율 (기지 공격력 높음)
       aggroRange: 120,                // 서 있는 자리에서 이 거리 안의 적을 찾아가 싸움
       leash: 190,                     // 지키는 자리에서 적이 이보다 멀어지면 추격 중단
-      maxBlock: 3,                    // 동시에 붙잡아 둘 수 있는 적 수 (나머지는 지나감)
-      regenDelay: 4, regenRate: 0.03, // 공격 안 받은 지 4초 후, 초당 최대 체력의 3% 회복
+      maxBlock: 4,                    // 동시에 붙잡아 둘 수 있는 적 수 (나머지는 지나감)
+      regenDelay: 4, regenRate: 0.04, // 공격 안 받은 지 4초 후, 초당 최대 체력의 4% 회복
       respawn: 10,                    // 사망 후 부활까지(초)
-      perLevel: { hp: 55, damage: 4, armor: 0.012 },  // 레벨당 상승량
+      // 기술 자원: name 표시 이름 / short 짧은 이름 / max 최대치 / regen 항상 초당 회복 / regenIdle 쉬는 중(공격 안 받은 지 regenDelay초) 추가 회복
+      // perLevel 레벨당 최대치 증가 / discrete 칸으로 표시 (화살통) / unit 소모량 단위
+      resource: { name: '스태미너', short: 'SP', max: 100, regen: 4, regenIdle: 11, color: '#e8a83a' },   // 싸우는 중 초당 4, 쉬면 초당 15
+      perLevel: { hp: 66, damage: 4.8, armor: 0.012 },  // 레벨당 상승량
       skills: [
         // target: 'none' = 즉시 사용, 'direction' = 버튼 → 지도에서 방향 탭
-        { id: 'shieldBash', name: '방패 강타',   key: 'Q', target: 'none', cooldown: 8,
+        // cost: 기술 자원 소모량
+        { id: 'shieldBash', name: '방패 강타',   key: 'Q', target: 'none', cooldown: 4, cost: 25,
           damage: 60, perLevel: 8, stun: 1.5, range: 62, arc: 110 },
-        { id: 'warcry',     name: '도발의 함성', key: 'W', target: 'none', cooldown: 16,
+        { id: 'warcry',     name: '도발의 함성', key: 'W', target: 'none', cooldown: 8, cost: 35,
           radius: 170, duration: 3, damageReduction: 0.5 },
-        { id: 'charge',     name: '돌진',       key: 'E', target: 'direction', cooldown: 12,
+        { id: 'charge',     name: '돌진',       key: 'E', target: 'direction', cooldown: 6, cost: 30,
           distance: 250, speed: 760, damage: 70, perLevel: 8, width: 40, knockback: 70 },
         // minLevel: 이 레벨이 되어야 쓸 수 있는 궁극기
-        { id: 'judgment',   name: '심판의 일격', key: 'R', target: 'none', cooldown: 40, minLevel: 15,
+        { id: 'judgment',   name: '심판의 일격', key: 'R', target: 'none', cooldown: 20, cost: 60, minLevel: 15,
           radius: 220, damage: 280, stun: 2.5, heal: 0.3, baseDamage: 500 },     // 주변 적 큰 피해 + 기절, 자신 체력 30% 회복
       ],
     },
     archer: {
-      name: '궁사', role: '딜러', desc: '빠르고 강한 원거리 공격. 박쥐도 잡지만 체력이 낮아요.',
-      hp: 380, armor: 0.1, speed: 105, radius: 13,
-      attack: { damage: 20, interval: 0.6, range: 200, ranged: true, projectileSpeed: 760 },  // range: 중심 사이 거리 (원거리)
+      name: '궁사', role: '딜러', desc: '가장 빠르고 공격 속도·사거리가 최고인 딜러. 몸은 약해요. 기술은 화살통의 특수 화살 (4초마다 1발).',
+      hp: 320, armor: 0.05, speed: 118, radius: 13,
+      attack: { damage: 22, interval: 0.5, range: 230, ranged: true, projectileSpeed: 760 },  // range: 중심 사이 거리 (원거리)
       canHitAir: true, baseDamageMul: 1.0,
       aggroRange: 220, leash: 270, maxBlock: 1,
       regenDelay: 4, regenRate: 0.03, respawn: 10,
-      perLevel: { hp: 30, damage: 4, armor: 0.008 },
+      resource: { name: '화살통', short: '화살', unit: '발', max: 6, regen: 0.25, regenIdle: 0, color: '#8fd860', discrete: true },   // 특수 화살 최대 6발, 4초마다 1발
+      perLevel: { hp: 36, damage: 4.8, armor: 0.008 },
       skills: [
         // target: 'point' = 버튼 → 지도에서 위치 탭 (range 밖을 누르면 range 끝으로)
-        { id: 'multiShot', name: '연발 사격', key: 'Q', target: 'none', cooldown: 7,
+        { id: 'multiShot', name: '연발 사격', key: 'Q', target: 'none', cooldown: 3.5, cost: 2,
           arrows: 5, damage: 26, perLevel: 4, gap: 0.09 },
-        { id: 'arrowRain', name: '화살비',   key: 'W', target: 'point', cooldown: 14,
+        { id: 'arrowRain', name: '화살비',   key: 'W', target: 'point', cooldown: 7, cost: 3,
           range: 330, radius: 95, duration: 3, dps: 45, perLevel: 6, scaleKey: 'dps' },
-        { id: 'trap',      name: '덫 설치',  key: 'E', target: 'point', cooldown: 9,
+        { id: 'trap',      name: '덫 설치',  key: 'E', target: 'point', cooldown: 4.5, cost: 1,
           range: 280, radius: 28, root: 2, dps: 18, perLevel: 3, scaleKey: 'dps', maxTraps: 3, life: 40 },
-        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 35, minLevel: 15,
+        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 17.5, cost: 5, minLevel: 15,
           range: 430, count: 18, damage: 95 },                                      // 사거리 안의 적들에게 화살 18발
       ],
     },
     mage: {
-      name: '마법사', role: '마법', desc: '마나로 강력한 광역 마법을 씁니다. 화염구는 적 기지에도 피해!',
-      hp: 420, armor: 0.05, speed: 92, radius: 13,
-      mana: 200, manaRegen: 2, manaRegenIdle: 10,   // 마나: 항상 초당 2 + 쉬는 중(공격 안 받은 지 regenDelay초) 초당 10 회복
-      attack: { damage: 26, interval: 1.0, range: 185, ranged: true, magic: true, projectileSpeed: 520 },
+      name: '마법사', role: '마법', desc: '몸은 가장 약하지만 마법 스킬 피해 +25%. 마나로 광역 마법, 화염구는 적 기지에도 피해!',
+      hp: 300, armor: 0, speed: 90, radius: 13,
+      resource: { name: '마나', short: 'MP', max: 240, perLevel: 15, regen: 1, regenIdle: 5, color: '#4a8cff' },   // 항상 초당 1 + 쉬는 중 초당 5
+      attack: { damage: 20, interval: 1.0, range: 185, ranged: true, magic: true, projectileSpeed: 520 },
       canHitAir: true, baseDamageMul: 1.2,
       aggroRange: 200, leash: 260, maxBlock: 1,
       regenDelay: 4, regenRate: 0.03, respawn: 10,
-      perLevel: { hp: 32, damage: 5, armor: 0.006, mana: 15 },
+      perLevel: { hp: 38, damage: 6, armor: 0.006 },
       skills: [
-        // mana: 마나 소모량
-        { id: 'fireball', name: '화염구',     key: 'Q', target: 'point', cooldown: 6,  mana: 40,
-          range: 340, radius: 70, damage: 90, perLevel: 12, baseDamage: 140, speed: 620, explosions: 1 },
-        { id: 'heal',     name: '치유의 빛',  key: 'W', target: 'none',  cooldown: 15, mana: 60,
+        // 마법사 스킬 피해는 다른 영웅보다 25% 높게 잡음
+        { id: 'fireball', name: '화염구',     key: 'Q', target: 'point', cooldown: 6,  cost: 40,
+          range: 340, radius: 70, damage: 112, perLevel: 15, baseDamage: 175, speed: 620, explosions: 1 },
+        { id: 'heal',     name: '치유의 빛',  key: 'W', target: 'none',  cooldown: 15, cost: 60,
           radius: 210, amount: 150, perLevel: 15, scaleKey: 'amount', gateRange: 360 },
-        { id: 'blizzard', name: '얼음 폭풍',  key: 'E', target: 'point', cooldown: 16, mana: 70,
-          range: 330, radius: 145, duration: 4, slow: 0.5, dps: 25, perLevel: 4, scaleKey: 'dps' },
-        { id: 'meteor',   name: '메테오',     key: 'R', target: 'point', cooldown: 40, mana: 100, minLevel: 15,
-          range: 420, radius: 170, damage: 430, baseDamage: 600, delay: 1.2 },    // 하늘에서 거대한 운석 (적 기지에도 큰 피해)
+        { id: 'blizzard', name: '얼음 폭풍',  key: 'E', target: 'point', cooldown: 16, cost: 70,
+          range: 330, radius: 145, duration: 4, slow: 0.5, dps: 31, perLevel: 5, scaleKey: 'dps' },
+        { id: 'meteor',   name: '메테오',     key: 'R', target: 'point', cooldown: 40, cost: 100, minLevel: 15,
+          range: 420, radius: 170, damage: 540, baseDamage: 750, delay: 1.2 },    // 하늘에서 거대한 운석 (적 기지에도 큰 피해)
       ],
     },
   },
@@ -252,6 +258,7 @@ const CONFIG = {
     max: 15,
     xpToNext: [80, 130, 190, 260, 340, 430, 530, 640, 760, 900, 1050, 1220, 1400, 1600],   // Lv1→2, Lv2→3, ... Lv14→15 필요 경험치
     sharedXp: 0.35,                   // 영웅이 아닌 성벽 궁수 등이 처치해도 이 비율만큼 경험치 획득
+    regenPerLevel: 0.05,              // 레벨마다 체력 회복·기술 자원(마나·스태미너·화살) 회복 속도 +5%
   },
 
   enemies: {
@@ -1896,7 +1903,7 @@ const Art = {
     if (h.dead) return;
     const w = 44, x = h.x - w / 2 + 7, y = h._top != null ? h._top - 12 : h.y - 40;
     bar(ctx, x, y, w, 6, h.hp / h.maxHp, '#5cd04a');
-    if (h.maxMana) bar(ctx, x, y + 6, w, 4, h.mana / h.maxMana, '#4a8cff');
+    if (h.maxMana) bar(ctx, x, y + 6, w, 4, h.mana / h.maxMana, h.cfg.resource.color);
     ctx.fillStyle = '#2a1d10'; circle(ctx, x - 7, y + 3, 7.5); ctx.fill();
     ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 1.2; ctx.stroke();
     txt(ctx, h.level + '', x - 7, y + 3.5, 10, '#ffe7a8', 'center', { weight: 900 });
@@ -4061,7 +4068,9 @@ class Hero {
     this.maxHp = Math.round(c.hp + c.perLevel.hp * l + (B.hp || 0));
     this.damage = c.attack.damage + c.perLevel.damage * l + (B.damage || 0);
     this.armor = Math.min(0.75, c.armor + c.perLevel.armor * l + (B.armor || 0));
-    this.maxMana = c.mana ? Math.round(c.mana + (c.perLevel.mana || 0) * l + (B.mana || 0)) : 0;
+    const R = c.resource;                                      // 기술 자원 (마나 · 스태미너 · 화살통) — 변수 이름은 mana로 통일
+    this.maxMana = R ? Math.round(R.max + (R.perLevel || 0) * l + (B.mana || 0)) : 0;
+    this.regenMul = 1 + CONFIG.heroLevels.regenPerLevel * l;  // 레벨이 오를수록 회복 속도 증가
     this.range = c.attack.range + (B.range || 0);
     this.atkInterval = c.attack.interval * (1 - Math.min(0.5, B.attackSpeed || 0));
     this.speed = c.speed + (B.speed || 0);
@@ -4150,7 +4159,7 @@ class Hero {
   }
 
   // ----- 스킬 -----
-  canCast(i) { const sk = this.cfg.skills[i]; return !this.dead && !this.dash && this.level >= (sk.minLevel || 1) && this.cooldowns[i] <= 0 && this.mana >= (sk.mana || 0); }
+  canCast(i) { const sk = this.cfg.skills[i]; return !this.dead && !this.dash && this.level >= (sk.minLevel || 1) && this.cooldowns[i] <= 0 && this.mana >= (sk.cost || 0); }
   cast(i, tx, ty) {
     if (!this.canCast(i)) return false;
     const sk = this.cfg.skills[i];
@@ -4167,7 +4176,7 @@ class Hero {
     if (!fn || fn() === false) return false;                      // false = 쓸 수 없음 (쿨타임·마나 소모 안 함)
     this.cooldowns[i] = sk.cooldown * (1 - this.cdr);            // 왕의 반지: 쿨타임 감소
     this.castAnim = 0.45;
-    this.mana -= sk.mana || 0;
+    this.mana -= sk.cost || 0;
     return true;
   }
 
@@ -4369,8 +4378,9 @@ class Hero {
     this.siegeTarget = this.baseTarget && !this.baseTarget.protectedByBoss ? this.baseTarget : null;
     if (this.dead) { this.respawnTimer -= dt; if (this.respawnTimer <= 0) this.respawn(); return; }
     const c = this.cfg, idle = G.time - this.lastHit >= c.regenDelay;
-    if (idle && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * c.regenRate * dt);   // 자연 회복
-    if (this.maxMana) this.mana = Math.min(this.maxMana, this.mana + ((c.manaRegen || 0) + this.manaRegenBonus + (idle ? c.manaRegenIdle || 0 : 0)) * dt);   // 마나 회복
+    if (idle && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * c.regenRate * this.regenMul * dt);   // 자연 회복
+    const R = c.resource;                                                      // 기술 자원 회복 (마나 · 스태미너 · 화살)
+    if (R) this.mana = Math.min(this.maxMana, this.mana + ((R.regen + (idle ? R.regenIdle : 0)) * this.regenMul + this.manaRegenBonus) * dt);
     if (this.dash) { this.updateDash(dt); return; }
     if (this.root > 0) this.root -= dt;
     if (this.push) { pushStep(this, dt); return; }       // 보스 스킬에 밀려나는 중
@@ -4813,6 +4823,11 @@ function useSkill(i) {
   if (!h || G.state !== 'playing' || G.paused) return;
   const sk = h.cfg.skills[i]; if (!sk) return;
   if (sk.minLevel && h.level < sk.minLevel) { toast(`${sk.name}: 영웅 ${sk.minLevel}레벨부터 쓸 수 있어요`, '#ffb09a'); Sound.play('error'); return; }
+  if (G.prep > 0) { toast('준비 시간에는 스킬을 쓸 수 없어요', '#ffb09a'); return; }
+  if (!h.dead && h.cooldowns[i] <= 0 && sk.cost && h.mana < sk.cost) {      // 기술 자원 부족
+    const nm = h.cfg.resource.short === 'MP' ? '마나' : h.cfg.resource.short === 'SP' ? '스태미너' : '화살';
+    toast(`${josa(nm, '이', '가')} 부족해요 (${sk.cost}${h.cfg.resource.unit || ''} 필요)`, '#ffb09a'); Sound.play('error'); return;
+  }
   if (sk.target !== 'none') {                       // 버튼 → 지도에서 방향/위치 탭
     if (G.aim && G.aim.skill === i) { G.aim = null; return; }
     if (h.canCast(i)) { G.aim = { skill: i }; G.sel = null; }
@@ -4970,13 +4985,18 @@ function drawBottomHUD(ctx) {
   if (h.dead) txt(ctx, '쓰러짐', tx + bw, py + 19 * k, 14 * k, '#ff8a75', 'right');
   else if (h.buffs.warcry > 0) txt(ctx, '피해 50% 감소', tx + bw, py + 19 * k, 13 * k, '#ffae7a', 'right');
   else if (G.time - h.lastHit >= h.cfg.regenDelay && h.hp < h.maxHp) txt(ctx, '회복 중', tx + bw, py + 19 * k, 13 * k, '#8dff7a', 'right');
-  const mp = h.maxMana > 0;                                     // 마법사: 체력 · 마나 · 경험치 3줄
+  const mp = h.maxMana > 0, RS = h.cfg.resource;              // 체력 · 기술 자원(마나·스태미너·화살) · 경험치 3줄
   const hpY = py + (mp ? 30 : 33) * k, hpH = (mp ? 18 : 22) * k;
   bar(ctx, tx, hpY, bw, hpH, h.hp / h.maxHp, h.dead ? '#555' : '#4fc43c');
   txt(ctx, h.dead ? `부활까지 ${Math.ceil(h.respawnTimer)}초` : `${Math.ceil(h.hp)} / ${h.maxHp}`, tx + bw / 2, hpY + hpH / 2 + 1, (mp ? 13 : 14) * k, '#fff', 'center', { stroke: 'rgba(0,0,0,0.75)' });
   if (mp) {
-    bar(ctx, tx, py + 51 * k, bw, 14 * k, h.mana / h.maxMana, '#4a8cff');
-    txt(ctx, `MP ${Math.floor(h.mana)} / ${h.maxMana}`, tx + bw / 2, py + 58 * k + 1, 11.5 * k, '#fff', 'center', { stroke: 'rgba(0,0,0,0.75)' });
+    bar(ctx, tx, py + 51 * k, bw, 14 * k, h.mana / h.maxMana, RS.color);
+    if (RS.discrete) {                                          // 화살통: 칸 나누기
+      ctx.strokeStyle = 'rgba(20,14,8,0.9)'; ctx.lineWidth = 2 * k; ctx.beginPath();
+      for (let i = 1; i < h.maxMana; i++) { const sx = tx + bw * i / h.maxMana; ctx.moveTo(sx, py + 51 * k); ctx.lineTo(sx, py + 65 * k); }
+      ctx.stroke();
+    }
+    txt(ctx, `${RS.short} ${Math.floor(h.mana)} / ${h.maxMana}`, tx + bw / 2, py + 58 * k + 1, 11.5 * k, '#fff', 'center', { stroke: 'rgba(0,0,0,0.75)' });
   }
   const maxed = h.level >= CONFIG.heroLevels.max;
   bar(ctx, tx, py + (mp ? 69 : 63) * k, bw, (mp ? 8 : 11) * k, maxed ? 1 : h.xp / h.xpToNext, '#8f7bff');
@@ -5141,12 +5161,13 @@ function drawSkillButton(ctx, i, x, y, s, k) {
     txt(ctx, `${sk.minLevel}레벨`, x + s / 2, y + s / 2 + 16 * k + off, 13 * k, '#ffd36b', 'center', { weight: 900, stroke: 'rgba(0,0,0,0.8)' });
     return;
   }
-  const noMana = sk.mana && h.mana < sk.mana;
-  if (sk.mana) {                                                 // 마나 소모량
-    rr(ctx, x + s - 32 * k, y + 6 * k + off, 26 * k, 20 * k, 6 * k); ctx.fillStyle = noMana ? 'rgba(120,20,20,0.85)' : 'rgba(20,50,120,0.85)'; ctx.fill();
-    txt(ctx, sk.mana + '', x + s - 19 * k, y + 16.5 * k + off, 12 * k, noMana ? '#ffb0a0' : '#bfe0ff', 'center', { weight: 900 });
+  const noMana = sk.cost && h.mana < sk.cost, RC = h.cfg.resource ? h.cfg.resource.color : '#4a8cff';
+  if (sk.cost) {                                                 // 기술 자원 소모량 (자원 색)
+    rr(ctx, x + s - 32 * k, y + 6 * k + off, 26 * k, 20 * k, 6 * k); ctx.fillStyle = noMana ? 'rgba(120,20,20,0.88)' : 'rgba(15,12,8,0.82)'; ctx.fill();
+    ctx.strokeStyle = noMana ? '#ff9a8a' : RC; ctx.lineWidth = 1.5 * k; ctx.stroke();
+    txt(ctx, sk.cost + '', x + s - 19 * k, y + 16.5 * k + off, 12 * k, noMana ? '#ffb0a0' : RC, 'center', { weight: 900 });
   }
-  if (noMana && cd <= 0 && !h.dead) { rr(ctx, x, y + off, s, s, 14 * k); ctx.fillStyle = 'rgba(20,40,110,0.45)'; ctx.fill(); }
+  if (noMana && cd <= 0 && !h.dead) { rr(ctx, x, y + off, s, s, 14 * k); ctx.fillStyle = 'rgba(25,25,35,0.5)'; ctx.fill(); }
   if (cd > 0 || h.dead) {                                   // 쿨타임: 남은 만큼 어둡게 + 남은 초
     ctx.save(); rr(ctx, x, y + off, s, s, 14 * k); ctx.clip();
     ctx.fillStyle = 'rgba(0,0,0,0.62)';
@@ -5164,6 +5185,18 @@ function drawSkillButton(ctx, i, x, y, s, k) {
 
 // ---------- 선택 메뉴 (성문 / 훈련 시설) ----------
 function worldToScreen(x, y) { return { x: (x - Camera.x) * Camera.zoom, y: (y - Camera.y) * Camera.zoom }; }
+
+// 준비 시간: 남은 초 + 바로 시작 버튼
+function drawPrep(ctx) {
+  if (!(G.prep > 0) || G.state !== 'playing') return;
+  const k = UI.k, VW = CONFIG.view.width, w = 460 * k, h = 112 * k, x = VW / 2 - w / 2, y = Camera.topPad + 70 * k;
+  panel(ctx, x, y, w, h, k); UI.block(x, y, w, h);
+  txt(ctx, `준비 시간 ${Math.ceil(G.prep)}`, x + 24 * k, y + 34 * k, 30 * k, '#ffd36b', 'left', { weight: 900, stroke: 'rgba(0,0,0,0.7)' });
+  fitTxt(ctx, '아래 병력 칸을 눌러 생산 대기열을 만드세요', x + 24 * k, y + 72 * k, 15 * k, w - 200 * k, '#efe2c6', 'left', { weight: 600 });
+  fitTxt(ctx, '(준비 중에는 적과 시간이 멈춤)', x + 24 * k, y + 94 * k, 12.5 * k, w - 200 * k, '#b8a888', 'left', { weight: 500 });
+  const bw = 150 * k, bh = 64 * k, bx = x + w - bw - 18 * k, by = y + (h - bh) / 2;
+  drawButton(ctx, bx, by, bw, bh, UI.button('prepGo', bx, by, bw, bh, () => { G.prep = 0.0001; }), k, '바로 시작', { size: 21 * k, c1: '#4f8a3a', c2: '#2e5a22', border: '#d8ffb8' });
+}
 
 // 최종보스가 화면 밖에 있으면 화면 가장자리에 방향 화살표 + 이름
 function drawBossPointer(ctx) {
@@ -5619,18 +5652,18 @@ function drawSelect(ctx, k) {
     let ly = Y + 200 * k;
     for (const ln of wrapLines(ctx, c.desc, cw - 36 * k, 14 * k, 500)) { txt(ctx, ln, pcx, ly, 14 * k, '#e6d8b8', 'center', { weight: 500 }); ly += 20 * k; }
     const stats = [                                                    // 능력치 막대 (상대 비교)
-      ['체력', c.hp / 700], ['공격력', c.attack.damage / c.attack.interval / 40],
-      ['사거리', c.attack.ranged ? c.attack.range / 220 : 0.12], ['이동 속도', c.speed / 110],
+      ['체력', c.hp / 900], ['방어력', c.armor / 0.45 + 0.05], ['초당 공격력', c.attack.damage / c.attack.interval / 45],
+      ['사거리', c.attack.ranged ? c.attack.range / 230 : 0.12], ['이동 속도', c.speed / 120],
     ];
     stats.forEach(([lab, v], j) => {
-      const sy = Y + 240 * k + j * 20 * k;
+      const sy = Y + 236 * k + j * 17 * k;
       txt(ctx, lab, X + 22 * k, sy, 13 * k, '#d8c8a4', 'left', { weight: 600 });
-      bar(ctx, X + 100 * k, sy - 6 * k, cw - 122 * k, 12 * k, clamp(v, 0.05, 1), '#e8b84a');
+      bar(ctx, X + 100 * k, sy - 6 * k, cw - 122 * k, 11 * k, clamp(v, 0.05, 1), '#e8b84a');
     });
     c.skills.forEach((sk, j) => {
       const sy = Y + 322 * k + j * 19 * k;
       Icon.skill(ctx, sk.id, X + 32 * k, sy, 17 * k);
-      txt(ctx, `${sk.key}  ${sk.name}${sk.minLevel ? `  (${sk.minLevel}레벨 궁극기)` : sk.mana ? `  (마나 ${sk.mana})` : ''}`, X + 50 * k, sy, 13 * k, sk.minLevel ? '#ffd36b' : '#f3e3bf', 'left', { weight: 600 });
+      txt(ctx, `${sk.key}  ${sk.name}${sk.minLevel ? `  (${sk.minLevel}레벨 궁극기)` : sk.cost ? `  (${c.resource.short === 'MP' ? '마나' : c.resource.short === 'SP' ? '스태미너' : '화살'} ${sk.cost}${c.resource.unit || ''})` : ''}`, X + 50 * k, sy, 13 * k, sk.minLevel ? '#ffd36b' : '#f3e3bf', 'left', { weight: 600 });
     });
   });
   // 스테이지 (5개씩 두 줄)
@@ -5672,7 +5705,7 @@ const HELP = [
   ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
   ['아래 병력 칸', '누를 때마다 1명씩 생산 대기열에 추가 (무료) · 대기열 아이콘을 누르면 취소'], ['강화 버튼', '켠 뒤 병력 칸을 누르면 훈련 시설 강화 (골드)'],
   ['인구 (최대 50)', '보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4 · 5레벨 자동 스킬 · 10레벨 패시브'], ['병력', '성문에서 나와 길을 따라 적 기지로 진군'],
-  ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
+  ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭 · 기사 스태미너 · 궁사 화살통 · 마법사 마나 소모'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
   ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · U 강화 · ← 지우기(Backspace) 마지막 취소 · Space 일시정지 · F 배속'],
 ];
 function drawPause(ctx, k) {
@@ -5822,6 +5855,7 @@ function startGame(heroType, stageIdx = selectedStage) {
   newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff, stageIdx);
   Camera.centerOn(MAP.startView.x, MAP.startView.y);
   showBanner(`${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, '#ffe08a', 3.4);
+  G.prep = CONFIG.prepTime;                                    // 준비 시간: 적·시간이 멈추고 병력 대기열만 만듦
 }
 function nextStage() {
   const n = G.stageIdx + 1; if (n >= CONFIG.stages.length) return;
@@ -5838,6 +5872,12 @@ function togglePause() { if (G.state === 'playing') G.paused = !G.paused; }
 function toggleSpeed() { if (G.state === 'playing') G.speedIdx = (G.speedIdx + 1) % CONFIG.speeds.length; }
 
 function update(dt) {
+  if (G.prep > 0) {                                            // 준비 시간 (배속과 상관없이 실제 초)
+    G.prep -= dt / CONFIG.speeds[G.speedIdx];
+    if (G.banner && G.banner.t > 0) G.banner.t -= dt;
+    if (G.prep <= 0) { G.prep = 0; showBanner('전투 시작!', '#ffe08a', 1.6); Sound.play('horn'); }
+    return;
+  }
   G.time += dt;
   const esc = CONFIG.escalation, lost = G.bases.filter(b => b.enabled && !b.alive).length;
   const timeTh = 1 + Math.floor(G.time / esc.interval), th = timeTh + lost * (esc.baseLostBonus || 0);
@@ -5957,6 +5997,7 @@ function render() {
   G.bossBarH = drawBossBars(ctx);
   drawBossPointer(ctx);
   drawBanner(ctx);
+  drawPrep(ctx);
   drawSelectionPanel(ctx);   // 메뉴는 안내 띠보다 위에
   drawAimHint(ctx);
   drawItemPrompt(ctx);
