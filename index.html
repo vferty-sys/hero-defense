@@ -3312,14 +3312,13 @@ const SavedGear = {
   get(type) { return this.all()[type] || null; },
   save(type, items) { this.all()[type] = { ...items }; try { localStorage.setItem('kg.gear', JSON.stringify(this.mem)); } catch (_) {} },
 };
-// 바닥에 떨어진 아이템: 영웅이 위로 지나가면 획득
+// 떨어진 아이템: 영웅이 가지러 가지 않아도 잠깐 반짝인 뒤 바로 획득 (교체 창이 떠 있으면 닫힌 뒤 차례로)
 class Drop {
   constructor(x, y, item) { this.x = x; this.y = y; this.item = item; this.t = 0; this.done = false; }
   update(dt) {
     if (this.done) return;                                   // 이미 처리된 아이템은 다시 줍지 않음
     this.t += dt;
-    const h = G.hero;
-    if (h && !h.dead && !G.itemPrompt && dist(h.x, h.y, this.x, this.y) < h.radius + 18) pickupDrop(this);
+    if (this.t >= 0.4 && G.hero && !G.itemPrompt) pickupDrop(this);
   }
 }
 function pickupDrop(d) {
