@@ -307,6 +307,11 @@ const CONFIG = {
                     summon: { type: 'slime', count: 2, interval: 8 }, split: { type: 'slime', count: 4 },
                     skills: [ { id: 'poison', name: '산성 웅덩이', cooldown: 9,  first: 4, range: 260, radius: 85, delay: 0.7, dps: 26, duration: 6 },
                               { id: 'slam',   name: '내려찍기',   cooldown: 10, first: 7, trigger: 110, radius: 120, delay: 1.0, damage: 85, stun: 1.4 } ] },
+    // 대형 슬라임 킹 (보스 스테이지 최종보스): 쓰러지면 2마리로 분열(본체 체력의 40%씩) → 다시 4마리(20%씩). 분열해도 공격력·스킬은 그대로
+    giantSlimeKing: { name: '대형 슬라임 킹', boss: true, final: true, hp: 14800, speed: 30, radius: 46, air: false, armor: 0.15, gateDamage: 80, damage: 50, attackInterval: 1.4, xp: 1500, gold: 1000,
+                    summon: { type: 'slime', count: 3, interval: 9 }, megaSplit: { count: 2, hpRatios: [0.4, 0.2], sizes: [0.75, 0.55] },
+                    skills: [ { id: 'poison', name: '산성 웅덩이', cooldown: 8,  first: 4, range: 300, radius: 110, delay: 0.8, dps: 34, duration: 6 },
+                              { id: 'slam',   name: '내려찍기',   cooldown: 9,  first: 6, trigger: 150, radius: 160, delay: 1.0, damage: 110, stun: 1.5 } ] },
     lich:         { name: '리치',      boss: true, hp: 2200, speed: 50, radius: 18, air: false, armor: 0.15, gateDamage: 30, damage: 30, attackInterval: 1.5, xp: 300, gold: 200, drawScale: 1.8,
                     ranged: true, magic: true, range: 190, summon: { type: 'skeleton', count: 3, interval: 9 },
                     skills: [ { id: 'lightning', name: '죽음의 번개', cooldown: 6,  first: 2, range: 300, delay: 0.6, damage: 65, jumps: 5, jumpRange: 130, color: '200,120,255' },
@@ -408,6 +413,24 @@ const CONFIG = {
       desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
       mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
       final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
+    // ---- 보스 스테이지 (10스테이지를 깨면 열림): 적 기지 없음, 세 갈래 길(roads)에서 웨이브로 몬스터가 옴, 최종보스를 쓰러뜨리면 승리 ----
+    // waves.first: 첫 웨이브까지(초) / rest: 웨이브 보스를 쓰러뜨린 뒤 쉬는 시간 / groupSize·groupGap: 한 무리 크기·간격
+    // list: count 몬스터 수 · duration 몬스터가 나오는 시간(초) · mix 몬스터 비중 · boss 웨이브 끝에 나오는 보스(여럿이면 하나씩 차례로) · road 보스가 나오는 길
+    { name: '대형 슬라임 킹', boss: true, map: 'kingdom', bases: [], roads: ['north', 'east', 'south'], power: 1.2, startGold: 550,
+      desc: '보스 스테이지 · 5웨이브',
+      waves: { first: 10, rest: 15, groupSize: 4, groupGap: 0.35, list: [
+        { count: 60,  duration: 45, boss: ['wolfKing'], road: 'north',
+          mix: [{ type: 'wolf', weight: 5 }, { type: 'spider', weight: 3 }, { type: 'bat', weight: 2 }] },
+        { count: 75,  duration: 50, boss: ['goblinShaman'], road: 'south',
+          mix: [{ type: 'goblin', weight: 5 }, { type: 'goblinArcher', weight: 3 }, { type: 'bomber', weight: 2 }] },
+        { count: 90,  duration: 55, boss: ['orcChief'], road: 'east',
+          mix: [{ type: 'orc', weight: 5 }, { type: 'wolf', weight: 2 }, { type: 'goblin', weight: 2 }, { type: 'troll', weight: 1 }] },
+        { count: 105, duration: 60, boss: ['lich'], road: 'north',
+          mix: [{ type: 'skeleton', weight: 5 }, { type: 'ghost', weight: 3 }, { type: 'skeletonMage', weight: 2 }] },
+        { count: 120, duration: 65, boss: ['wolfKing', 'goblinShaman', 'orcChief', 'lich'],
+          mix: [{ type: 'orc', weight: 3 }, { type: 'wolf', weight: 3 }, { type: 'skeleton', weight: 3 }, { type: 'goblin', weight: 3 }, { type: 'harpy', weight: 2 }, { type: 'slime', weight: 2 }, { type: 'troll', weight: 1 }] },
+      ] },
+      final: { type: 'giantSlimeKing', road: 'east' } },
   ],
 
   // ---------------- 아이템 ----------------
@@ -580,6 +603,29 @@ MAPS.crypt = {                    // 묘지 협곡: 강이 성에서 멀리 있�
   scatterTrees: 90,
 };
 // 위아래를 뒤집은 지도 (성은 그대로)
+// 보스 스테이지: 왕국으로 통하는 세 갈래 길 (기지 없음, bases = 몬스터가 들어오는 길 입구)
+MAPS.kingdom = {
+  ...CASTLE_LAYOUT, seed: 4409, theme: 'dark',
+  rally: { x: 860, y: 668 },                 // 공격할 기지가 없을 때 병력이 모이는 곳 (세 길이 만나는 곳 앞)
+  bases: {
+    north: { name: '북쪽 길', x: 1500, y: -30,  hitRadius: 40, barOffset: 0, path: ['north', 'main'] },
+    east:  { name: '동쪽 길', x: 2430, y: 640,  hitRadius: 40, barOffset: 0, path: ['east', 'main'] },
+    south: { name: '남쪽 길', x: 1450, y: 1380, hitRadius: 40, barOffset: 0, path: ['south', 'main'] },
+  },
+  segments: {
+    north: [[1500, -30], [1480, 120], [1400, 300], [1260, 450], [1120, 580], [1000, 670]],
+    east:  [[2430, 640], [2200, 700], [1960, 620], [1720, 700], [1480, 640], [1240, 700], [1000, 670]],
+    south: [[1450, 1380], [1430, 1220], [1350, 1040], [1230, 880], [1110, 760], [1000, 670]],
+    main:  [[1000, 670], [840, 640], [680, 700], [520, 650], [350, 690], [186, 675]],
+  },
+  river: [[620, -60], [580, 250], [640, 520], [600, 780], [650, 1050], [610, 1410]],
+  forests: [
+    { x: 1760, y: 300, r: 230, n: 90 }, { x: 1780, y: 1050, r: 230, n: 90 }, { x: 1120, y: 220, r: 150, n: 55 },
+    { x: 1080, y: 1130, r: 150, n: 55 }, { x: 380, y: 300, r: 180, n: 75 }, { x: 400, y: 1060, r: 180, n: 75 },
+    { x: 860, y: 360, r: 120, n: 40 }, { x: 860, y: 990, r: 120, n: 40 }, { x: 2260, y: 230, r: 140, n: 45 }, { x: 2260, y: 1150, r: 140, n: 45 },
+  ],
+  scatterTrees: 110,
+};
 function mirrorMap(m, o) {
   const H = CONFIG.world.height, fy = p => [p[0], H - p[1]];
   const bases = {}; for (const k in m.bases) bases[k] = { ...m.bases[k], y: H - m.bases[k].y };
@@ -1543,7 +1589,7 @@ const Art = {
   },
   // 슬라임 / 꼬마 슬라임 / 슬라임 왕 (말랑한 방울)
   slime(ctx, e) {
-    const r = e.radius, king = e.type === 'slimeKing', fl = e.flash > 0, sq = Math.sin(e.anim * (king ? 4 : 7)) * 0.12;
+    const r = e.radius, giant = e.type === 'giantSlimeKing', king = e.type === 'slimeKing' || giant, fl = e.flash > 0, sq = Math.sin(e.anim * (king ? 4 : 7)) * 0.12;
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, e.x, e.y + r * 0.35, r * 1.1, r * 0.45); ctx.fill();
     if (this.img(ctx, e.type, e.x, e.y - r * 0.3, r * 2.6, r * 2.6)) return;
     const col = king ? ['rgba(150,80,210,0.85)', '#c8a0f0'] : ['rgba(90,200,70,0.82)', '#b8f0a0'];
@@ -1552,7 +1598,15 @@ const Art = {
     ctx.fillStyle = col[1]; ctx.globalAlpha = 0.7; ellipse(ctx, e.x - w * 0.35, cy - h * 0.4, w * 0.25, h * 0.18); ctx.fill(); ctx.globalAlpha = 1;
     const ex = Math.cos(e.face) * w * 0.25;
     ctx.fillStyle = '#1a2a14'; circle(ctx, e.x + ex - w * 0.22, cy, Math.max(1.2, r * 0.12)); ctx.fill(); circle(ctx, e.x + ex + w * 0.22, cy, Math.max(1.2, r * 0.12)); ctx.fill();
-    if (king) { ctx.fillStyle = '#f2c94c'; const bx = e.x, by = cy - h * 0.95; ctx.beginPath(); ctx.moveTo(bx - 10, by + 4); ctx.lineTo(bx - 10, by - 4); ctx.lineTo(bx - 5, by); ctx.lineTo(bx, by - 7); ctx.lineTo(bx + 5, by); ctx.lineTo(bx + 10, by - 4); ctx.lineTo(bx + 10, by + 4); ctx.closePath(); ctx.fill(); }
+    if (king) {                                                              // 왕관 (대형 슬라임 킹은 몸 크기에 맞춰 크게 + 보석)
+      const u = giant ? r / 22 : 1, bx = e.x, by = cy - h * 0.95;
+      ctx.fillStyle = '#f2c94c'; ctx.beginPath(); ctx.moveTo(bx - 10 * u, by + 4 * u); ctx.lineTo(bx - 10 * u, by - 4 * u); ctx.lineTo(bx - 5 * u, by); ctx.lineTo(bx, by - 7 * u); ctx.lineTo(bx + 5 * u, by); ctx.lineTo(bx + 10 * u, by - 4 * u); ctx.lineTo(bx + 10 * u, by + 4 * u); ctx.closePath(); ctx.fill();
+      if (giant) {
+        ctx.strokeStyle = '#a8801e'; ctx.lineWidth = 1.2 * u; ctx.stroke();
+        ctx.fillStyle = '#e8343a'; circle(ctx, bx, by + 1 * u, 1.8 * u); ctx.fill();
+        ctx.fillStyle = '#3a8ae8'; circle(ctx, bx - 6 * u, by + 1.5 * u, 1.3 * u); ctx.fill(); circle(ctx, bx + 6 * u, by + 1.5 * u, 1.3 * u); ctx.fill();
+      }
+    }
   },
   // 유령: 반투명하게 떠다님
   ghost(ctx, e) {
@@ -1690,7 +1744,7 @@ const Art = {
     else if (T === 'bat' || T === 'harpy') this.bat(ctx, e);
     else if (T === 'dragon') this.dragon(ctx, e);
     else if (T === 'wolf' || T === 'wolfKing') this.wolf(ctx, e);
-    else if (T === 'slime' || T === 'slimeling' || T === 'slimeKing') this.slime(ctx, e);
+    else if (T === 'slime' || T === 'slimeling' || T === 'slimeKing' || T === 'giantSlimeKing') this.slime(ctx, e);
     else if (T === 'ghost') this.ghost(ctx, e);
     else if (T === 'golem' || T === 'stoneGiant') this.golem(ctx, e);
     else this.humanoid(ctx, e);
@@ -3124,7 +3178,8 @@ Soldier.prototype.march = function (dt, idx) {
   const M = CONFIG.march, b = G.marchBase, c = this.cfg;
   if (!b) {                                                        // 공격할 기지가 없으면 성문 앞에서 대기
     this.mk = null;
-    const p = Nav.clampTarget(MAP.castle.wallX + MAP.castle.wallW + M.gateHold + (idx % 4) * 22, MAP.gate.y + ((idx % 7) - 3) * 22);
+    const R0 = MAP.rally || { x: MAP.castle.wallX + MAP.castle.wallW + M.gateHold, y: MAP.gate.y };   // 지도에 모이는 곳이 있으면 그곳 (보스 스테이지)
+    const p = Nav.clampTarget(R0.x + (idx % 4) * 22 - (c.line === 'back' ? 60 : 0), R0.y + ((idx % 7) - 3) * 22);
     if (dist(this.x, this.y, p.x, p.y) > 5) this.stepToward(p.x, p.y, dt); else this.face = 0;
     return;
   }
@@ -3284,7 +3339,7 @@ function spawnBoss(type, base, asFinal) {
     e.post = Nav.clampTarget(base.x + Math.cos(a) * r, base.y + Math.sin(a) * r);
     e.guardCfg = { aggro: 340, leash: 560 }; e.state = 'guard';
   }
-  const nm = e.cfg.name, nEsc = spawnEscorts(base, e, fin);
+  const nm = e.cfg.name, nEsc = spawnEscorts(base, e, fin ? CONFIG.bossPower.escort.final : CONFIG.bossPower.escort.mid, fin);
   const escTxt = nEsc ? ` · 정예 부하 ${nEsc}마리` : '';
   showBanner(fin ? (G.stage.final.protectBase ? `최종 보스 ${nm} 출현!${escTxt} — ${josa(nm, '을', '를')} 쓰러뜨려야 ${josa(base.cfg.name, '을', '를')} 부술 수 있어요` : `최종 보스 ${nm} 출현!${escTxt}`) : `중간보스 등장: ${nm} (${base.cfg.name})${escTxt}`, fin ? '#ff6a4a' : '#ffae5a', 4);
   G.banner.warn = true;
@@ -3294,9 +3349,83 @@ function spawnBoss(type, base, asFinal) {
   return e;
 }
 
+// ---------- 보스 스테이지 ----------
+// 길 입구: 적 기지 대신 몬스터가 들어오는 곳 (공격·파괴 불가). Enemy가 쓰는 route · spawns · cfg.name 을 가짐
+class Portal {
+  constructor(key) {
+    this.key = key; this.m = MAP.bases[key]; this.x = this.m.x; this.y = this.m.y;
+    this.cfg = { name: this.m.name || '길' }; this.route = MAPDATA.routes[key];
+    this.spawns = []; this.escorts = []; this.defenders = []; this.alive = true; this.enabled = false;
+  }
+}
+// 웨이브 진행: rest(쉬는 중) → spawn(몬스터) → boss(웨이브 보스, 여럿이면 차례로) → rest … 마지막 웨이브 뒤 final(최종보스)
+function updateWaves(dt) {
+  const W = G.wave, S = G.stage.waves, list = S.list, wv = list[W.i];
+  for (const q of W.pending) q.t -= dt;                     // 무리 안에서 조금씩 시간차
+  for (const q of W.pending) if (q.t <= 0) { const e = new Enemy(q.type, q.portal, rand(-24, 24), G.threat); G.enemies.push(e); FX.dust(e.x, e.y); }
+  compact(W.pending, q => q.t > 0);
+  if (W.phase === 'rest') {
+    W.t -= dt;
+    if (W.t <= 0) {
+      W.phase = 'spawn'; W.spawned = 0; W.groupT = 0;
+      for (const pt of G.portals) pt.spawns = wv.mix;
+      showBanner(`웨이브 ${W.i + 1} / ${list.length} 시작! 몬스터 ${wv.count}마리가 세 갈래 길로 몰려옵니다`, '#ff9a6a', 3); Sound.play('horn'); G.banner.warn = true;
+    }
+  } else if (W.phase === 'spawn') {
+    W.groupT -= dt;
+    if (W.groupT <= 0 && W.spawned < wv.count) {
+      const groups = Math.ceil(wv.count / S.groupSize);
+      W.groupT += wv.duration / groups;
+      const pt = G.portals[W.road++ % G.portals.length], type = weightedPick(wv.mix).type, n = Math.min(S.groupSize, wv.count - W.spawned);
+      for (let j = 0; j < n; j++) W.pending.push({ t: j * S.groupGap, type, portal: pt });
+      W.spawned += n;
+    }
+    if (W.spawned >= wv.count && !W.pending.length) { W.phase = 'boss'; W.bossQ = wv.boss.slice(); W.boss = null; W.bossDelay = 3; W.bossN = 0; }
+  } else if (W.phase === 'boss') {
+    if (W.boss && W.boss.alive) return;
+    if (W.bossQ.length) {                                   // 다음 보스 (보스가 여럿이면 앞 보스를 쓰러뜨린 뒤 차례로)
+      W.bossDelay -= dt; if (W.bossDelay > 0) return;
+      const roads = G.portals, pt = wv.road ? roads.find(r => r.key === wv.road) : roads[W.bossN % roads.length];
+      const type = W.bossQ.shift(); W.bossN++;
+      W.boss = spawnStageBoss(type, pt || roads[0], false);
+      const left = W.bossQ.length;
+      showBanner(`웨이브 ${W.i + 1} 보스: ${W.boss.cfg.name} (${(pt || roads[0]).cfg.name})${left ? ` · 남은 보스 ${left}` : ''}`, '#ffae5a', 3.2); G.banner.warn = true;
+      W.bossDelay = 2.5;
+      return;
+    }
+    // 웨이브 보스를 모두 쓰러뜨림
+    if (W.i >= list.length - 1) {
+      W.phase = 'final';
+      const F = G.stage.final, pt = G.portals.find(r => r.key === F.road) || G.portals[0];
+      for (const p2 of G.portals) p2.spawns = wv.mix;
+      W.boss = spawnStageBoss(F.type, pt, true);
+    } else {
+      W.i++; W.phase = 'rest'; W.t = S.rest;
+      showBanner(`웨이브 ${W.i} 완료! ${S.rest}초 뒤 웨이브 ${W.i + 1}`, '#ffe08a', 3);
+    }
+  } else if (W.phase === 'final') {
+    const type = G.stage.final.type;
+    if (!G.enemies.some(e => e.alive && e.type === type) && !G.pendingResult) {   // 분열한 슬라임까지 모두 쓰러뜨리면 승리
+      G.pendingResult = 'won'; G.endTimer = 2.5;
+      showBanner(`${CONFIG.enemies[type].name}을 쓰러뜨렸습니다!`, '#ffd36b', 3);
+    }
+  }
+}
+// 보스 스테이지의 보스: 길을 따라 성문으로 행진 (정예 부하 동반). final = 최종보스
+function spawnStageBoss(type, portal, final) {
+  const e = new Enemy(type, portal, 0, G.threat), E = CONFIG.bossPower.escort;
+  if (final) { e.final = true; e.gen = 0; e.rootHp = e.maxHp; G.finalBoss = e; }
+  G.enemies.push(e);
+  for (let i = 0; i < 4; i++) FX.dust(e.x + rand(-20, 20), e.y + rand(-10, 10));
+  const n = spawnEscorts(portal, e, final ? E.final : E.mid, false);
+  if (final) { showBanner(`최종 보스 ${e.cfg.name} 출현! 정예 부하 ${n}마리와 함께 ${portal.cfg.name}로 옵니다`, '#ff6a4a', 4); G.banner.warn = true; G.redFlash = 0.7; setTimeout(() => Sound.play('roar'), 600); }
+  Sound.play('bossWarn'); shake(final ? 10 : 5, final ? 0.8 : 0.4);
+  return e;
+}
+
 // 보스 부하: 보스가 나온 기지의 몬스터를 정예로. 중간보스 → 함께 성문으로 행진 / 최종보스 → 보스 주변에서 기지를 지킴
-function spawnEscorts(base, boss, fin) {
-  const E = CONFIG.bossPower.escort, n = fin ? E.final : E.mid;
+function spawnEscorts(base, boss, n, fin) {
+  const E = CONFIG.bossPower.escort;
   if (!n || !base.spawns || !base.spawns.length) return 0;
   base.escorts = (base.escorts || []).filter(m => m.alive);
   for (let i = 0; i < n; i++) {
@@ -4030,6 +4159,27 @@ class Enemy {
     }
   }
 
+  // 대형 슬라임 킹: 쓰러지면 작은 몸 여러 개로 분열 (체력은 본체 체력 × hpRatios, 공격력·스킬·스킬 간격은 그대로)
+  megaSplit() {
+    const c = this.cfg, M = c.megaSplit, g = (this.gen || 0) + 1;
+    if (g > M.hpRatios.length) return;
+    const root = this.rootHp || this.maxHp, kids = [];
+    for (let i = 0; i < M.count; i++) {
+      const b = new Enemy(this.type, this.base, rand(-14, 14), G.threat);
+      b.gen = g; b.rootHp = root; b.final = this.final;
+      b.maxHp = b.hp = Math.round(root * M.hpRatios[g - 1]);
+      b.damage = this.damage; b.gateDamage = this.gateDamage; b.skillMul = this.skillMul; b.cdMul = this.cdMul;
+      b.radius = Math.round(c.radius * M.sizes[g - 1]); b.xp = this.xp * M.hpRatios[g - 1]; b.rewardMul = M.hpRatios[g - 1];
+      const a = (i / M.count) * TAU + rand(-0.4, 0.4); b.x = this.x + Math.cos(a) * this.radius * 0.8; b.y = this.y + Math.sin(a) * this.radius * 0.5;
+      if (this.reachedEnd) { b.dist = this.route.length; b.state = 'toGate'; b.slot = G.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
+      else { b.dist = this.route.nearestDist(b.x, b.y, this.dist); b.state = 'rejoin'; }
+      b.skillCd = b.skillCd.map(t => t * 0.5); b.stun = 0.6;
+      G.enemies.push(b); kids.push(b); FX.ring(b.x, b.y, b.radius + 10, '170,110,230', 0.5);
+    }
+    if (G.finalBoss === this) G.finalBoss = kids[0];
+    showBanner(`${c.name}이 ${M.count}개로 분열합니다! (${kids.length}마리 · 체력 ${kids[0].maxHp})`, '#d8a0ff', 2.8); G.banner.warn = true;
+  }
+
   // magic = true 이면 방어력 무시 (마법탑, 끓는 기름)
   takeDamage(amount, src, magic, crit) {
     if (!this.alive) return;
@@ -4061,15 +4211,18 @@ class Enemy {
     if (this.foe) { this.foe.engaged.delete(this); this.foe = null; }
     FX.poof(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.radius);
     Sound.play(this.boss ? 'bossDeath' : 'death', this.x, this.y, this.boss ? 1 : 0.8);
+    if (G.finalBoss === this && !this.cfg.megaSplit) G.finalBoss = null;
+    if (G.finalBoss === this && this.cfg.megaSplit && (this.gen || 0) >= this.cfg.megaSplit.hpRatios.length) G.finalBoss = G.enemies.find(e => e.alive && e !== this && e.type === this.type) || null;
     if (this.boss) {
       if (killer) G.stats.bossKills++;
       showBanner(`${this.cfg.name} 처치!`, '#ffd36b', 2.6); shake(this.final ? 9 : 5, 0.5);
       FX.explosion(this.x, this.y - (this.air ? AIR_HEIGHT : 0), this.final ? 1.2 : 0.7);
-      if (Math.random() < CONFIG.items.dropChance[this.final ? 'finalBoss' : 'midBoss']) dropItem(this.x, this.y, this.final);
+      if (!this.gen && Math.random() < CONFIG.items.dropChance[this.final ? 'finalBoss' : 'midBoss']) dropItem(this.x, this.y, this.final);   // 분열체는 아이템 없음
+      if (c.megaSplit) this.megaSplit();
     }
     if (killer) {
       G.stats.kills++;
-      addGold(this.cfg.gold || 0);
+      addGold(Math.round((this.cfg.gold || 0) * (this.rewardMul || 1)));
       const h = G.hero;
       if (h && !h.dead) h.gainXp(killer === h ? this.xp : this.xp * CONFIG.heroLevels.sharedXp);
     }
@@ -5007,6 +5160,14 @@ function drawHUD(ctx) {
   x += w + pad; w = Math.max(236, 20 + G.bases.length * 74) * k;
   panel(ctx, x, top, w, ph, k); UI.block(x, top, w, ph);
   const active = G.bases.filter(b => b.enabled), alive = active.filter(b => b.alive).length;
+  if (G.wave) {                                                       // 보스 스테이지: 웨이브 진행
+    const W = G.wave, L = G.stage.waves.list, wv = L[W.i];
+    txt(ctx, W.phase === 'final' ? '최종 보스' : `웨이브  ${W.i + 1} / ${L.length}`, x + 12 * k, top + 17 * k, 15 * k, '#ffb09a');
+    const st = W.phase === 'rest' ? `다음 웨이브까지 ${Math.ceil(W.t)}초` : W.phase === 'spawn' ? `몬스터 ${W.spawned} / ${wv.count}`
+      : W.phase === 'boss' ? `보스: ${W.boss && W.boss.alive ? W.boss.cfg.name : '등장 중'}${W.bossQ.length ? ` (+${W.bossQ.length})` : ''}`
+      : `${CONFIG.enemies[G.stage.final.type].name} ${G.enemies.filter(e => e.alive && e.type === G.stage.final.type).length}마리`;
+    fitTxt(ctx, st, x + 12 * k, top + 40 * k, 13.5 * k, w - 24 * k, '#f3e3bf', 'left', { weight: 700 });
+  } else
   txt(ctx, `적 기지  ${alive} / ${active.length}`, x + 12 * k, top + 17 * k, 15 * k, '#f3e3bf');
   let ix = x + 12 * k;
   for (const b of active) {
@@ -5615,14 +5776,15 @@ function drawTitle(ctx, k) {
 
 function drawResult(ctx, k) {
   const won = G.state === 'won', pw = 700 * k, ph = 520 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
-  const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last;
+  const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last, hardNow = won && G.diffKey === 'normal' && G.stageIdx + 1 === REG_STAGES;
   txt(ctx, won ? (last ? '왕국을 지켰습니다!' : '스테이지 클리어!') : '패배...', cx, y + 82 * k, (won ? 58 : 70) * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
-  txt(ctx, won ? (hasNext ? `다음 스테이지 「${CONFIG.stages[G.stageIdx + 1].name}」${josa(CONFIG.stages[G.stageIdx + 1].name, '이', '가').slice(-1)} 열렸습니다!` : G.diffKey === 'normal' ? '모든 스테이지를 깼습니다! 어려움 난이도가 열렸습니다' : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, '#f3e3bf', 'center', { weight: 700 });
-  txt(ctx, `${G.stageIdx + 1}스테이지 ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
+  const nx = hasNext ? CONFIG.stages[G.stageIdx + 1] : null;
+  fitTxt(ctx, won ? (hasNext ? `${nx.boss ? '보스 스테이지' : '다음 스테이지'} 「${nx.name}」${josa(nx.name, '이', '가').slice(-1)} 열렸습니다!${hardNow ? ' · 어려움 난이도도 열렸습니다' : ''}` : G.stage.boss ? `${CONFIG.enemies[G.stage.final.type].name}을 쓰러뜨리고 왕국을 지켰습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, pw - 60 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, `${G.stage.boss ? '보스 스테이지' : `${G.stageIdx + 1}스테이지`} ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
   divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
   const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
   const rows = [                                                   // 통계 2열
-    ['플레이 시간', fmtTime(G.time)], ['처치한 적', st.kills], ['처치한 보스', st.bossKills], ['파괴한 기지', G.bases.filter(b => b.enabled && !b.alive).length + ' / ' + G.bases.filter(b => b.enabled).length],
+    ['플레이 시간', fmtTime(G.time)], ['처치한 적', st.kills], ['처치한 보스', st.bossKills], G.wave ? ['막아낸 웨이브', Math.min(G.wave.i + (G.wave.phase === 'final' ? 1 : 0), G.stage.waves.list.length) + ' / ' + G.stage.waves.list.length] : ['파괴한 기지', G.bases.filter(b => b.enabled && !b.alive).length + ' / ' + G.bases.filter(b => b.enabled).length],
     ['영웅 레벨', 'Lv.' + G.hero.level], ['영웅이 쓰러진 횟수', st.heroDeaths], ['훈련한 병사', st.trained], ['번 골드', st.goldEarned],
   ];
   rows.forEach(([a, b], i) => {
@@ -5670,7 +5832,8 @@ const cleared = (() => {
   for (const k in c) c[k] = clamp(c[k] | 0, 0, CONFIG.stages.length);
   return c;
 })();
-function diffUnlocked(key) { return key !== 'hard' || cleared.normal >= CONFIG.stages.length; }
+const REG_STAGES = CONFIG.stages.filter(st => !st.boss).length;     // 일반 스테이지 수 (어려움은 보통의 일반 스테이지를 모두 깨면 열림)
+function diffUnlocked(key) { return key !== 'hard' || cleared.normal >= REG_STAGES; }
 if (!diffUnlocked(selectedDiff)) selectedDiff = 'normal';
 let selectedStage = (() => { try { const v = +localStorage.getItem('kg.stage') || 0; return clamp(v, 0, Math.min(cleared[selectedDiff], CONFIG.stages.length - 1)); } catch (_) { return 0; } })();
 let selectMsg = null;
@@ -5737,17 +5900,18 @@ function drawSelect(ctx, k) {
       txt(ctx, `${sk.key}  ${sk.name}${sk.minLevel ? `  (${sk.minLevel}레벨 궁극기)` : sk.cost ? `  (${c.resource.short === 'MP' ? '마나' : c.resource.short === 'SP' ? '스태미너' : '화살'} ${sk.cost}${c.resource.unit || ''})` : ''}`, X + 50 * k, sy, 13 * k, sk.minLevel ? '#ffd36b' : '#f3e3bf', 'left', { weight: 600 });
     });
   });
-  // 스테이지 (5개씩 두 줄)
-  const stg = CONFIG.stages, per = 5, sw = 190 * k, sh = 46 * k, sgap = 8 * k, rowY = y + 516 * k;
+  // 스테이지 (6개씩 두 줄, 보스 스테이지는 붉게)
+  const stg = CONFIG.stages, per = 6, sw = 160 * k, sh = 46 * k, sgap = 8 * k, rowY = y + 516 * k;
   const sx0 = cx - (sw * per + sgap * (per - 1)) / 2 + 46 * k;
   txt(ctx, '스테이지', sx0 - 14 * k, rowY + sh + sgap / 2, 16 * k, '#d8c8a4', 'right', { weight: 700 });
   stg.forEach((sg, i) => {
     const sx = sx0 + (i % per) * (sw + sgap), sy = rowY + Math.floor(i / per) * (sh + sgap);
     const on = selectedStage === i, open = stageUnlocked(i), done = i < cleared[selectedDiff];
     const pr = UI.button('stage_' + i, sx - 3 * k, sy - 3 * k, sw + 6 * k, sh + 6 * k, () => pickStage(i));
-    const off = drawButton(ctx, sx, sy, sw, sh, pr, k, '', on ? { radius: 12, c1: '#d99a3a', c2: '#9a6020', border: '#fff1c0' } : open ? { radius: 12, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' } : { radius: 12, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
-    fitTxt(ctx, `${i + 1}. ${sg.name}`, sx + 10 * k, sy + 16 * k + off, 15 * k, sw - 40 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
-    fitTxt(ctx, open ? sg.desc : '앞 스테이지를 깨면 열림', sx + 10 * k, sy + 33 * k + off, 11 * k, sw - 40 * k, open ? '#f0e0c0' : '#8a7a60', 'left', { weight: 600 });
+    const off = drawButton(ctx, sx, sy, sw, sh, pr, k, '', on ? (sg.boss ? { radius: 12, c1: '#d0503a', c2: '#8a2a18', border: '#ffd0b0' } : { radius: 12, c1: '#d99a3a', c2: '#9a6020', border: '#fff1c0' })
+      : open ? (sg.boss ? { radius: 12, c1: '#7a2e22', c2: '#4a1a12', border: '#d08a6a' } : { radius: 12, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' }) : { radius: 12, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
+    fitTxt(ctx, sg.boss ? `보스 · ${sg.name}` : `${i + 1}. ${sg.name}`, sx + 10 * k, sy + 16 * k + off, 15 * k, sw - 40 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
+    fitTxt(ctx, open ? sg.desc : sg.boss ? '10스테이지를 깨면 열림' : '앞 스테이지를 깨면 열림', sx + 10 * k, sy + 33 * k + off, 11 * k, sw - 40 * k, open ? '#f0e0c0' : '#8a7a60', 'left', { weight: 600 });
     const qx = sx + sw - 17 * k, qy = sy + sh / 2 + off;
     if (!open) Icon.lock(ctx, qx, qy, 16 * k);
     else if (done) {                                                 // 깬 스테이지: 초록 체크
@@ -5915,17 +6079,20 @@ function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = sele
   G.stageIdx = stageIdx; G.stage = CONFIG.stages[stageIdx];
   G.heroType = heroType; G.diffKey = diffKey; G.diff = CONFIG.difficulty[diffKey] || CONFIG.difficulty.normal;
   G.gold = G.diff.startGold + (G.stage.startGold || 0);
-  G.midTimer = G.stage.mid.first;
+  G.midTimer = G.stage.mid ? G.stage.mid.first : Infinity;
   G.gate = new Gate();
   G.hero = new Hero(heroType);
   G.bases = G.stage.bases.map(k => new EnemyBase(k));
+  G.portals = (G.stage.roads || []).map(k => new Portal(k));                // 보스 스테이지: 몬스터가 들어오는 길 입구
+  G.wave = G.stage.waves ? { i: 0, phase: 'rest', t: G.stage.waves.first, spawned: 0, groupT: 0, pending: [], bossQ: [], boss: null, bossDelay: 0, road: 0 } : null;
   G.state = state;
 }
 function startGame(heroType, stageIdx = selectedStage) {
   selectedStage = stageIdx; try { localStorage.setItem('kg.stage', stageIdx); } catch (_) {}
   newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff, stageIdx);
   Camera.centerOn(MAP.startView.x, MAP.startView.y);
-  showBanner(`${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, '#ffe08a', 3.4);
+  showBanner(G.stage.boss ? `보스 스테이지 ${G.stage.name} — ${G.stage.waves.list.length}웨이브를 막고 ${CONFIG.enemies[G.stage.final.type].name}을 쓰러뜨리세요!`
+                          : `${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, G.stage.boss ? '#ff9a7a' : '#ffe08a', 3.4);
   G.prep = CONFIG.prepTime;                                    // 준비 시간: 적·시간이 멈추고 병력 대기열만 만듦
 }
 function nextStage() {
@@ -5935,8 +6102,8 @@ function nextStage() {
 // 지도 바꾸기 (스테이지마다 다른 지도): 배경·미니맵을 다시 그림
 let loadedMap = null;
 function loadStage(i) {
-  const st = CONFIG.stages[i], key = st.map + ':' + st.bases.join(','); if (loadedMap === key) return;
-  loadedMap = key; MAP = MAPS[st.map]; MAPDATA = buildMapData(st.bases); bgCanvas = null;
+  const st = CONFIG.stages[i], keys = st.roads || st.bases, key = st.map + ':' + keys.join(','); if (loadedMap === key) return;
+  loadedMap = key; MAP = MAPS[st.map]; MAPDATA = buildMapData(keys); bgCanvas = null;
   if (Camera.inited) { resize(); Camera.centerOn(MAP.startView.x, MAP.startView.y); }
 }
 function togglePause() { if (G.state === 'playing') G.paused = !G.paused; }
@@ -5983,6 +6150,7 @@ function update(dt) {
   for (const d of G.drops) d.update(dt);
   compact(G.drops, d => !d.done);
   if (G.redFlash > 0) G.redFlash -= dt;
+  if (G.wave) updateWaves(dt);                           // 보스 스테이지 웨이브
   G.midTimer -= dt;                                       // 중간보스
   if (G.midTimer <= 0) {
     const M = G.stage.mid; G.midTimer = M.interval;
