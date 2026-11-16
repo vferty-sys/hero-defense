@@ -321,6 +321,12 @@ const CONFIG = {
                     enrage: { hpRatio: 0.35, damageMul: 1.25, cdMul: 0.7 } },                             // 체력 35% 이하: 분노 (공격력↑, 스킬·화염 더 자주)
   },
 
+  // 일반 몬스터 강화 (보스 제외, 기지 수비병·보스 부하·소환된 몬스터 포함): 체력 · 공격력(영웅·병사·성문·자폭) 배율
+  enemyPower: { hpMul: 1.5, damageMul: 1.5 },
+  // 공중 몬스터(박쥐·하피·유령): 길 가까이 있는 영웅·병사를 덮쳐서 공격 (aggro 안에 들어오면 덮침, leash보다 멀어지면 다시 길로)
+  //   swoopHittable: 덮치는 중에는 낮게 날아서 근접 공격(기사·보병 등)도 맞음
+  airRaid: { aggro: 110, leash: 200, swoopHittable: true },
+
   // 보스 강화 (중간보스·최종보스 공통): 체력·공격력 배율 / cdMul: 보스 스킬·화염·소환·치유 간격 배율 (0.8 = 20% 더 자주)
   // escort: 보스와 함께 나오는 정예 부하 (보스가 나온 기지의 몬스터). mid = 중간보스(함께 성문으로 행진), final = 최종보스(함께 기지를 지킴)
   bossPower: { hpMul: 1.5, damageMul: 1.5, cdMul: 0.8,
@@ -3042,7 +3048,7 @@ class Soldier {
     for (const e of this.engaged) { if (!e.alive) continue; const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
     if (best) return best;
     for (const e of G.enemies) {
-      if (!e.alive || (e.air && !c.canHitAir && !e.cfg.lowFly)) continue;
+      if (!e.alive || (e.air && !c.canHitAir && !e.low)) continue;
       const d = dist(this.x, this.y, e.x, e.y) - (e.post ? 30 : 0);       // 기지 수비병은 조금 덜 우선
       if (d > det) continue;
       if (d < bd) { bd = d; best = e; }
@@ -3192,7 +3198,7 @@ Soldier.prototype.supportUpdate = function (dt, idx) {
 
 // 병사 자동 스킬 (5레벨부터) — Soldier에 붙임
 Soldier.prototype.useSkill = function (sk) {
-  const ground = e => e.alive && (!e.air || e.cfg.lowFly);
+  const ground = e => e.alive && (!e.air || e.low);
   switch (sk.id) {
     case 'prayer': {                                                 // 성직자: 치유의 기도 (주변 아군 회복)
       const h = G.hero, list = [];
@@ -3249,7 +3255,7 @@ Soldier.prototype.updateRush = function (dt) {
   if (Math.random() < 0.4) FX.dust(this.x, this.y + 6);
   const sp = Math.hypot(R.vx, R.vy);
   for (const e of G.enemies) {
-    if (!e.alive || (e.air && !e.cfg.lowFly) || R.hit.has(e) || dist(e.x, e.y, this.x, this.y) > this.radius + e.radius + 10) continue;
+    if (!e.alive || (e.air && !e.low) || R.hit.has(e) || dist(e.x, e.y, this.x, this.y) > this.radius + e.radius + 10) continue;
     R.hit.add(e); e.takeDamage(this.outDamage() * R.sk.damageMul, this); FX.spark(e.x, e.y, '#ffe08a', 4);
     if (e.foe) e.release();
     e.knockback(R.vx / sp * R.sk.knock / 0.22, R.vy / sp * R.sk.knock / 0.22, 0.4);
@@ -3554,6 +3560,11 @@ class Enemy {
     this.dmgPop = 0; this.dmgPopT = 0; this.dmgMagic = false;       // 데미지 숫자 모으기
     this.xp = cfg.xp * (1 + 0.1 * lv);
     this.cdMul = 1;
+    if (!cfg.boss) {                                            // 일반 몬스터 강화
+      const N = CONFIG.enemyPower;
+      this.maxHp = this.hp = Math.round(this.maxHp * N.hpMul);
+      this.damage *= N.damageMul; this.gateDamage *= N.damageMul; this.skillMul *= N.damageMul;
+    }
     if (cfg.boss) {                                             // 보스 강화: 체력·공격력·스킬 간격
       const B = CONFIG.bossPower;
       this.maxHp = this.hp = Math.round(this.maxHp * B.hpMul);
@@ -3574,6 +3585,37 @@ class Enemy {
     this.x = s.x - s.dy * lane; this.y = s.y + s.dx * lane; this.face = Math.atan2(s.dy, s.dx);
   }
   get reachedEnd() { return !!(this.slot || this.fallback); }
+  // 근접 공격이 닿는 높이인지: 낮게 나는 드래곤 / 영웅·병사를 덮치는 중인 공중 몬스터
+  get low() { return !!this.cfg.lowFly || (this.state === 'airFight' && CONFIG.airRaid.swoopHittable); }
+  // 공중 몬스터: 가까운 영웅·병사를 찾아 덮침 (0.25초마다 확인)
+  tryAirRaid(dt) {
+    if (!this.air || this.boss || this.post) return false;
+    this.raidScan = (this.raidScan || 0) - dt; if (this.raidScan > 0) return false;
+    this.raidScan = 0.25;
+    const R = CONFIG.airRaid; let best = null, bd = R.aggro;
+    const h = G.hero;
+    if (h && !h.dead) { const d = dist(this.x, this.y, h.x, h.y); if (d < bd) { bd = d; best = h; } }
+    for (const u of G.soldiers) { if (u.dead) continue; const d = dist(this.x, this.y, u.x, u.y); if (d < bd) { bd = d; best = u; } }
+    if (!best) return false;
+    this.hunt = best; this.raidFrom = { x: this.x, y: this.y }; this.prevState = this.state; this.state = 'airFight';
+    return true;
+  }
+  updateAirFight(dt) {
+    const t = this.hunt, R = CONFIG.airRaid, A = this.raidFrom || this;
+    if (!t || t.dead || dist(t.x, t.y, A.x, A.y) > R.leash) {    // 대상이 죽거나 너무 멀어지면 다시 길로 (또는 성문으로)
+      this.hunt = null; this.raidScan = 0.6;
+      if (this.reachedEnd) this.state = 'toGate';
+      else { this.dist = this.route.nearestDist(this.x, this.y, this.dist); this.state = 'rejoin'; }
+      return;
+    }
+    const reach = this.radius + t.radius + 8, d = dist(this.x, this.y, t.x, t.y);
+    if (d > reach) this.moveToward(t.x, t.y, dt);
+    this.face = Math.atan2(t.y - this.y, t.x - this.x);
+    if (d <= reach + 6) {
+      this.atkTimer -= dt;
+      if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; t.takeDamage(this.damage * this.dmgMul, this); Sound.play('claw', this.x, this.y, 0.5); }
+    }
+  }
   get spd() { return this.root > 0 ? 0 : (this.leader && this.leader.alive ? Math.min(this.speed, this.leader.speed) : this.speed) * (this.slowTimer > 0 ? 1 - this.slowAmt : 1) * (this.auraT > 0 ? this.auraSpd : 1) * (this.frenzyT > 0 ? this.frenzySpd : 1); }     // 속박·둔화·오라·광란 적용된 속도
   get dmgMul() { return (this.auraT > 0 ? this.auraMul : 1) * (this.frenzyT > 0 ? this.frenzyMul : 1); }
   applySlow(amount, time) { this.slowAmt = Math.max(this.slowTimer > 0 ? this.slowAmt : 0, amount); this.slowTimer = Math.max(this.slowTimer, time); }
@@ -3666,8 +3708,9 @@ class Enemy {
         if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; this.shootAt(gateTarget(), this.gateDamage * this.dmgMul); }
         break;
       }
+      case 'airFight': this.updateAirFight(dt); break;
       case 'walk': {
-        if (this.tryEngage()) break;
+        if (this.tryEngage() || this.tryAirRaid(dt)) break;
         if (this.ranged) {
           if (this.tryShoot()) break;
           if (this.dist >= this.route.length - 130) { this.state = 'siege'; break; }
@@ -3683,20 +3726,20 @@ class Enemy {
         break;
       }
       case 'rejoin': {
-        if (this.tryEngage() || (this.ranged && this.tryShoot())) break;
+        if (this.tryEngage() || this.tryAirRaid(dt) || (this.ranged && this.tryShoot())) break;
         const s = this.route.sample(this.dist, TMP);
         if (this.moveToward(s.x - s.dy * this.lane, s.y + s.dx * this.lane, dt)) this.state = 'walk';
         break;
       }
       case 'fight': this.updateFight(dt); break;
       case 'toGate': {
-        if (this.tryEngage()) break;
+        if (this.tryEngage() || this.tryAirRaid(dt)) break;
         const t = this.slot || this.fallback;
         if (this.moveToward(t.x, t.y, dt)) this.state = 'attack';
         break;
       }
       case 'attack': {
-        if (this.tryEngage()) break;
+        if (this.tryEngage() || this.tryAirRaid(dt)) break;
         this.face = Math.atan2(MAP.gate.y - this.y, MAP.castle.wallX + MAP.castle.wallW - this.x);
         if (G.gate.destroyed) break;
         this.atkTimer -= dt;
@@ -4260,7 +4303,7 @@ class Hero {
   castJudgment(sk) {                                           // 기사: 심판의 일격 (주변 적 큰 피해 + 기절, 체력 회복, 기지 피해)
     const R = sk.radius;
     for (const e of G.enemies) {
-      if (!e.alive || (e.air && !e.cfg.lowFly) || dist(e.x, e.y, this.x, this.y) > R + e.radius) continue;
+      if (!e.alive || (e.air && !e.low) || dist(e.x, e.y, this.x, this.y) > R + e.radius) continue;
       e.takeDamage(sk.damage, this); e.stun = Math.max(e.stun, sk.stun);
     }
     for (const b of G.bases) if (b.alive && !b.protectedByBoss && dist(b.x, b.y, this.x, this.y) - b.m.hitRadius * 0.8 <= R) { b.takeDamage(sk.baseDamage); FX.text(b.x, b.y - 60, '-' + sk.baseDamage, '#ffd36b', 22, 1.2); }
@@ -4319,7 +4362,7 @@ class Hero {
     const plus = this.hasPerk('bashPlus'), range = sk.range * (plus ? 1.5 : 1);
     const dmg = this.skillValue(sk, 'damage'), half = (sk.arc * Math.PI) / 360;
     for (const e of G.enemies) {
-      if (!e.alive || (e.air && !e.cfg.lowFly)) continue;
+      if (!e.alive || (e.air && !e.low)) continue;
       const d = dist(this.x, this.y, e.x, e.y);
       if (d - e.radius > range) continue;
       const da = Math.abs(Math.atan2(Math.sin(Math.atan2(e.y - this.y, e.x - this.x) - this.face), Math.cos(Math.atan2(e.y - this.y, e.x - this.x) - this.face)));
@@ -4387,12 +4430,12 @@ class Hero {
   findEnemy() {
     const c = this.cfg; let best = null, bd = Infinity;
     for (const e of this.engaged) {                                       // 나를 공격하는 적 먼저
-      if (!e.alive || (e.air && !c.canHitAir && !e.cfg.lowFly)) continue;
+      if (!e.alive || (e.air && !c.canHitAir && !e.low)) continue;
       const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; }
     }
     if (best) return best;
     for (const e of G.enemies) {
-      if (!e.alive || (e.air && !c.canHitAir && !e.cfg.lowFly)) continue;
+      if (!e.alive || (e.air && !c.canHitAir && !e.low)) continue;
       if (dist(e.x, e.y, this.guard.x, this.guard.y) > c.aggroRange) continue;
       const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; }
     }
@@ -4499,7 +4542,7 @@ class Hero {
     } else {
       t.takeDamage(DMG * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3); Sound.play('sword', t.x, t.y);
       if (A.cleave) for (const e of G.enemies) {                   // 휩쓸기: 앞쪽 가까운 적들에게도 피해
-        if (e === t || !e.alive || (e.air && !e.cfg.lowFly)) continue;
+        if (e === t || !e.alive || (e.air && !e.low)) continue;
         if (dist(e.x, e.y, t.x, t.y) <= A.cleave.radius + e.radius) e.takeDamage(DMG * A.cleave.ratio, this);
       }
       FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, A.cleave ? 30 : 16, A.cleave ? 2.2 : 1.4, '255,255,255', 0.14);   // 베기 효과
