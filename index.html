@@ -234,13 +234,13 @@ const CONFIG = {
     },
     mage: {
       name: '마법사', role: '마법', desc: '몸은 가장 약하지만 마법 스킬 피해 +25%. 마나로 광역 마법, 화염구는 적 기지에도 피해!',
-      hp: 300, armor: 0, speed: 90, radius: 13,
+      hp: 270, armor: 0, speed: 90, radius: 13,
       resource: { name: '마나', short: 'MP', max: 240, perLevel: 15, regen: 1, regenIdle: 5, color: '#4a8cff' },   // 항상 초당 1 + 쉬는 중 초당 5
       attack: { damage: 20, interval: 1.0, range: 185, ranged: true, magic: true, projectileSpeed: 520 },
       canHitAir: true, baseDamageMul: 1.2,
       aggroRange: 200, leash: 260, maxBlock: 1,
       regenDelay: 4, regenRate: 0.03, respawn: 10,
-      perLevel: { hp: 38, damage: 6, armor: 0.006 },
+      perLevel: { hp: 32, damage: 6, armor: 0.006 },   // 체력은 궁사보다 항상 낮게
       skills: [
         // 마법사 스킬 피해는 다른 영웅보다 25% 높게 잡음
         { id: 'fireball', name: '화염구',     key: 'Q', target: 'point', cooldown: 6,  cost: 40,
@@ -4759,11 +4759,10 @@ const Input = {
       case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5': case 'Numpad1': case 'Numpad2': case 'Numpad3': case 'Numpad4': case 'Numpad5': {
         const n = +e.code.slice(-1) - 1;
         if (G.state === 'select') { if (HERO_ORDER[n]) pickHero(HERO_ORDER[n]); }
-        else if (G.state === 'playing' && !G.paused) armyCardTap(CONFIG.army.order[n], true);
+        else if (G.state === 'playing' && !G.paused) (e.shiftKey ? facilityTap : armyCardTap)(CONFIG.army.order[n]);   // Shift+숫자: 강화 메뉴
         break;
       }
       case 'Escape': if (G.aim) G.aim = null; else if (G.sel) G.sel = null; else togglePause(); break;
-      case 'KeyU': if (G.state === 'playing' && !G.paused) toggleUpMode(); break;
       case 'Backspace': if (G.state === 'playing' && !G.paused && G.army.queue.length) { e.preventDefault(); unqueueUnit(G.army.queue.length - 1); } break;
       case 'KeyP': togglePause(); break;
       case 'KeyF': toggleSpeed(); break;
@@ -5027,51 +5026,47 @@ function drawBottomHUD(ctx) {
   }
 }
 
-// ---------- 아래 병력 칸: 누를 때마다 생산 대기열에 1명 추가 / 강화 모드에서는 훈련 시설 메뉴 ----------
+// ---------- 아래 병력 칸: 위쪽(그림)을 누르면 생산 대기열에 1명 추가 / 아래쪽 강화 띠를 누르면 훈련 시설 메뉴 ----------
 function armyCardTap(kind) {
   if (!kind || G.state !== 'playing') return;
-  const A = G.army;
-  if (A.upMode || !A.lv[kind]) { G.aim = null; G.sel = G.sel && G.sel.kind === 'facility' && G.sel.ref === kind ? null : { kind: 'facility', ref: kind }; return; }
+  if (!G.army.lv[kind]) { facilityTap(kind); return; }
   queueUnit(kind);
 }
-function toggleUpMode() {
-  const A = G.army; if (G.state !== 'playing') return;
-  A.upMode = !A.upMode;
-  if (!A.upMode && G.sel && G.sel.kind === 'facility') G.sel = null;
-  else if (A.upMode) toast('강화할 병사 칸을 누르세요', '#b8ff9a');
+function facilityTap(kind) {
+  if (!kind || G.state !== 'playing') return;
+  G.aim = null; G.sel = G.sel && G.sel.kind === 'facility' && G.sel.ref === kind ? null : { kind: 'facility', ref: kind };
 }
 function drawArmyBar(ctx, L, R, heroTop) {
   const k = UI.k, VH = CONFIG.view.height, A = G.army, order = CONFIG.army.order, n = order.length;
-  let cw = 84 * k, ch = 84 * k, gap = 8 * k, pad = 8 * k, uw = 66 * k;
-  let w = n * cw + n * gap + uw + pad * 2, h = ch + pad * 2, x, y;
+  let cw = 84 * k, ch = 96 * k, gap = 8 * k, pad = 8 * k;
+  let w = n * cw + (n - 1) * gap + pad * 2, h = ch + pad * 2, x, y;
   if (R - L >= w) { x = L + (R - L - w) / 2; y = VH - 10 * k - h; }          // 넓은 화면: 영웅 패널과 스킬 버튼 사이
   else {                                                                     // 좁은 화면: 영웅 패널 위
-    cw = ch = 72 * k; gap = 7 * k; pad = 7 * k; uw = 58 * k;
-    w = n * cw + n * gap + uw + pad * 2; h = ch + pad * 2; x = 10 * k; y = heroTop - 8 * k - h;
+    cw = 72 * k; ch = 82 * k; gap = 7 * k; pad = 7 * k;
+    w = n * cw + (n - 1) * gap + pad * 2; h = ch + pad * 2; x = 10 * k; y = heroTop - 8 * k - h;
   }
   G.armyBarRect = { x, y, w, h }; G.armyRects = {};
   panel(ctx, x, y, w, h, k); UI.block(x, y, w, h);
   const counts = {}, queued = {}, head = A.queue[0];
   for (const u of G.soldiers) counts[u.kind] = (counts[u.kind] || 0) + 1;
   for (const q of A.queue) queued[q] = (queued[q] || 0) + 1;
-  let anyUp = false;
   order.forEach((kind, i) => {
-    const cx = x + pad + i * (cw + gap), cy = y + pad, c = CONFIG.army[kind], lv = A.lv[kind];
+    const cx = x + pad + i * (cw + gap), cy = y + pad, c = CONFIG.army[kind], lv = A.lv[kind], u = cw / (84 * k);
+    const bh = 26 * u * k, top = ch - bh;                                     // 위: 생산 / 아래 띠: 강화
     G.armyRects[kind] = { x: cx, y: cy, w: cw, h: ch };
-    const pr = UI.button('army_' + kind, cx, cy, cw, ch, () => armyCardTap(kind)), off = pr ? 2 * k : 0, u = cw / (84 * k);
+    const pr = UI.button('army_' + kind, cx, cy, cw, top, () => armyCardTap(kind)), off = pr ? 2 * k : 0;
+    const prU = UI.button('armyUp_' + kind, cx, cy + top, cw, bh, () => facilityTap(kind)), offU = prU ? 2 * k : 0;
     const next = lv < c.levels.length ? c.levels[lv].cost : null, canUp = next != null && G.gold >= next, busy = head === kind;
-    if (canUp) anyUp = true;
+    const open = G.sel && G.sel.kind === 'facility' && G.sel.ref === kind;
     rr(ctx, cx, cy + off, cw, ch, 10 * k);
     const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
-    if (A.upMode) { g.addColorStop(0, '#3e5a30'); g.addColorStop(1, '#24381c'); }
-    else if (busy) { g.addColorStop(0, '#8a6428'); g.addColorStop(1, '#5a3c14'); }
+    if (busy) { g.addColorStop(0, '#8a6428'); g.addColorStop(1, '#5a3c14'); }
     else if (lv) { g.addColorStop(0, '#5a4630'); g.addColorStop(1, '#3a2c1c'); }
     else { g.addColorStop(0, '#3e3830'); g.addColorStop(1, '#2a2620'); }
     ctx.fillStyle = g; ctx.fill();
-    ctx.lineWidth = (busy ? 3 : 2) * k; ctx.strokeStyle = A.upMode ? (canUp ? '#b8ff9a' : '#6a8a5a') : busy ? '#ffe08a' : lv ? '#a8874e' : '#6a5e4a'; ctx.stroke();
-    if (canUp && A.upMode) { ctx.globalAlpha = 0.45 + Math.sin(realTime * 5) * 0.35; rr(ctx, cx - 2 * k, cy - 2 * k + off, cw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.lineWidth = (busy || open ? 3 : 2) * k; ctx.strokeStyle = open ? '#b8ff9a' : busy ? '#ffe08a' : lv ? '#a8874e' : '#6a5e4a'; ctx.stroke();
     ctx.globalAlpha = lv ? 1 : 0.4;
-    Icon.unit(ctx, kind, Math.max(1, lv), cx + cw / 2, cy + 34 * u * k + off, 46 * u * k);
+    Icon.unit(ctx, kind, Math.max(1, lv), cx + cw / 2, cy + 30 * u * k + off, 42 * u * k);
     ctx.globalAlpha = 1;
     rr(ctx, cx + 4 * k, cy + 4 * k + off, 17 * k, 17 * k, 4 * k); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();   // 단축키
     txt(ctx, String(i + 1), cx + 12.5 * k, cy + 13 * k + off, 12 * k, '#ffe7a8', 'center', { weight: 900 });
@@ -5079,37 +5074,33 @@ function drawArmyBar(ctx, L, R, heroTop) {
       circle(ctx, cx + cw - 13 * k, cy + 13 * k + off, 10 * k); ctx.fillStyle = 'rgba(30,70,130,0.9)'; ctx.fill();
       txt(ctx, String(counts[kind]), cx + cw - 13 * k, cy + 13.5 * k + off, 12 * k, '#d8ecff', 'center', { weight: 900 });
     }
-    if (queued[kind] && !A.upMode) {                                         // 대기열에 있는 수
+    if (queued[kind]) {                                                      // 대기열에 있는 수
       rr(ctx, cx + 3 * k, cy + 24 * k + off, 26 * k, 16 * k, 8 * k); ctx.fillStyle = 'rgba(150,90,20,0.92)'; ctx.fill();
       txt(ctx, '+' + queued[kind], cx + 16 * k, cy + 32.5 * k + off, 11.5 * k, '#ffe9b0', 'center', { weight: 900 });
     }
-    const ly = cy + ch - 15 * u * k + off;
-    if (A.upMode || !lv) {                                                   // 강화 모드: 다음 레벨 비용
-      if (next == null) fitTxt(ctx, `Lv.${lv} 최고`, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, '#ffd84a', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
-      else {
-        const tw = (String(next).length * 8 + 18) * k * u;
-        Icon.coin(ctx, cx + cw / 2 - tw / 2 + 6 * k * u, ly, 13 * u * k);
-        txt(ctx, String(next), cx + cw / 2 - tw / 2 + 15 * k * u, ly + 1, 13 * u * k, canUp ? '#b8ff9a' : '#ff8a75', 'left', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
-      }
-      if (!lv) Icon.lock(ctx, cx + cw / 2, cy + 34 * u * k + off, 22 * u * k);
-    } else {
-      const full = busy && A.full, label = full ? '인구 가득' : `${CONFIG.soldiers[kind].name} ${lv}${canUp ? ' ▲' : ''}`;
-      fitTxt(ctx, label, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, full ? '#ffb09a' : canUp ? '#b8ff9a' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
-    }
-    if (busy && !A.upMode) {                                                 // 생산 진행 막대
+    const full = busy && A.full;
+    fitTxt(ctx, full ? '인구 가득' : `${CONFIG.soldiers[kind].name} Lv.${lv}`, cx + cw / 2, cy + top - 10 * u * k + off, 12.5 * u * k, cw - 6 * k, full ? '#ffb09a' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
+    if (busy) {                                                              // 생산 진행 막대
       const st = unitStats(kind), p = clamp(A.prog / st.spawnTime, 0, 1);
-      bar(ctx, cx + 6 * k, cy + ch - 6 * k + off, cw - 12 * k, 4 * k, p, A.full ? '#a05a4a' : '#6fb7ff');
+      bar(ctx, cx + 6 * k, cy + top - 4 * k + off, cw - 12 * k, 3.5 * k, p, A.full ? '#a05a4a' : '#6fb7ff');
     }
+    // 강화 띠: ▲ + 다음 레벨 비용 (골드가 충분하면 초록)
+    const by = cy + top + offU;
+    ctx.save(); rr(ctx, cx, cy + off, cw, ch, 10 * k); ctx.clip();
+    ctx.fillStyle = next == null ? 'rgba(90,70,20,0.85)' : canUp ? 'rgba(46,100,34,0.95)' : 'rgba(20,16,12,0.75)'; ctx.fillRect(cx, by, cw, bh + 4 * k);
+    ctx.restore();
+    ctx.strokeStyle = canUp ? '#b8ff9a' : 'rgba(168,135,78,0.7)'; ctx.lineWidth = 1.5 * k; ctx.beginPath(); ctx.moveTo(cx + 2 * k, by); ctx.lineTo(cx + cw - 2 * k, by); ctx.stroke();
+    if (next == null) fitTxt(ctx, '최고 레벨', cx + cw / 2, by + bh / 2 + 1, 12 * u * k, cw - 6 * k, '#ffd84a', 'center', { weight: 800 });
+    else {
+      const ay = by + bh / 2, ax = cx + cw / 2 - (String(next).length * 8 + 30) * u * k / 2, as = 6 * u * k;
+      ctx.fillStyle = canUp ? '#d8ffb8' : '#c8b088';
+      ctx.beginPath(); ctx.moveTo(ax, ay + as * 0.7); ctx.lineTo(ax + as, ay - as * 0.8); ctx.lineTo(ax + as * 2, ay + as * 0.7); ctx.closePath(); ctx.fill();
+      Icon.coin(ctx, ax + as * 2 + 9 * u * k, ay, 12 * u * k);
+      txt(ctx, String(next), ax + as * 2 + 17 * u * k, ay + 1, 13 * u * k, canUp ? '#d8ffb8' : '#ff9a8a', 'left', { weight: 900, stroke: 'rgba(0,0,0,0.6)' });
+      if (canUp) { ctx.globalAlpha = 0.35 + Math.sin(realTime * 5) * 0.3; rr(ctx, cx - 2 * k, cy - 2 * k, cw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
+    }
+    if (!lv) Icon.lock(ctx, cx + cw / 2, cy + 30 * u * k + off, 22 * u * k);
   });
-  // 강화 모드 버튼 (켜면 병력 칸을 눌러 훈련 시설 강화)
-  const ux = x + pad + n * (cw + gap), uy = y + pad;
-  const uoff = drawButton(ctx, ux, uy, uw, ch, UI.button('upMode', ux, uy, uw, ch, toggleUpMode), k, '',
-    A.upMode ? { radius: 10, c1: '#5aa040', c2: '#2e6a22', border: '#d8ffb8' } : { radius: 10, c1: '#6a5236', c2: '#3e2e1c', border: anyUp ? '#b8ff9a' : '#a8874e' });
-  ctx.fillStyle = A.upMode ? '#fff8e6' : anyUp ? '#b8ff9a' : '#e8d4a8';
-  const ax = ux + uw / 2, ay = uy + ch * 0.36 + uoff, as = Math.min(uw, ch) * 0.2;
-  ctx.beginPath(); ctx.moveTo(ax, ay - as); ctx.lineTo(ax + as, ay); ctx.lineTo(ax + as * 0.4, ay); ctx.lineTo(ax + as * 0.4, ay + as); ctx.lineTo(ax - as * 0.4, ay + as); ctx.lineTo(ax - as * 0.4, ay); ctx.lineTo(ax - as, ay); ctx.closePath(); ctx.fill();
-  fitTxt(ctx, A.upMode ? '강화 중' : '강화', ux + uw / 2, uy + ch * 0.74 + uoff, 14 * k, uw - 6 * k, A.upMode ? '#fff8e6' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
-  if (anyUp && !A.upMode) { ctx.globalAlpha = 0.35 + Math.sin(realTime * 5) * 0.3; rr(ctx, ux - 2 * k, uy - 2 * k, uw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
 
   // 생산 대기열 (누른 순서대로) — 아이콘을 누르면 취소
   let topY = y;
@@ -5651,17 +5642,9 @@ function drawSelect(ctx, k) {
     txt(ctx, c.role, pcx, Y + 171.5 * k, 13 * k, '#e8c35a', 'center', { weight: 800 });
     let ly = Y + 200 * k;
     for (const ln of wrapLines(ctx, c.desc, cw - 36 * k, 14 * k, 500)) { txt(ctx, ln, pcx, ly, 14 * k, '#e6d8b8', 'center', { weight: 500 }); ly += 20 * k; }
-    const stats = [                                                    // 능력치 막대 (상대 비교)
-      ['체력', c.hp / 900], ['방어력', c.armor / 0.45 + 0.05], ['초당 공격력', c.attack.damage / c.attack.interval / 45],
-      ['사거리', c.attack.ranged ? c.attack.range / 230 : 0.12], ['이동 속도', c.speed / 120],
-    ];
-    stats.forEach(([lab, v], j) => {
-      const sy = Y + 236 * k + j * 17 * k;
-      txt(ctx, lab, X + 22 * k, sy, 13 * k, '#d8c8a4', 'left', { weight: 600 });
-      bar(ctx, X + 100 * k, sy - 6 * k, cw - 122 * k, 11 * k, clamp(v, 0.05, 1), '#e8b84a');
-    });
+    const sy0 = Math.max(ly + 8 * k, Y + 262 * k);                    // 스킬 목록: 설명 바로 아래
     c.skills.forEach((sk, j) => {
-      const sy = Y + 322 * k + j * 19 * k;
+      const sy = sy0 + j * 21 * k;
       Icon.skill(ctx, sk.id, X + 32 * k, sy, 17 * k);
       txt(ctx, `${sk.key}  ${sk.name}${sk.minLevel ? `  (${sk.minLevel}레벨 궁극기)` : sk.cost ? `  (${c.resource.short === 'MP' ? '마나' : c.resource.short === 'SP' ? '스태미너' : '화살'} ${sk.cost}${c.resource.unit || ''})` : ''}`, X + 50 * k, sy, 13 * k, sk.minLevel ? '#ffd36b' : '#f3e3bf', 'left', { weight: 600 });
     });
@@ -5703,10 +5686,10 @@ function drawSelect(ctx, k) {
 
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
-  ['아래 병력 칸', '누를 때마다 1명씩 생산 대기열에 추가 (무료) · 대기열 아이콘을 누르면 취소'], ['강화 버튼', '켠 뒤 병력 칸을 누르면 훈련 시설 강화 (골드)'],
+  ['아래 병력 칸', '누를 때마다 1명씩 생산 대기열에 추가 (무료) · 대기열 아이콘을 누르면 취소'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
   ['인구 (최대 50)', '보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4 · 5레벨 자동 스킬 · 10레벨 패시브'], ['병력', '성문에서 나와 길을 따라 적 기지로 진군'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭 · 기사 스태미너 · 궁사 화살통 · 마법사 마나 소모'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
-  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · U 강화 · ← 지우기(Backspace) 마지막 취소 · Space 일시정지 · F 배속'],
+  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · Shift+1~5 강화 · Backspace 마지막 취소 · Space 일시정지 · F 배속'],
 ];
 function drawPause(ctx, k) {
   const pw = 760 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
@@ -5824,7 +5807,7 @@ function createState() {
     gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
     gold: 0, goldFlashUntil: 0,     // 시작 골드는 newGame에서 난이도에 따라
     soldiers: [],       // 아군 병사 (최대 병력은 성문 레벨에 따라)
-    army: { queue: [], prog: 0, full: false, upMode: false, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산 대기열 / 강화 모드 / 시설 레벨 (0 = 없음)
+    army: { queue: [], prog: 0, full: false, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산 대기열 / 시설 레벨 (0 = 없음)
     marchBase: null, marchFront: {}, marchLead: {},  // 병력 진군 목표 기지 / 길마다 가장 앞선 병사 위치
     toast: null,
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
