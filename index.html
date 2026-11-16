@@ -62,10 +62,9 @@ const CONFIG = {
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
     carpenterSpeed: 55,           // 목수 이동 속도(px/초)
-    // 성문 능력치 (업그레이드 없음): oil = 성문에 붙은 적에게 oilInterval초마다 끓는 기름
+    // 성문 능력치 (업그레이드 없음). oilDamage·oilInterval·oilRadius를 넣으면 성문에 붙은 적에게 끓는 기름
     levels: [
-      { maxHp: 2500, carpenters: 3, repairPerCarpenter: 8, archers: 4, archerDamage: 22, archerInterval: 0.85, archerRange: 320,
-        oilDamage: 70, oilInterval: 6, oilRadius: 120 },
+      { maxHp: 2500, carpenters: 1, repairPerCarpenter: 6, archers: 2, archerDamage: 11, archerInterval: 0.85, archerRange: 320 },   // 끓는 기름 없음
     ],
   },
   wallArcher: { arrowSpeed: 700 },
@@ -83,11 +82,12 @@ const CONFIG = {
   effects: { damageNumbers: true, screenShake: true, sfxVolume: 0.7, musicVolume: 0.6, muted: false },   // 소리 크기 0~1
 
   // ---------------- 병력 (성문에서 생산) ----------------
-  // 화면 아래 병력 칸에서 생산할 병사를 고르면 성문에서 spawnTime초마다 1명씩 나옵니다 (최대 병력까지).
-  // 훈련 시설: levels[0].cost = 건설 비용 (0 = 처음부터 있음), levels[1~2].cost = 강화 비용
+  // 화면 아래 병력 칸을 누를 때마다 그 병사 1명이 생산 대기열에 들어가고, 누른 순서대로 성문에서 1명씩 나옵니다 (무료, 인구 한도까지).
+  // 훈련 시설: 처음부터 모두 1레벨. levels[n].cost = 그 레벨로 강화하는 비용
   // 병사 능력치(hp, damage, armor)는 시설 레벨을 따르고, 강화하면 이미 나와 있는 병사도 바로 강해짐
   army: {
-    popCap: 25,                   // 최대 인구 (병사마다 인구를 차지: 보병·궁수 1 / 성직자 2 / 마법사 3 / 기사 4)
+    popCap: 50,                   // 최대 인구 (병사마다 인구를 차지: 보병·궁수 1 / 성직자 2 / 마법사 3 / 기사 4)
+    queueMax: 20,                 // 생산 대기열 최대 길이 (병력 칸을 누른 순서대로 1명씩 생산)
     skillLevel: 5,                // 이 레벨부터 자동 스킬 (skill)
     passiveLevel: 10,             // 이 레벨(최고)이 되면 패시브 (passive)
     order: ['footman', 'archer', 'knight', 'mage', 'cleric'],
@@ -107,7 +107,7 @@ const CONFIG = {
     archer:  { facility: '궁술장', pop: 1, desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격 · 강화하면 사거리 증가',
       skill: { id: 'volley', name: '연속 사격', cooldown: 10, arrows: 2, damageMul: 1.2, desc: '10초마다 화살 2발을 가까운 적에게' },
       passive: { id: 'rapid', name: '속사', attackSpeed: 0.3, desc: '공격 속도 +30%' },
-      levels: [ { cost: 120, spawnTime: 5.0, hp: 75, damage: 11, armor: 0.05, range: 170 },
+      levels: [ { cost: 0, spawnTime: 5.0, hp: 75, damage: 11, armor: 0.05, range: 170 },
                 { cost: 140, spawnTime: 4.6, hp: 95, damage: 16, armor: 0.08, range: 173 },
                 { cost: 210, spawnTime: 4.2, hp: 120, damage: 22, armor: 0.10, range: 177 },
                 { cost: 330, spawnTime: 3.8, hp: 150, damage: 29, armor: 0.12, range: 180 },
@@ -120,7 +120,7 @@ const CONFIG = {
     knight:  { facility: '기사단', pop: 4, desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
       skill: { id: 'charge', name: '돌격', cooldown: 14, range: 230, speed: 440, damageMul: 2.5, knock: 70, desc: '14초마다 적에게 돌진해 길 위의 적을 밀쳐냄' },
       passive: { id: 'valor', name: '용맹', damage: 0.3, desc: '공격력 +30%' },
-      levels: [ { cost: 220, spawnTime: 9, hp: 360, damage: 22, armor: 0.35 },
+      levels: [ { cost: 0, spawnTime: 9, hp: 360, damage: 22, armor: 0.35 },
                 { cost: 200, spawnTime: 8, hp: 450, damage: 30, armor: 0.40 },
                 { cost: 280, spawnTime: 7, hp: 560, damage: 39, armor: 0.45 },
                 { cost: 400, spawnTime: 6.2, hp: 690, damage: 49, armor: 0.48 },
@@ -133,7 +133,7 @@ const CONFIG = {
     mage:    { facility: '마법학교', pop: 3, desc: '마법 공격(방어력 무시) · 범위 피해 · 공중 공격 가능 · 3레벨부터 둔화',
       skill: { id: 'fireball', name: '화염구', cooldown: 15, radius: 50, damageMul: 1.3, splash: 0.6, desc: '15초마다 적이 많은 곳에 작은 화염구 (영웅 화염구보다 약함)' },
       passive: { id: 'overload', name: '마력 폭주', splash: 0.5, ratio: 0.9, desc: '범위 피해 반경 +50% · 주변 적에게도 90% 피해' },
-      levels: [ { cost: 260, spawnTime: 9, hp: 85, damage: 24, armor: 0.05, range: 165 },
+      levels: [ { cost: 0, spawnTime: 9, hp: 85, damage: 24, armor: 0.05, range: 165 },
                 { cost: 220, spawnTime: 8.2, hp: 105, damage: 34, armor: 0.07, range: 168 },
                 { cost: 300, spawnTime: 7.4, hp: 130, damage: 46, armor: 0.10, range: 172, slow: 0.35, slowTime: 1.2 },
                 { cost: 420, spawnTime: 6.6, hp: 160, damage: 60, armor: 0.12, range: 175, slow: 0.40, slowTime: 1.4 },
@@ -148,7 +148,7 @@ const CONFIG = {
     cleric:  { facility: '신전', pop: 2, support: true, desc: '공격하지 않음 · 주변 아군(영웅 포함)에게 무작위 강화: 공격 속도 · 방어력 · 공격력',
       skill: { id: 'prayer', name: '치유의 기도', cooldown: 12, radius: 170, heal: 0.25, desc: '12초마다 주변 아군 체력 25% 회복' },
       passive: { id: 'blessing', name: '축복', desc: '강화 마법이 두 가지씩 걸림' },
-      levels: [ { cost: 200, spawnTime: 8, hp: 90, damage: 0, armor: 0.08, power: 0.15, duration: 6, interval: 5, radius: 150 },
+      levels: [ { cost: 0, spawnTime: 8, hp: 90, damage: 0, armor: 0.08, power: 0.15, duration: 6, interval: 5, radius: 150 },
                 { cost: 180, spawnTime: 7.5, hp: 110, damage: 0, armor: 0.10, power: 0.17, duration: 6, interval: 4.8, radius: 155 },
                 { cost: 260, spawnTime: 7, hp: 130, damage: 0, armor: 0.12, power: 0.19, duration: 6.5, interval: 4.6, radius: 160 },
                 { cost: 360, spawnTime: 6.6, hp: 155, damage: 0, armor: 0.14, power: 0.21, duration: 6.5, interval: 4.4, radius: 165 },
@@ -163,17 +163,20 @@ const CONFIG = {
   // ---------------- 병사 ----------------
   soldiers: {
     regenDelay: 5, regenRate: 0.04, // 공격 안 받은 지 5초 후 초당 최대 체력의 4% 회복
-    leash: 220,                     // 대형 중심(영웅)에서 이보다 먼 적은 쫓지 않음
+    leash: 220,                     // 싸우기 시작한 자리에서 이보다 먼 적은 쫓지 않음 (다시 길로 복귀)
     // range: 근접은 몸 가장자리 사이 거리 (원거리 병사의 사거리는 army 레벨별 range) / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
-    // line: 'front' = 영웅 앞줄, 'back' = 영웅 뒷줄 / splash: 마법 범위 피해 반경
+    // line: 'front' = 앞장서서 진군, 'back' = 앞장선 근접 병사 뒤를 따라감 / splash: 마법 범위 피해 반경
     footman: { name: '보병',   speed: 92,  radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 2, baseDamageMul: 0.8, canHitAir: false, line: 'front' },
     archer:  { name: '궁수',   speed: 90,  radius: 9,  range: 170, attackInterval: 1.1, detect: 175, maxBlock: 1, baseDamageMul: 0.6, canHitAir: true, ranged: true, line: 'back' },
     knight:  { name: '기사',   speed: 130, radius: 13, range: 18,  attackInterval: 1.1, detect: 135, maxBlock: 3, baseDamageMul: 1.5, canHitAir: false, line: 'front' },   // 말을 타서 빠름
     mage:    { name: '마법사', speed: 86,  radius: 9,  range: 165, attackInterval: 1.7, detect: 170, maxBlock: 1, baseDamageMul: 0.8, canHitAir: true, ranged: true, magic: true, splash: 40, boltSpeed: 480, line: 'back' },
     cleric:  { name: '성직자', speed: 86,  radius: 9,  range: 0,   attackInterval: 1.0, detect: 0,   maxBlock: 1, baseDamageMul: 0,   canHitAir: false, support: true, line: 'back' },   // 공격 안 함
   },
-  // 대형: 근접 병사는 영웅보다 frontDist 앞에, 원거리 병사는 backDist 뒤에 줄을 섬 (앞 = 적이 있는 쪽)
-  formation: { frontDist: 46, backDist: 40, rowGap: 25, spacing: 27, perRow: 8, turnRate: 3 },
+  // 진군: 병사는 성문에서 나와 길을 따라 목표 적 기지로 전진 (영웅을 따라다니지 않음)
+  //   목표 기지 = 영웅이 고른 기지 → 없으면 성문에서 길이 가장 짧은 기지
+  //   lane: 길 가운데에서 좌우로 벌어지는 폭 / backGap: 원거리 병사는 가장 앞선 근접 병사보다 이만큼 뒤
+  //   supportGap: 성직자는 가장 앞선 병사보다 이만큼 뒤 / gateHold: 공격할 기지가 없을 때 성문 앞 대기 거리
+  march: { lane: 22, backGap: 40, supportGap: 60, gateHold: 90 },
 
   // ---------------- 영웅 ----------------
   heroes: {
@@ -419,7 +422,7 @@ const CONFIG = {
   },
 
   // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 60, baseLostBonus: 1, hpMul: 1.05, damageMul: 1.03, spawnIntervalMul: 0.95, minSpawnInterval: 2.5, groupGrowth: 0.05 },   // groupGrowth: 위협 레벨당 적 무리 크기 +5%
+  escalation: { interval: 50, baseLostBonus: 1, hpMul: 1.05, damageMul: 1.03, spawnIntervalMul: 0.95, minSpawnInterval: 2.5, groupGrowth: 0.05 },   // groupGrowth: 위협 레벨당 적 무리 크기 +5%
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -1202,7 +1205,7 @@ const Art = {
       else this.orcFortress(ctx, b, t, rt);
     }
     ctx.globalAlpha = 1;
-    if (b.alive && b.protectedByBoss) {                            // 드래곤의 보호막
+    if (b.alive && b.protectedByBoss) {                            // 최종보스의 보호막
       const p = 0.5 + Math.sin(rt * 3) * 0.2;
       ctx.fillStyle = `rgba(255,90,40,${0.12 * p + 0.06})`; ellipse(ctx, 0, -6, b.m.hitRadius * 1.25, b.m.hitRadius * 1.05); ctx.fill();
       ctx.strokeStyle = `rgba(255,140,80,${0.5 + p * 0.3})`; ctx.lineWidth = 3; ctx.stroke();
@@ -1361,7 +1364,7 @@ const Art = {
   baseBar(ctx, b) {
     if (!b.enabled) return;
     const y = b.y - b.m.barOffset;
-    txt(ctx, b.cfg.name + (b.protectedByBoss ? ' (드래곤 보호 중)' : ''), b.x, y - 11, 15, b.protectedByBoss ? '#ffae8a' : b.alive ? '#ffe7b8' : '#c8c8c8', 'center', { stroke: 'rgba(0,0,0,0.85)' });
+    txt(ctx, b.cfg.name + (b.protectedByBoss ? ` (${G.finalBoss.cfg.name} 보호 중)` : ''), b.x, y - 11, 15, b.protectedByBoss ? '#ffae8a' : b.alive ? '#ffe7b8' : '#c8c8c8', 'center', { stroke: 'rgba(0,0,0,0.85)' });
     if (b.alive) {
       bar(ctx, b.x - 65, y, 130, 11, b.hp / b.maxHp, '#d9443a');
       if (CONFIG.debug.tapBaseDamage > 0 && G.state === 'playing') {
@@ -2899,17 +2902,30 @@ class Arrow {
   }
 }
 
-// ---------- 병력 생산: 성문에서 고른 병사가 일정 시간마다 1명씩 나옴 ----------
+// ---------- 병력 생산: 병력 칸을 누른 순서대로 대기열에 쌓이고, 성문에서 1명씩 나옴 (무료) ----------
 function armyCap() { return CONFIG.army.popCap; }
 function popOf(kind) { return CONFIG.army[kind].pop || 1; }
 function armyPop() { let n = 0; for (const u of G.soldiers) n += popOf(u.kind); return n; }   // 지금 쓰는 인구
 function unitStats(kind) { const L = G.army.lv[kind]; return L ? CONFIG.army[kind].levels[L - 1] : null; }
 function updateArmy(dt) {
-  const A = G.army, s = unitStats(A.sel);
-  A.full = armyPop() + popOf(A.sel) > armyCap();
-  if (!s || G.gate.destroyed) return;
-  if (A.timer > 0) A.timer = Math.max(0, A.timer - dt);
-  if (A.timer <= 0 && !A.full) { A.timer = s.spawnTime; spawnSoldier(A.sel); }
+  const A = G.army, q = A.queue;
+  A.full = false;
+  if (!q.length || G.gate.destroyed) { A.prog = 0; return; }
+  const kind = q[0], st = unitStats(kind);
+  A.prog = Math.min(st.spawnTime, A.prog + dt);
+  if (A.prog < st.spawnTime) return;
+  if (armyPop() + popOf(kind) > armyCap()) { A.full = true; return; }   // 인구가 비면 바로 나옴
+  q.shift(); A.prog = 0; spawnSoldier(kind);
+}
+// 생산 대기열: 맨 뒤에 1명 추가 / i번째 취소
+function queueUnit(kind) {
+  const A = G.army; if (!A.lv[kind] || G.state !== 'playing') return;
+  if (A.queue.length >= CONFIG.army.queueMax) { toast(`대기열이 가득 찼어요 (최대 ${CONFIG.army.queueMax}명)`, '#ff9a7a'); Sound.play('error'); return; }
+  A.queue.push(kind);
+}
+function unqueueUnit(i) {
+  const A = G.army; if (i < 0 || i >= A.queue.length) return;
+  A.queue.splice(i, 1); if (i === 0) A.prog = 0;
 }
 function spawnSoldier(kind) {
   const u = new Soldier(kind);
@@ -2917,13 +2933,6 @@ function spawnSoldier(kind) {
   FX.dust(u.x, u.y); FX.ring(u.x, u.y, 18, '255,240,180', 0.3);
   G.gate.openAnim = 0.7;
   return u;
-}
-// 생산할 병사 고르기 (진행 중이던 생산 비율은 유지)
-function selectUnit(kind) {
-  const A = G.army; if (!A.lv[kind] || A.sel === kind) return;
-  const prev = unitStats(A.sel), next = unitStats(kind);
-  A.timer = prev ? next.spawnTime * clamp(A.timer / prev.spawnTime, 0, 1) : next.spawnTime;
-  A.sel = kind;
 }
 // 훈련 시설 건설(레벨 0 → 1) / 강화
 function upgradeFacility(kind) {
@@ -2936,38 +2945,45 @@ function upgradeFacility(kind) {
   for (const u of G.soldiers) if (u.kind === kind) u.applyStats(A.lv[kind], st);
   const gx = MAP.castle.wallX + MAP.castle.wallW / 2;
   FX.ring(gx, MAP.gate.y, 70, '255,215,90', 0.5); FX.spark(gx, MAP.gate.y - 20, '#ffe08a', 10);
-  if (L === 0) { selectUnit(kind); showBanner(`${c.facility} 건설! 이제 성문에서 ${josa(name, '이', '가')} 나옵니다`, '#ffe08a', 2.6); Sound.play('build'); }
+  if (L === 0) { showBanner(`${c.facility} 건설! 이제 성문에서 ${josa(name, '이', '가')} 나옵니다`, '#ffe08a', 2.6); Sound.play('build'); }
   else { toast(`${c.facility} Lv.${L + 1} — ${name} 강화!`, '#ffd36b'); Sound.play('upgrade'); }
 }
 
-// 대형: 앞쪽(적이 있는 방향)을 정하고, 근접 병사는 영웅 앞줄 · 원거리 병사는 영웅 뒷줄에 자리를 배정
-function updateFormation(dt) {
-  const h = G.hero, F = CONFIG.formation, alive = h && !h.dead;
-  const cx = alive ? h.x : MAP.heroSpawn.x + 70, cy = alive ? h.y : MAP.heroSpawn.y;
-  let want = null;                                       // 앞쪽: 이동 중이면 가는 쪽 → 기지 공격 중이면 기지 쪽 → 가까운 적 쪽
-  if (alive && h.mode === 'move' && h.path.length) { const wp = h.path[h.path.length - 1]; if (dist(cx, cy, wp.x, wp.y) > 40) want = Math.atan2(wp.y - cy, wp.x - cx); }
-  if (want == null && alive && h.siegeTarget) want = Math.atan2(h.siegeTarget.y - cy, h.siegeTarget.x - cx);
-  if (want == null) {
-    let bd = 380, be = null;
-    for (const e of G.enemies) { if (!e.alive) continue; const d = dist(cx, cy, e.x, e.y); if (d < bd) { bd = d; be = e; } }
-    if (be) want = Math.atan2(be.y - cy, be.x - cx); else if (!alive) want = 0;
+// 진군 목표 기지: 영웅이 고른 기지 → 없으면 성문에서 길이 가장 짧은 기지 (최종보스가 지키는 기지는 다른 기지가 없을 때만)
+function armyTargetBase() {
+  const h = G.hero, t = h && h.baseTarget;
+  if (t && t.alive && t.enabled) return t;
+  let best = null, bl = Infinity;
+  for (const b of G.bases) {
+    if (!b.enabled || !b.alive) continue;
+    const L = b.route.length + (b.protectedByBoss ? 1e6 : 0);
+    if (L < bl) { bl = L; best = b; }
   }
-  if (want != null) { const d = Math.atan2(Math.sin(want - G.front), Math.cos(want - G.front)); G.front += clamp(d, -F.turnRate * dt, F.turnRate * dt); }
-  let fi = 0, bi = 0;                                    // 앞줄: 기사 → 보병 / 뒷줄: 궁수 → 마법사 → 성직자
-  for (const kind of ['knight', 'footman', 'archer', 'mage', 'cleric']) for (const u of G.soldiers) if (!u.dead && u.kind === kind) u.fIdx = u.cfg.line === 'front' ? fi++ : bi++;
-  G.fCount = fi; G.bCount = bi; G.fCenter = { x: cx, y: cy };
+  return best;
+}
+// 길마다 가장 앞선 병사 위치 (거리값: 작을수록 적 기지에 가까움)
+function updateMarch() {
+  G.marchBase = armyTargetBase();
+  const front = {}, lead = {};
+  for (const u of G.soldiers) {
+    if (u.dead || !u.mk) continue;
+    if (u.cfg.line === 'front') front[u.mk] = Math.min(front[u.mk] == null ? Infinity : front[u.mk], u.md);
+    if (!u.cfg.support) lead[u.mk] = Math.min(lead[u.mk] == null ? Infinity : lead[u.mk], u.md);
+  }
+  G.marchFront = front; G.marchLead = lead;
 }
 
 // ---------- 병사 ----------
-// 행동 우선순위: 1) 주변 적과 싸움  2) 영웅이 적 기지를 공격 중이면 함께 공격
-//               3) 영웅 앞(근접) / 뒤(원거리)에 줄을 맞춰 대형 유지  4) 영웅 사망 중이면 성문 앞에 모임
+// 행동 우선순위: 1) 주변 적과 싸움  2) 길을 따라 목표 적 기지로 진군  3) 기지에 닿으면 기지 공격
+//   원거리 병사는 앞장선 근접 병사 뒤, 성직자는 가장 앞선 병사 뒤를 따라감
 class Soldier {
   constructor(kind) {
     this.kind = kind; this.cfg = CONFIG.soldiers[kind];
     this.radius = this.cfg.radius; this.maxBlock = this.cfg.maxBlock;
     this.applyStats(G.army.lv[kind], unitStats(kind), true);
     this.x = MAP.castle.wallX + MAP.castle.wallW + 16 + rand(0, 8); this.y = MAP.gate.y + rand(-16, 16); this.face = 0;
-    this.engaged = new Set(); this.target = null; this.retarget = 0; this.fIdx = 0;
+    this.engaged = new Set(); this.target = null; this.retarget = 0; this.anchor = null;
+    this.mk = null; this.md = 0; this.snap = true; this.lane = rand(-CONFIG.march.lane, CONFIG.march.lane);   // 진군 중인 길 / 길 위 위치 / 길 가운데에서 벗어난 폭
     this.atkTimer = rand(0, 0.5); this.attackAnim = 0; this.flash = 0;
     this.stun = 0; this.root = 0; this.push = null;      // 보스 스킬: 기절 / 묶임 / 밀려남
     this.rush = null; this.skillT = 3 + Math.random() * 5;   // 5레벨 자동 스킬 (기사 돌격 중 / 다음 사용까지)
@@ -2993,17 +3009,6 @@ class Soldier {
   }
   releaseAll() { for (const e of [...this.engaged]) e.release(); this.engaged.clear(); }
   die() { this.dead = true; this.hp = 0; this.releaseAll(); FX.poof(this.x, this.y, 10); }
-
-  // 대형 자리: 앞쪽 방향(G.front) 기준으로 근접은 영웅 앞, 원거리는 영웅 뒤에 가로줄
-  formationPos() {
-    const F = CONFIG.formation, c = G.fCenter || { x: MAP.heroSpawn.x + 70, y: MAP.heroSpawn.y }, ca = Math.cos(G.front), sa = Math.sin(G.front);
-    const front = this.cfg.line === 'front', n = front ? G.fCount : G.bCount;
-    const row = Math.floor(this.fIdx / F.perRow), rowN = Math.min(F.perRow, n - row * F.perRow), col = this.fIdx % F.perRow;
-    const side = (col - (rowN - 1) / 2) * F.spacing + (row % 2 ? F.spacing * 0.5 : 0);
-    const fwd = front ? F.frontDist + row * F.rowGap - Math.abs(side) * 0.15 : -(F.backDist + row * F.rowGap) + Math.abs(side) * 0.1;
-    return Nav.clampTarget(c.x + ca * fwd - sa * side, c.y + sa * fwd + ca * side);
-  }
-  anchorCenter() { const h = G.hero; return h && !h.dead ? h : { x: MAP.heroSpawn.x + 70, y: MAP.heroSpawn.y }; }
 
   stepToward(tx, ty, dt) {
     if (this.root > 0) return;
@@ -3053,10 +3058,9 @@ class Soldier {
     this.atkTimer -= dt; this.moving = false;
     const c = this.cfg, S = CONFIG.soldiers;
     if (G.time - this.lastHit >= S.regenDelay && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * S.regenRate * dt);
-    if (this.push) { pushStep(this, dt); return; }                 // 밀려나는 중
+    if (this.push) { pushStep(this, dt); this.snap = true; return; }   // 밀려나는 중 (끝나면 가까운 길 위치로)
     if (this.rush) { this.updateRush(dt); return; }                 // 기사 돌격 중
     if (this.stun > 0) { this.stun -= dt; return; }                 // 기절
-    const a = this.anchorCenter();
     tickSup(this, dt);
     if (this.level >= CONFIG.army.skillLevel && CONFIG.army[this.kind].skill) {   // 5레벨부터: 자동 스킬
       this.skillT -= dt;
@@ -3066,36 +3070,79 @@ class Soldier {
 
     if (c.support) { this.supportUpdate(dt, idx); return; }         // 성직자: 싸우지 않고 강화 마법
 
-    // 1) 적과 싸움 (영웅에게서 너무 멀어진 적은 내 근처에 없을 때만 포기)
-    if (this.target && (!this.target.alive || (dist(this.target.x, this.target.y, a.x, a.y) > S.leash + 30 && dist(this.target.x, this.target.y, this.x, this.y) > this.detect + 40))) this.target = null;
+    // 1) 근처 적과 싸움 (싸우기 시작한 자리에서 너무 멀어진 적은 내 근처에 없을 때만 포기)
+    const A = this.anchor;
+    if (this.target && (!this.target.alive || (A && dist(this.target.x, this.target.y, A.x, A.y) > S.leash + 30 && dist(this.target.x, this.target.y, this.x, this.y) > this.detect + 40))) this.target = null;
     this.retarget -= dt;
-    if (!this.target || this.retarget <= 0) { this.retarget = 0.3; this.target = this.findEnemy(); }
+    if (!this.target || this.retarget <= 0) {
+      this.retarget = 0.3; const was = this.target; this.target = this.findEnemy();
+      if (this.target && !was) this.anchor = { x: this.x, y: this.y };
+    }
     const e = this.target;
     if (e) {
       const d = dist(this.x, this.y, e.x, e.y);
       const reach = c.ranged ? this.range : this.radius + e.radius + c.range;
       if (d > reach) this.stepToward(e.x, e.y, dt); else this.hit(e, false);
+      this.snap = true;                                            // 싸움이 끝나면 가까운 길 위치로 복귀
       return;
     }
-    // 2) 영웅이 적 기지를 공격 중이면 함께 공격
-    const h = G.hero, b = h && !h.dead ? h.siegeTarget : null;
-    if (b && b.alive) {
-      const bodyR = b.m.hitRadius * 0.8;
-      const ang = Math.atan2(this.y - b.y, this.x - b.x);
-      const want = c.ranged ? bodyR + this.range * 0.7 : bodyR + this.radius + 4;
-      const d = dist(this.x, this.y, b.x, b.y);
-      if (d > want + (c.ranged ? 20 : 6)) {
-        const spread = ((idx % 7) - 3) * 0.18;
-        this.stepToward(b.x + Math.cos(ang + spread) * want, b.y + Math.sin(ang + spread) * want, dt);
-      } else this.hit(b, true);
-      return;
-    }
-    // 3, 4) 대형 유지 (영웅 앞·뒤 / 영웅 사망 시 성문 앞)
-    const f = this.formationPos();
-    if (dist(this.x, this.y, f.x, f.y) > 4) this.stepToward(f.x, f.y, dt);
-    else this.face = G.front;
+    // 2, 3) 길 따라 진군 → 기지 공격
+    this.march(dt, idx);
   }
 }
+
+// 길 위 내 자리 (다리처럼 좁은 곳에서는 길 가운데 쪽으로)
+Soldier.prototype.lanePt = function (s) {
+  for (const f of [1, 0.5, 0]) {
+    const x = s.x - s.dy * this.lane * f, y = s.y + s.dx * this.lane * f;
+    if (f === 0 || !Nav.blocked(x, y)) return [x, y];
+  }
+};
+// 길 따라 진군: 목표 기지 쪽으로 전진하다가 기지에 닿으면 공격 (성직자는 조금 떨어져서 강화만)
+Soldier.prototype.march = function (dt, idx) {
+  const M = CONFIG.march, b = G.marchBase, c = this.cfg;
+  if (!b) {                                                        // 공격할 기지가 없으면 성문 앞에서 대기
+    this.mk = null;
+    const p = Nav.clampTarget(MAP.castle.wallX + MAP.castle.wallW + M.gateHold + (idx % 4) * 22, MAP.gate.y + ((idx % 7) - 3) * 22);
+    if (dist(this.x, this.y, p.x, p.y) > 5) this.stepToward(p.x, p.y, dt); else this.face = 0;
+    return;
+  }
+  const R = b.route;
+  if (this.mk !== b.key) { this.mk = b.key; this.md = R.nearestDist(this.x, this.y, 0, 1e9); this.snap = false; }   // 목표가 바뀌면 새 길의 가장 가까운 곳으로
+  else if (this.snap) { this.md = R.nearestDist(this.x, this.y, this.md, 400); this.snap = false; }
+  // 기지에 닿음 → 공격 (성직자는 떨어져서 대기)
+  const bodyR = b.m.hitRadius * 0.8, dB = dist(this.x, this.y, b.x, b.y);
+  const want = c.support ? bodyR + 150 : c.ranged ? bodyR + this.range * 0.7 : bodyR + this.radius + 4;
+  if (dB <= want + 40 || this.md <= 0.5) {
+    const ang = Math.atan2(this.y - b.y, this.x - b.x);
+    if (c.support) {
+      const spread = ((idx % 5) - 2) * 0.25;
+      if (dB > want + 25 || dB < want - 40) this.stepToward(b.x + Math.cos(ang + spread) * want, b.y + Math.sin(ang + spread) * want, dt);
+      else this.face = ang + Math.PI;
+    } else if (dB > want + (c.ranged ? 20 : 6)) {
+      const spread = ((idx % 7) - 3) * 0.18;
+      this.stepToward(b.x + Math.cos(ang + spread) * want, b.y + Math.sin(ang + spread) * want, dt);
+    } else { this.hit(b, true); this.siegeT = G.time; }
+    return;
+  }
+  // 길 위 위치로 이동 (싸움 뒤 복귀 중이면 먼저 길로)
+  let s = R.sample(this.md, TMP), [px, py] = this.lanePt(s);
+  if (dist(this.x, this.y, px, py) > 10) { this.stepToward(px, py, dt); return; }
+  // 얼마나 앞으로 갈 수 있는지: 원거리는 근접 병사 뒤, 성직자는 가장 앞선 병사 뒤
+  let minD = 0;
+  if (c.support) { const l = G.marchLead[this.mk]; minD = l == null ? R.length - M.gateHold : l + M.supportGap; }
+  else if (c.line === 'back') { const f = G.marchFront[this.mk]; if (f != null) minD = f + M.backGap; }
+  if (this.md > minD + 1) {
+    this.md = Math.max(minD, this.md - c.speed * dt);
+    s = R.sample(this.md, TMP); [px, py] = this.lanePt(s);
+    const dx = px - this.x, dy = py - this.y, d = Math.hypot(dx, dy);
+    if (d > 0.01) { const k = Math.min(1, (c.speed * dt * 1.2) / d); this.x += dx * k; this.y += dy * k; this.moving = true; this.walkAnim += dt; }
+  } else if (this.md < minD - 30) {                                  // 너무 앞서 있으면 조금 물러남
+    this.md = Math.min(R.length, this.md + c.speed * 0.6 * dt);
+    s = R.sample(this.md, TMP); [this.x, this.y] = this.lanePt(s); this.moving = true; this.walkAnim += dt;
+  }
+  this.face = Math.atan2(-s.dy, -s.dx);
+};
 
 // ---------- 성직자 강화 효과 (병사·영웅 공통) ----------
 // haste: 공격 간격 -v / guard: 방어력 +v / might: 공격력 +v. 각각 남은 시간(t)과 세기(v)
@@ -3112,7 +3159,7 @@ Soldier.prototype.supportUpdate = function (dt, idx) {
     const near = [];
     if (h && !h.dead && dist(h.x, h.y, this.x, this.y) <= st.radius) near.push(h);
     for (const u of G.soldiers) if (!u.dead && u !== this && dist(u.x, u.y, this.x, this.y) <= st.radius) near.push(u);
-    const fighting = near.some(u => u === h ? G.enemies.some(e => e.alive && dist(e.x, e.y, h.x, h.y) < 260) : u.target || u.engaged.size);
+    const fighting = near.some(u => u === h ? G.enemies.some(e => e.alive && dist(e.x, e.y, h.x, h.y) < 260) || h.siegeTarget : u.target || u.engaged.size || G.time - (u.siegeT || -9) < 1);   // 싸우거나 기지를 공격 중
     if (near.length && fighting) {                                 // 싸우고 있는 아군이 있을 때만 시전
       this.castT = st.interval;
       const types = SUP_TYPES.slice().sort(() => Math.random() - 0.5).slice(0, this.passive ? 2 : 1);   // 10레벨 축복: 두 가지
@@ -3125,15 +3172,7 @@ Soldier.prototype.supportUpdate = function (dt, idx) {
       this.attackAnim = 0.4; Sound.play('heal', this.x, this.y, 0.18);
     } else this.castT = 0.5;
   }
-  // 이동: 영웅이 기지를 공격 중이면 조금 떨어진 곳, 아니면 뒷줄 대형
-  const b = h && !h.dead ? h.siegeTarget : null;
-  if (b && b.alive) {
-    const ang = Math.atan2(this.y - b.y, this.x - b.x), want = b.m.hitRadius * 0.8 + 150, spread = ((idx % 5) - 2) * 0.25;
-    if (dist(this.x, this.y, b.x, b.y) > want + 25 || dist(this.x, this.y, b.x, b.y) < want - 40) this.stepToward(b.x + Math.cos(ang + spread) * want, b.y + Math.sin(ang + spread) * want, dt);
-    return;
-  }
-  const f = this.formationPos();
-  if (dist(this.x, this.y, f.x, f.y) > 4) this.stepToward(f.x, f.y, dt); else this.face = G.front;
+  this.march(dt, idx);                                            // 이동: 가장 앞선 병사 뒤를 따라 진군
 };
 
 // 병사 자동 스킬 (5레벨부터) — Soldier에 붙임
@@ -3200,7 +3239,7 @@ Soldier.prototype.updateRush = function (dt) {
     if (e.foe) e.release();
     e.knockback(R.vx / sp * R.sk.knock / 0.22, R.vy / sp * R.sk.knock / 0.22, 0.4);
   }
-  R.t -= dt; if (R.t <= 0) this.rush = null;
+  R.t -= dt; if (R.t <= 0) { this.rush = null; this.snap = true; }   // 돌격이 끝나면 가까운 길 위치로 복귀
 };
 
 function isBaseTarget(t) { return t instanceof EnemyBase; }
@@ -4536,7 +4575,7 @@ class EnemyBase {
   takeDamage(amount) {
     if (!this.alive || !this.enabled) return;
     if (this.protectedByBoss) {
-      if (G.time - (this.protMsgT || -9) > 1.5) { this.protMsgT = G.time; FX.text(this.x, this.y - 60, `${josa(G.finalBoss.cfg.name, '이', '가')} 지키는 중!`, '#ff8a6a', 18, 1.2); }
+      if (G.time - (this.protMsgT || -9) > 1.5) { this.protMsgT = G.time; FX.text(this.x, this.y - 60, `${josa(G.finalBoss.cfg.name, '이', '가')} 지키는 중! 먼저 처치하세요`, '#ff8a6a', 18, 1.2); }
       return;
     }
     this.hp -= amount; this.lastHit = G.time; this.flash = 0.12; this.shake = 0.2;
@@ -4714,6 +4753,8 @@ const Input = {
         break;
       }
       case 'Escape': if (G.aim) G.aim = null; else if (G.sel) G.sel = null; else togglePause(); break;
+      case 'KeyU': if (G.state === 'playing' && !G.paused) toggleUpMode(); break;
+      case 'Backspace': if (G.state === 'playing' && !G.paused && G.army.queue.length) { e.preventDefault(); unqueueUnit(G.army.queue.length - 1); } break;
       case 'KeyP': togglePause(); break;
       case 'KeyF': toggleSpeed(); break;
       case 'KeyQ': useSkill(0); break;
@@ -4966,41 +5007,49 @@ function drawBottomHUD(ctx) {
   }
 }
 
-// ---------- 아래 병력 칸: 성문에서 나올 병사 고르기 / 훈련 시설 건설·강화 ----------
-// 칸 누르기: 다른 병사 → 생산 병사로 선택 / 이미 선택된 병사·미건설 → 시설 메뉴 열기
+// ---------- 아래 병력 칸: 누를 때마다 생산 대기열에 1명 추가 / 강화 모드에서는 훈련 시설 메뉴 ----------
 function armyCardTap(kind) {
   if (!kind || G.state !== 'playing') return;
   const A = G.army;
-  if (!A.lv[kind] || A.sel === kind) { G.aim = null; G.sel = G.sel && G.sel.kind === 'facility' && G.sel.ref === kind ? null : { kind: 'facility', ref: kind }; return; }
-  selectUnit(kind);
-  if (G.sel && G.sel.kind === 'facility') G.sel.ref = kind;
+  if (A.upMode || !A.lv[kind]) { G.aim = null; G.sel = G.sel && G.sel.kind === 'facility' && G.sel.ref === kind ? null : { kind: 'facility', ref: kind }; return; }
+  queueUnit(kind);
+}
+function toggleUpMode() {
+  const A = G.army; if (G.state !== 'playing') return;
+  A.upMode = !A.upMode;
+  if (!A.upMode && G.sel && G.sel.kind === 'facility') G.sel = null;
+  else if (A.upMode) toast('강화할 병사 칸을 누르세요', '#b8ff9a');
 }
 function drawArmyBar(ctx, L, R, heroTop) {
   const k = UI.k, VH = CONFIG.view.height, A = G.army, order = CONFIG.army.order, n = order.length;
-  let cw = 84 * k, ch = 84 * k, gap = 8 * k, pad = 8 * k;
-  let w = n * cw + (n - 1) * gap + pad * 2, h = ch + pad * 2, x, y;
+  let cw = 84 * k, ch = 84 * k, gap = 8 * k, pad = 8 * k, uw = 66 * k;
+  let w = n * cw + n * gap + uw + pad * 2, h = ch + pad * 2, x, y;
   if (R - L >= w) { x = L + (R - L - w) / 2; y = VH - 10 * k - h; }          // 넓은 화면: 영웅 패널과 스킬 버튼 사이
   else {                                                                     // 좁은 화면: 영웅 패널 위
-    cw = ch = 72 * k; gap = 7 * k; pad = 7 * k;
-    w = n * cw + (n - 1) * gap + pad * 2; h = ch + pad * 2; x = 10 * k; y = heroTop - 8 * k - h;
+    cw = ch = 72 * k; gap = 7 * k; pad = 7 * k; uw = 58 * k;
+    w = n * cw + n * gap + uw + pad * 2; h = ch + pad * 2; x = 10 * k; y = heroTop - 8 * k - h;
   }
   G.armyBarRect = { x, y, w, h }; G.armyRects = {};
   panel(ctx, x, y, w, h, k); UI.block(x, y, w, h);
-  const cap = armyCap(), counts = {};
+  const counts = {}, queued = {}, head = A.queue[0];
   for (const u of G.soldiers) counts[u.kind] = (counts[u.kind] || 0) + 1;
+  for (const q of A.queue) queued[q] = (queued[q] || 0) + 1;
+  let anyUp = false;
   order.forEach((kind, i) => {
-    const cx = x + pad + i * (cw + gap), cy = y + pad, c = CONFIG.army[kind], lv = A.lv[kind], sel = A.sel === kind && lv > 0;
+    const cx = x + pad + i * (cw + gap), cy = y + pad, c = CONFIG.army[kind], lv = A.lv[kind];
     G.armyRects[kind] = { x: cx, y: cy, w: cw, h: ch };
     const pr = UI.button('army_' + kind, cx, cy, cw, ch, () => armyCardTap(kind)), off = pr ? 2 * k : 0, u = cw / (84 * k);
-    const next = lv < c.levels.length ? c.levels[lv].cost : null, canUp = next != null && G.gold >= next;
+    const next = lv < c.levels.length ? c.levels[lv].cost : null, canUp = next != null && G.gold >= next, busy = head === kind;
+    if (canUp) anyUp = true;
     rr(ctx, cx, cy + off, cw, ch, 10 * k);
     const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
-    if (sel) { g.addColorStop(0, '#8a6428'); g.addColorStop(1, '#5a3c14'); }
+    if (A.upMode) { g.addColorStop(0, '#3e5a30'); g.addColorStop(1, '#24381c'); }
+    else if (busy) { g.addColorStop(0, '#8a6428'); g.addColorStop(1, '#5a3c14'); }
     else if (lv) { g.addColorStop(0, '#5a4630'); g.addColorStop(1, '#3a2c1c'); }
     else { g.addColorStop(0, '#3e3830'); g.addColorStop(1, '#2a2620'); }
     ctx.fillStyle = g; ctx.fill();
-    ctx.lineWidth = (sel ? 3 : 2) * k; ctx.strokeStyle = sel ? '#ffe08a' : lv ? '#a8874e' : '#6a5e4a'; ctx.stroke();
-    if (canUp) { ctx.globalAlpha = 0.45 + Math.sin(realTime * 5) * 0.35; rr(ctx, cx - 2 * k, cy - 2 * k + off, cw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.lineWidth = (busy ? 3 : 2) * k; ctx.strokeStyle = A.upMode ? (canUp ? '#b8ff9a' : '#6a8a5a') : busy ? '#ffe08a' : lv ? '#a8874e' : '#6a5e4a'; ctx.stroke();
+    if (canUp && A.upMode) { ctx.globalAlpha = 0.45 + Math.sin(realTime * 5) * 0.35; rr(ctx, cx - 2 * k, cy - 2 * k + off, cw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
     ctx.globalAlpha = lv ? 1 : 0.4;
     Icon.unit(ctx, kind, Math.max(1, lv), cx + cw / 2, cy + 34 * u * k + off, 46 * u * k);
     ctx.globalAlpha = 1;
@@ -5010,24 +5059,70 @@ function drawArmyBar(ctx, L, R, heroTop) {
       circle(ctx, cx + cw - 13 * k, cy + 13 * k + off, 10 * k); ctx.fillStyle = 'rgba(30,70,130,0.9)'; ctx.fill();
       txt(ctx, String(counts[kind]), cx + cw - 13 * k, cy + 13.5 * k + off, 12 * k, '#d8ecff', 'center', { weight: 900 });
     }
-    const ly = cy + ch - 15 * u * k + off;
-    if (lv) {
-      const full = sel && A.full, label = full ? '인구 가득' : `${CONFIG.soldiers[kind].name} ${lv}${canUp ? ' ▲' : ''}`;
-      fitTxt(ctx, label, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, full ? '#ffb09a' : canUp ? '#b8ff9a' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
-    } else {
-      Icon.lock(ctx, cx + cw / 2, cy + 34 * u * k + off, 22 * u * k);
-      const afford = G.gold >= next, tw = (String(next).length * 8 + 18) * k * u;
-      Icon.coin(ctx, cx + cw / 2 - tw / 2 + 6 * k * u, ly, 13 * u * k);
-      txt(ctx, String(next), cx + cw / 2 - tw / 2 + 15 * k * u, ly + 1, 13 * u * k, afford ? '#ffe08a' : '#ff8a75', 'left', { weight: 800 });
+    if (queued[kind] && !A.upMode) {                                         // 대기열에 있는 수
+      rr(ctx, cx + 3 * k, cy + 24 * k + off, 26 * k, 16 * k, 8 * k); ctx.fillStyle = 'rgba(150,90,20,0.92)'; ctx.fill();
+      txt(ctx, '+' + queued[kind], cx + 16 * k, cy + 32.5 * k + off, 11.5 * k, '#ffe9b0', 'center', { weight: 900 });
     }
-    if (sel) {                                                               // 생산 진행 막대
-      const st = unitStats(kind), p = A.full ? 1 : clamp(1 - A.timer / st.spawnTime, 0, 1);
+    const ly = cy + ch - 15 * u * k + off;
+    if (A.upMode || !lv) {                                                   // 강화 모드: 다음 레벨 비용
+      if (next == null) fitTxt(ctx, `Lv.${lv} 최고`, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, '#ffd84a', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
+      else {
+        const tw = (String(next).length * 8 + 18) * k * u;
+        Icon.coin(ctx, cx + cw / 2 - tw / 2 + 6 * k * u, ly, 13 * u * k);
+        txt(ctx, String(next), cx + cw / 2 - tw / 2 + 15 * k * u, ly + 1, 13 * u * k, canUp ? '#b8ff9a' : '#ff8a75', 'left', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
+      }
+      if (!lv) Icon.lock(ctx, cx + cw / 2, cy + 34 * u * k + off, 22 * u * k);
+    } else {
+      const full = busy && A.full, label = full ? '인구 가득' : `${CONFIG.soldiers[kind].name} ${lv}${canUp ? ' ▲' : ''}`;
+      fitTxt(ctx, label, cx + cw / 2, ly, 13 * u * k, cw - 6 * k, full ? '#ffb09a' : canUp ? '#b8ff9a' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
+    }
+    if (busy && !A.upMode) {                                                 // 생산 진행 막대
+      const st = unitStats(kind), p = clamp(A.prog / st.spawnTime, 0, 1);
       bar(ctx, cx + 6 * k, cy + ch - 6 * k + off, cw - 12 * k, 4 * k, p, A.full ? '#a05a4a' : '#6fb7ff');
     }
   });
+  // 강화 모드 버튼 (켜면 병력 칸을 눌러 훈련 시설 강화)
+  const ux = x + pad + n * (cw + gap), uy = y + pad;
+  const uoff = drawButton(ctx, ux, uy, uw, ch, UI.button('upMode', ux, uy, uw, ch, toggleUpMode), k, '',
+    A.upMode ? { radius: 10, c1: '#5aa040', c2: '#2e6a22', border: '#d8ffb8' } : { radius: 10, c1: '#6a5236', c2: '#3e2e1c', border: anyUp ? '#b8ff9a' : '#a8874e' });
+  ctx.fillStyle = A.upMode ? '#fff8e6' : anyUp ? '#b8ff9a' : '#e8d4a8';
+  const ax = ux + uw / 2, ay = uy + ch * 0.36 + uoff, as = Math.min(uw, ch) * 0.2;
+  ctx.beginPath(); ctx.moveTo(ax, ay - as); ctx.lineTo(ax + as, ay); ctx.lineTo(ax + as * 0.4, ay); ctx.lineTo(ax + as * 0.4, ay + as); ctx.lineTo(ax - as * 0.4, ay + as); ctx.lineTo(ax - as * 0.4, ay); ctx.lineTo(ax - as, ay); ctx.closePath(); ctx.fill();
+  fitTxt(ctx, A.upMode ? '강화 중' : '강화', ux + uw / 2, uy + ch * 0.74 + uoff, 14 * k, uw - 6 * k, A.upMode ? '#fff8e6' : '#f3e3bf', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.6)' });
+  if (anyUp && !A.upMode) { ctx.globalAlpha = 0.35 + Math.sin(realTime * 5) * 0.3; rr(ctx, ux - 2 * k, uy - 2 * k, uw + 4 * k, ch + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
+
+  // 생산 대기열 (누른 순서대로) — 아이콘을 누르면 취소
+  let topY = y;
+  if (A.queue.length) {
+    const qs = (cw > 80 * k ? 34 : 30) * k, qg = 4 * k, qh = qs + 10 * k, qy = y - 6 * k - qh;
+    const lab = 62 * k, room = Math.max(1, Math.floor((w - lab - 12 * k + qg) / (qs + qg))), shown = A.queue.length > room ? room - 1 : A.queue.length;
+    const qw = Math.min(w, lab + 12 * k + (Math.min(A.queue.length, room)) * (qs + qg) - qg + 6 * k);
+    rr(ctx, x, qy, qw, qh, 8 * k); ctx.fillStyle = 'rgba(30,22,14,0.82)'; ctx.fill(); ctx.strokeStyle = 'rgba(184,145,74,0.8)'; ctx.lineWidth = 1.5 * k; ctx.stroke();
+    UI.block(x, qy, qw, qh);
+    txt(ctx, `대기 ${A.queue.length}`, x + 8 * k, qy + qh / 2 - 6 * k, 12.5 * k, '#ffd36b', 'left', { weight: 800 });
+    txt(ctx, '눌러 취소', x + 8 * k, qy + qh / 2 + 9 * k, 10.5 * k, '#b8a888', 'left', { weight: 600 });
+    for (let i = 0; i < shown; i++) {
+      const kind = A.queue[i], ix = x + lab + 6 * k + i * (qs + qg), iy = qy + 5 * k;
+      const pr = UI.button('q_' + i, ix, iy, qs, qs, () => unqueueUnit(i)), off = pr ? 2 * k : 0;
+      rr(ctx, ix, iy + off, qs, qs, 6 * k); ctx.fillStyle = i === 0 ? 'rgba(138,100,40,0.95)' : 'rgba(70,56,38,0.95)'; ctx.fill();
+      ctx.strokeStyle = i === 0 ? (A.full ? '#ff9a7a' : '#ffe08a') : '#8a7350'; ctx.lineWidth = 1.5 * k; ctx.stroke();
+      Icon.unit(ctx, kind, A.lv[kind], ix + qs / 2, iy + qs / 2 + off, qs * 0.62);
+      if (i === 0) {
+        const st = unitStats(kind);
+        bar(ctx, ix + 3 * k, iy + qs - 6 * k + off, qs - 6 * k, 3.5 * k, clamp(A.prog / st.spawnTime, 0, 1), A.full ? '#a05a4a' : '#6fb7ff');
+      }
+      ctx.strokeStyle = 'rgba(255,190,170,0.75)'; ctx.lineWidth = 1.5 * k;          // 취소 표시 (작은 ×)
+      const xx = ix + qs - 6 * k, xy = iy + 6 * k + off, xs = 2.6 * k;
+      ctx.beginPath(); ctx.moveTo(xx - xs, xy - xs); ctx.lineTo(xx + xs, xy + xs); ctx.moveTo(xx + xs, xy - xs); ctx.lineTo(xx - xs, xy + xs); ctx.stroke();
+    }
+    if (shown < A.queue.length) txt(ctx, `+${A.queue.length - shown}`, x + lab + 6 * k + shown * (qs + qg) + qs / 2, qy + qh / 2 + 1, 14 * k, '#ffd36b', 'center', { weight: 900 });
+    if (A.full) txt(ctx, '인구 가득 — 자리가 나면 출발', x + qw + 8 * k, qy + qh / 2, 13 * k, '#ff9a7a', 'left', { weight: 800, stroke: 'rgba(0,0,0,0.8)' });
+    topY = qy;
+  }
+  G.armyTopY = topY;
   if (G.toast && realTime < G.toast.until) {                                 // 짧은 알림 (골드 부족 등)
     const a = Math.min(1, (G.toast.until - realTime) * 3);
-    ctx.globalAlpha = a; txt(ctx, G.toast.text, x + w / 2, y - 16 * k, 17 * k, G.toast.color, 'center', { weight: 800, stroke: 'rgba(0,0,0,0.85)', strokeW: 4 * k }); ctx.globalAlpha = 1;
+    ctx.globalAlpha = a; txt(ctx, G.toast.text, x + w / 2, topY - 16 * k, 17 * k, G.toast.color, 'center', { weight: 800, stroke: 'rgba(0,0,0,0.85)', strokeW: 4 * k }); ctx.globalAlpha = 1;
   }
 }
 
@@ -5070,6 +5165,26 @@ function drawSkillButton(ctx, i, x, y, s, k) {
 // ---------- 선택 메뉴 (성문 / 훈련 시설) ----------
 function worldToScreen(x, y) { return { x: (x - Camera.x) * Camera.zoom, y: (y - Camera.y) * Camera.zoom }; }
 
+// 최종보스가 화면 밖에 있으면 화면 가장자리에 방향 화살표 + 이름
+function drawBossPointer(ctx) {
+  const b = G.finalBoss; if (!b || !b.alive || G.state !== 'playing') return;
+  const VW = CONFIG.view.width, VH = CONFIG.view.height, k = UI.k;
+  const p = worldToScreen(b.x, b.y - (b.air ? AIR_HEIGHT : 30));
+  const top = Camera.topPad + 40 * k, bot = VH - Camera.botPad - 20 * k, m = 40 * k;
+  if (p.x > m && p.x < VW - m && p.y > top && p.y < bot) return;   // 화면 안에 보이면 표시 안 함
+  const cx = VW / 2, cy = (top + bot) / 2, dx = p.x - cx, dy = p.y - cy;
+  const t = Math.min((VW / 2 - m) / Math.max(1e-6, Math.abs(dx)), ((bot - top) / 2) / Math.max(1e-6, Math.abs(dy)));
+  const x = cx + dx * t, y = cy + dy * t, a = Math.atan2(dy, dx), pulse = 1 + Math.sin(realTime * 6) * 0.12;
+  ctx.save(); ctx.translate(x, y);
+  ctx.save(); ctx.rotate(a); ctx.scale(pulse, pulse);
+  ctx.beginPath(); ctx.moveTo(22 * k, 0); ctx.lineTo(-10 * k, -15 * k); ctx.lineTo(-4 * k, 0); ctx.lineTo(-10 * k, 15 * k); ctx.closePath();
+  ctx.fillStyle = '#ff5a3a'; ctx.fill(); ctx.strokeStyle = '#fff1d8'; ctx.lineWidth = 2.5 * k; ctx.stroke();
+  ctx.restore();
+  const lx = clamp(-Math.cos(a) * 70 * k, -VW, VW), ly = -Math.sin(a) * 30 * k;
+  txt(ctx, b.cfg.name, lx, ly + 5 * k, 16 * k, '#ffd0c0', 'center', { stroke: 'rgba(0,0,0,0.9)', weight: 800 });
+  ctx.restore();
+}
+
 function drawSelectionPanel(ctx) {
   const s = G.sel; if (!s || G.state !== 'playing' || s.kind !== 'facility') return;
   const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, fac = true;
@@ -5078,7 +5193,7 @@ function drawSelectionPanel(ctx) {
   let px, py;
   if (fac) {                                                     // 병력 칸 바로 위 (자리가 없으면 오른쪽)
     const r = G.armyRects && G.armyRects[s.ref], bar = G.armyBarRect; if (!r) return;
-    px = r.x + r.w / 2 - w / 2; py = bar.y - 10 * k - h;
+    px = r.x + r.w / 2 - w / 2; py = (G.armyTopY != null ? Math.min(bar.y, G.armyTopY) : bar.y) - 10 * k - h;
     if (py < top) { px = bar.x + bar.w + 10 * k; py = Math.max(top, bar.y + bar.h - h); }
   }
   px = clamp(px, 10, VW - 10 - w); py = clamp(py, top, Math.max(top, (fac ? VH : bottom) - h));
@@ -5145,8 +5260,8 @@ function drawFacilityMenu(ctx, kind, px, py, w, h, k) {
   }
   const bh = 56 * k, by = py + h - bh - 14 * k;
   if (!lv) { costButton(ctx, 'facUp', px + 16 * k, by, w - 32 * k, bh, k, `${c.facility} 건설`, nx.cost, G.gold >= nx.cost, () => upgradeFacility(kind)); return; }
-  const bw = (w - 48 * k) / 2, ux = px + 16 * k, sx = ux + bw + 16 * k, on = A.sel === kind;
-  costButton(ctx, 'facSel', ux, by, bw, bh, k, on ? '생산 중' : '이 병사 생산', null, !on, () => selectUnit(kind), { c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' });
+  const bw = (w - 48 * k) / 2, ux = px + 16 * k, sx = ux + bw + 16 * k, qn = A.queue.filter(q => q === kind).length;
+  costButton(ctx, 'facSel', ux, by, bw, bh, k, qn ? `생산 +1 (대기 ${qn})` : '생산 +1', null, true, () => queueUnit(kind), { c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' });
   if (!nx) costButton(ctx, 'facUp', sx, by, bw, bh, k, '최고 레벨', null, false, () => {});
   else costButton(ctx, 'facUp', sx, by, bw, bh, k, lv + 1 === CONFIG.army.skillLevel ? '강화 (자동 스킬)' : lv + 1 === CONFIG.army.passiveLevel ? '강화 (패시브)' : '강화', nx.cost, G.gold >= nx.cost, () => upgradeFacility(kind));
 }
@@ -5555,16 +5670,17 @@ function drawSelect(ctx, k) {
 
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
-  ['아래 병력 칸', '성문에서 나올 병사 고르기 · 다시 누르면 시설 건설/강화'], ['인구 (최대 25)', '보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4 · 5레벨 자동 스킬 · 10레벨 패시브'],
+  ['아래 병력 칸', '누를 때마다 1명씩 생산 대기열에 추가 (무료) · 대기열 아이콘을 누르면 취소'], ['강화 버튼', '켠 뒤 병력 칸을 누르면 훈련 시설 강화 (골드)'],
+  ['인구 (최대 50)', '보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4 · 5레벨 자동 스킬 · 10레벨 패시브'], ['병력', '성문에서 나와 길을 따라 적 기지로 진군'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
-  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 병력 · Space 일시정지 · F 배속 · 방향키'],
+  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · U 강화 · ← 지우기(Backspace) 마지막 취소 · Space 일시정지 · F 배속'],
 ];
 function drawPause(ctx, k) {
   const pw = 760 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '일시정지', cx, y + 56 * k, 42 * k, '#ffd36b', 'center', { stroke: '#2a1405', strokeW: 7 * k, weight: 900 });
   divider(ctx, cx, y + 92 * k, pw - 120 * k, k);
   HELP.forEach(([a, b], i) => {                                   // 조작 도움말
-    const yy = y + 122 * k + i * 27 * k;
+    const yy = y + 118 * k + i * 23.5 * k;
     txt(ctx, a, x + 50 * k, yy, 15 * k, '#ffcf6a', 'left', { weight: 800 });
     fitTxt(ctx, b, x + 230 * k, yy, 15 * k, pw - 280 * k, '#efe2c6', 'left', { weight: 500 });
   });
@@ -5675,8 +5791,8 @@ function createState() {
     gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
     gold: 0, goldFlashUntil: 0,     // 시작 골드는 newGame에서 난이도에 따라
     soldiers: [],       // 아군 병사 (최대 병력은 성문 레벨에 따라)
-    army: { sel: 'footman', timer: 2, full: false, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산할 병사 / 시설 레벨 (0 = 없음)
-    front: 0, fCount: 0, bCount: 0, fCenter: null,   // 대형 앞쪽 방향 (0 = 동쪽)
+    army: { queue: [], prog: 0, full: false, upMode: false, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산 대기열 / 강화 모드 / 시설 레벨 (0 = 없음)
+    marchBase: null, marchFront: {}, marchLead: {},  // 병력 진군 목표 기지 / 길마다 가장 앞선 병사 위치
     toast: null,
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
     telegraphs: [], hazards: [],   // 보스 스킬 예고 표시 / 독 웅덩이
@@ -5732,7 +5848,7 @@ function update(dt) {
   G.gate.update(dt);
   G.hero.update(dt);
   updateArmy(dt);
-  updateFormation(dt);
+  updateMarch();
   for (let i = 0; i < G.soldiers.length; i++) if (!G.soldiers[i].dead) G.soldiers[i].update(dt, i);
   compact(G.soldiers, u => !u.dead);
   for (const b of G.bases) b.update(dt);
@@ -5839,6 +5955,7 @@ function render() {
   drawMinimap(ctx);
   drawItemSlots(ctx);
   G.bossBarH = drawBossBars(ctx);
+  drawBossPointer(ctx);
   drawBanner(ctx);
   drawSelectionPanel(ctx);   // 메뉴는 안내 띠보다 위에
   drawAimHint(ctx);
