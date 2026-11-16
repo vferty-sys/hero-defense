@@ -166,6 +166,7 @@ const CONFIG = {
   soldiers: {
     regenDelay: 5, regenRate: 0.04, // 공격 안 받은 지 5초 후 초당 최대 체력의 4% 회복
     leash: 220,                     // 싸우기 시작한 자리에서 이보다 먼 적은 쫓지 않음 (다시 길로 복귀)
+    provokeTime: 4, provokeRange: 360,  // 원거리에서 공격받으면 provokeTime초 동안 provokeRange 안의 그 적에게 다가가 반격
     // range: 근접은 몸 가장자리 사이 거리 (원거리 병사의 사거리는 army 레벨별 range) / detect: 적 탐지 범위 / maxBlock: 붙잡아 둘 수 있는 적 수
     // line: 'front' = 앞장서서 진군, 'back' = 앞장선 근접 병사 뒤를 따라감 / splash: 마법 범위 피해 반경
     footman: { name: '보병',   speed: 92,  radius: 10, range: 16,  attackInterval: 1.0, detect: 115, maxBlock: 2, baseDamageMul: 0.8, canHitAir: false, line: 'front' },
@@ -276,6 +277,11 @@ const CONFIG = {
     wolf:         { name: '늑대',      hp: 50,  speed: 120, radius: 11, air: false, armor: 0.05, gateDamage: 4, damage: 8,  attackInterval: 0.7, xp: 7,  gold: 5 },    // 아주 빠름
     slime:        { name: '슬라임',    hp: 110, speed: 48, radius: 12, air: false, armor: 0,    gateDamage: 6,  damage: 9,  attackInterval: 1.2, xp: 10, gold: 5,
                     split: { type: 'slimeling', count: 2 } },                                                     // 죽으면 꼬마 슬라임 2마리로 분열
+    ironSlime:    { name: '강철 슬라임', hp: 160, speed: 40, radius: 13, air: false, armor: 0.5, gateDamage: 8, damage: 10, attackInterval: 1.2, xp: 14, gold: 8 },   // 물리 피해 절반
+    acidSlime:    { name: '산성 슬라임', hp: 90, speed: 50, radius: 12, air: false, armor: 0, gateDamage: 6, damage: 9, attackInterval: 1.1, xp: 11, gold: 6,
+                    deathPool: { radius: 60, dps: 16, duration: 4 } },                                           // 죽으면 산성 웅덩이 (영웅·병사 지속 피해)
+    fireSlime:    { name: '불꽃 슬라임', hp: 70, speed: 46, radius: 11, air: false, armor: 0, gateDamage: 6, damage: 9, attackInterval: 2.0, xp: 12, gold: 7,
+                    ranged: true, range: 140, splash: 40 },                                                       // 불덩이: 떨어진 곳 주변 범위 피해
     slimeling:    { name: '꼬마 슬라임', hp: 35, speed: 62, radius: 7,  air: false, armor: 0,    gateDamage: 2,  damage: 4,  attackInterval: 1.0, xp: 3,  gold: 2 },
     skeleton:     { name: '해골 병사', hp: 75,  speed: 70, radius: 10, air: false, armor: 0.35, gateDamage: 6,  damage: 10, attackInterval: 1.0, xp: 10, gold: 6,
                     revive: { delay: 3, hpRatio: 0.5 } },                                                         // 한 번 쓰러지면 3초 뒤 다시 일어남
@@ -440,11 +446,13 @@ const CONFIG = {
           mix: [{ type: 'orc', weight: 5 }, { type: 'wolf', weight: 2 }, { type: 'goblin', weight: 2 }, { type: 'troll', weight: 1 }, { squad: 'shield', weight: 3 }] },
         { count: 105, duration: 60, boss: ['lich'], road: 'north',
           mix: [{ type: 'skeleton', weight: 5 }, { type: 'ghost', weight: 3 }, { type: 'skeletonMage', weight: 2 }, { squad: 'shieldDead', weight: 2 }] },
-        { count: 120, duration: 65, boss: ['wolfKing', 'goblinShaman', 'orcChief', 'lich'],
+        { count: 120, duration: 65, boss: ['wolfKing', 'goblinShaman', 'orcChief', 'lich'], together: true,   // together: 보스가 한꺼번에 등장
           mix: [{ type: 'orc', weight: 3 }, { type: 'wolf', weight: 3 }, { type: 'skeleton', weight: 3 }, { type: 'goblin', weight: 3 }, { type: 'harpy', weight: 2 }, { type: 'slime', weight: 2 }, { type: 'troll', weight: 1 },
                 { type: 'goblinArcher', weight: 2 }, { squad: 'shield', weight: 3 }] },
       ] },
-      final: { type: 'giantSlimeKing', road: 'east' } },
+      // reinforce: 최종보스가 살아 있는 동안 interval초마다 count마리 슬라임 지원군이 세 길에서 나옴
+      final: { type: 'giantSlimeKing', road: 'east',
+               reinforce: { interval: 8, count: 5, mix: [{ type: 'slime', weight: 3 }, { type: 'ironSlime', weight: 2 }, { type: 'acidSlime', weight: 2 }, { type: 'fireSlime', weight: 2 }] } } },
   ],
 
   // ---------------- 아이템 ----------------
@@ -1624,12 +1632,15 @@ const Art = {
     const r = e.radius, giant = e.type === 'giantSlimeKing', king = e.type === 'slimeKing' || giant, fl = e.flash > 0, sq = Math.sin(e.anim * (king ? 4 : 7)) * 0.12;
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, e.x, e.y + r * 0.35, r * 1.1, r * 0.45); ctx.fill();
     if (this.img(ctx, e.type, e.x, e.y - r * 0.3, r * 2.6, r * 2.6)) return;
-    const col = king ? ['rgba(150,80,210,0.85)', '#c8a0f0'] : ['rgba(90,200,70,0.82)', '#b8f0a0'];
+    const col = king ? ['rgba(150,80,210,0.85)', '#c8a0f0'] : { ironSlime: ['rgba(130,140,152,0.95)', '#dfe4ea'], acidSlime: ['rgba(205,215,40,0.85)', '#f4f8a0'], fireSlime: ['rgba(235,90,40,0.85)', '#ffd08a'] }[e.type] || ['rgba(90,200,70,0.82)', '#b8f0a0'];
     const w = r * (1 + sq), h = r * (0.85 - sq), cy = e.y - h * 0.55;
     ctx.fillStyle = fl ? '#ffffff' : col[0]; ctx.beginPath(); ctx.ellipse(e.x, cy, w, h, 0, Math.PI, 0); ctx.lineTo(e.x + w, cy + h * 0.55); ctx.quadraticCurveTo(e.x, cy + h * 0.85, e.x - w, cy + h * 0.55); ctx.closePath(); ctx.fill();
     ctx.fillStyle = col[1]; ctx.globalAlpha = 0.7; ellipse(ctx, e.x - w * 0.35, cy - h * 0.4, w * 0.25, h * 0.18); ctx.fill(); ctx.globalAlpha = 1;
     const ex = Math.cos(e.face) * w * 0.25;
     ctx.fillStyle = '#1a2a14'; circle(ctx, e.x + ex - w * 0.22, cy, Math.max(1.2, r * 0.12)); ctx.fill(); circle(ctx, e.x + ex + w * 0.22, cy, Math.max(1.2, r * 0.12)); ctx.fill();
+    if (e.type === 'ironSlime') { ctx.strokeStyle = '#4a525c'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(e.x - w * 0.7, cy + h * 0.1); ctx.lineTo(e.x + w * 0.7, cy + h * 0.1); ctx.moveTo(e.x - w * 0.5, cy - h * 0.35); ctx.lineTo(e.x + w * 0.5, cy - h * 0.35); ctx.stroke(); }   // 강철 띠
+    if (e.type === 'acidSlime' && Math.random() < 0.06) FX.puff(e.x + rand(-w, w) * 0.5, e.y, '#c8d83a', rand(3, 6), 0.6, 0, -10, 0.5, 1);   // 산성 방울
+    if (e.type === 'fireSlime') { ctx.fillStyle = `rgba(255,200,80,${0.55 + Math.sin(e.anim * 12) * 0.3})`; ctx.beginPath(); ctx.moveTo(e.x - 4, cy - h * 0.8); ctx.quadraticCurveTo(e.x, cy - h * 1.6, e.x + 4, cy - h * 0.8); ctx.closePath(); ctx.fill(); }   // 머리 위 불꽃
     if (king) {                                                              // 왕관 (대형 슬라임 킹은 몸 크기에 맞춰 크게 + 보석)
       const u = giant ? r / 22 : 1, bx = e.x, by = cy - h * 0.95;
       ctx.fillStyle = '#f2c94c'; ctx.beginPath(); ctx.moveTo(bx - 10 * u, by + 4 * u); ctx.lineTo(bx - 10 * u, by - 4 * u); ctx.lineTo(bx - 5 * u, by); ctx.lineTo(bx, by - 7 * u); ctx.lineTo(bx + 5 * u, by); ctx.lineTo(bx + 10 * u, by - 4 * u); ctx.lineTo(bx + 10 * u, by + 4 * u); ctx.closePath(); ctx.fill();
@@ -1781,7 +1792,7 @@ const Art = {
     else if (T === 'bat' || T === 'harpy') this.bat(ctx, e);
     else if (T === 'dragon') this.dragon(ctx, e);
     else if (T === 'wolf' || T === 'wolfKing') this.wolf(ctx, e);
-    else if (T === 'slime' || T === 'slimeling' || T === 'slimeKing' || T === 'giantSlimeKing') this.slime(ctx, e);
+    else if (T === 'slime' || T === 'slimeling' || T === 'slimeKing' || T === 'giantSlimeKing' || T === 'ironSlime' || T === 'acidSlime' || T === 'fireSlime') this.slime(ctx, e);
     else if (T === 'ghost') this.ghost(ctx, e);
     else if (T === 'golem' || T === 'stoneGiant') this.golem(ctx, e);
     else this.humanoid(ctx, e);
@@ -3028,7 +3039,7 @@ class Arrow {
 class FireFlask {
   constructor(x, y, target, damage, radius) {
     this.sx = x; this.sy = y; this.x = x; this.y = y; this.z = 0; this.tx = target.x; this.ty = target.y;
-    this.damage = damage; this.radius = radius; this.gate = !!target.gate; this.target = target;
+    this.damage = damage; this.radius = radius; this.gate = !!target.gate; this.target = target; this.source = null;
     this.total = Math.max(1, dist(x, y, this.tx, this.ty)); this.T = Math.max(0.35, this.total / 320); this.t = 0; this.spin = 0; this.done = false;
   }
   update(dt) {
@@ -3038,7 +3049,7 @@ class FireFlask {
     if (p < 1) return;
     this.done = true;
     if (this.gate) this.target.takeDamage(this.damage);
-    else for (const a of alliesIn(this.tx, this.ty, this.radius)) a.takeDamage(this.damage);
+    else for (const a of alliesIn(this.tx, this.ty, this.radius)) a.takeDamage(this.damage, this.source);
     for (let i = 0; i < 12; i++) {
       const a = rand(0, TAU), r = rand(0, this.radius * 0.8);
       FX.add({ k: 'flame', x: this.tx + Math.cos(a) * r, y: this.ty + Math.sin(a) * r * 0.6, vx: 0, vy: -26, g: 0, life: rand(0.3, 0.6), max: 0.6, size: rand(5, 9) });
@@ -3146,8 +3157,12 @@ class Soldier {
   atkMul() { const p = this.passive; return supHaste(this) * (p && p.attackSpeed ? 1 - p.attackSpeed : 1); }     // 공격 간격 배율
   outDamage() { const p = this.passive; return this.damage * supMight(this) * (p && p.damage ? 1 + p.damage : 1); }
   get alive() { return !this.dead; }
-  takeDamage(amount) {
+  takeDamage(amount, src) {
     if (this.dead) return;
+    if (src instanceof Enemy && src.alive) {                       // 나를 공격한 적을 기억 → 다가가서 반격 (근처 쉬는 병사도 함께)
+      this.provoked = src; this.provokedT = G.time;
+      for (const u of G.soldiers) if (u !== this && !u.dead && !u.target && !u.cfg.support && dist(u.x, u.y, this.x, this.y) < 140) { u.provoked = src; u.provokedT = G.time; }
+    }
     const p = this.passive, stal = p && p.hpRatio && this.hp <= this.maxHp * p.hpRatio ? p.armor : 0;   // 보병 불굴
     this.hp -= amount * (1 - Math.min(0.85, this.armor + supGuard(this) + stal)); this.lastHit = G.time; this.flash = 0.1;
     if (this.hp <= 0) this.die();
@@ -3171,6 +3186,9 @@ class Soldier {
     const c = this.cfg, det = this.detect; let best = null, bd = Infinity;
     for (const e of this.engaged) { if (!e.alive) continue; const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
     if (best) return best;
+    const pv = this.provoked;                                      // 멀리서 나를(또는 옆 병사를) 공격한 적: 다가가서 반격
+    if (pv && pv.alive && G.time - this.provokedT < CONFIG.soldiers.provokeTime && (!pv.air || c.canHitAir || pv.low) && dist(this.x, this.y, pv.x, pv.y) < CONFIG.soldiers.provokeRange) return pv;
+    this.provoked = null;
     for (const e of G.enemies) {
       if (!e.alive || (e.air && !c.canHitAir && !e.low)) continue;
       const d = dist(this.x, this.y, e.x, e.y) - (e.post ? 30 : 0);       // 기지 수비병은 조금 덜 우선
@@ -3217,7 +3235,7 @@ class Soldier {
 
     // 1) 근처 적과 싸움 (싸우기 시작한 자리에서 너무 멀어진 적은 내 근처에 없을 때만 포기)
     const A = this.anchor;
-    if (this.target && (!this.target.alive || (A && dist(this.target.x, this.target.y, A.x, A.y) > S.leash + 30 && dist(this.target.x, this.target.y, this.x, this.y) > this.detect + 40))) this.target = null;
+    if (this.target && (!this.target.alive || (A && this.target !== this.provoked && dist(this.target.x, this.target.y, A.x, A.y) > S.leash + 30 && dist(this.target.x, this.target.y, this.x, this.y) > this.detect + 40))) this.target = null;
     this.retarget -= dt;
     if (!this.target || this.retarget <= 0) {
       this.retarget = 0.3; const was = this.target; this.target = this.findEnemy();
@@ -3455,7 +3473,7 @@ function updateWaves(dt) {
   if (W.phase === 'rest') {
     W.t -= dt;
     if (W.t <= 0) {
-      W.phase = 'spawn'; W.spawned = 0; W.groupT = 0; W.bossStarted = false; W.bossQ = []; W.boss = null; W.bossN = 0;
+      W.phase = 'spawn'; W.spawned = 0; W.groupT = 0; W.bossStarted = false; W.bossQ = []; W.boss = null; W.bossN = 0; W.bosses = [];
       for (const pt of G.portals) pt.spawns = wv.mix.filter(m => m.type);
       showBanner(`웨이브 ${W.i + 1} / ${list.length} 시작! 몬스터 ${wv.count}마리가 세 갈래 길로 몰려옵니다`, '#ff9a6a', 3); Sound.play('horn'); G.banner.warn = true;
     }
@@ -3478,30 +3496,44 @@ function updateWaves(dt) {
     if (!W.bossStarted && W.spawned >= wv.count * (S.bossAt != null ? S.bossAt : 1)) {   // 웨이브 중간에 보스 등장
       W.bossStarted = true; W.bossQ = wv.boss.slice(); W.bossDelay = 0.5;
     }
-    if (W.bossStarted && (!W.boss || !W.boss.alive) && W.bossQ.length) {   // 보스가 여럿이면 앞 보스를 쓰러뜨린 뒤 차례로
+    if (W.bossStarted && W.bossQ.length && (wv.together || !W.bosses.some(b => b.alive))) {   // 보스 등장: together면 한꺼번에, 아니면 앞 보스를 쓰러뜨린 뒤 차례로
       W.bossDelay -= dt;
       if (W.bossDelay <= 0) {
-        const roads = G.portals, pt = (wv.road && roads.find(r => r.key === wv.road)) || roads[W.bossN % roads.length];
-        const type = W.bossQ.shift(); W.bossN++;
-        W.boss = spawnStageBoss(type, pt, false);
-        const left = W.bossQ.length;
-        showBanner(`웨이브 ${W.i + 1} 보스: ${W.boss.cfg.name} (${pt.cfg.name}) · 정예 부하 ${CONFIG.bossPower.escort.mid}마리${left ? ` · 남은 보스 ${left}` : ''}`, '#ffae5a', 3.2); G.banner.warn = true;
+        const roads = G.portals, names = [];
+        do {
+          const pt = (wv.road && roads.find(r => r.key === wv.road)) || roads[W.bossN % roads.length];
+          const type = W.bossQ.shift(); W.bossN++;
+          W.boss = spawnStageBoss(type, pt, false); W.bosses.push(W.boss); names.push(`${W.boss.cfg.name}(${pt.cfg.name})`);
+        } while (wv.together && W.bossQ.length);
+        showBanner(wv.together ? `웨이브 ${W.i + 1} 보스 ${names.length}마리가 한꺼번에 몰려옵니다! ${names.join(' · ')}`
+          : `웨이브 ${W.i + 1} 보스: ${names[0]} · 정예 부하 ${CONFIG.bossPower.escort.mid}마리${W.bossQ.length ? ` · 남은 보스 ${W.bossQ.length}` : ''}`, '#ffae5a', 3.6); G.banner.warn = true;
+        if (wv.together) { G.redFlash = 0.6; shake(8, 0.6); }
         W.bossDelay = 2.5;
       }
     }
-    const done = W.spawned >= wv.count && !W.pending.length && W.bossStarted && !W.bossQ.length && (!W.boss || !W.boss.alive);
+    const done = W.spawned >= wv.count && !W.pending.length && W.bossStarted && !W.bossQ.length && !W.bosses.some(b => b.alive);
     if (done) {
       if (W.i >= list.length - 1) {                            // 마지막 웨이브 → 최종보스
         W.phase = 'final';
         const F = G.stage.final, pt = G.portals.find(r => r.key === F.road) || G.portals[0];
-        W.boss = spawnStageBoss(F.type, pt, true);
+        W.boss = spawnStageBoss(F.type, pt, true); W.rt = F.reinforce ? F.reinforce.interval * 0.5 : 0;
       } else {
         W.i++; W.phase = 'rest'; W.t = S.rest;
         showBanner(`웨이브 ${W.i} 완료! ${S.rest}초 뒤 웨이브 ${W.i + 1}`, '#ffe08a', 3);
       }
     }
   } else if (W.phase === 'final') {
-    const type = G.stage.final.type;
+    const type = G.stage.final.type, RF = G.stage.final.reinforce;
+    if (RF && G.enemies.some(e => e.alive && e.type === type)) {   // 슬라임 지원군 (최종보스가 살아 있는 동안)
+      W.rt -= dt;
+      if (W.rt <= 0) {
+        W.rt += RF.interval;
+        for (let j = 0; j < RF.count; j++) {
+          const pt = G.portals[W.road++ % G.portals.length];
+          W.pending.push({ t: Math.floor(j / G.portals.length) * S.groupGap * 2, type: weightedPick(RF.mix).type, portal: pt });
+        }
+      }
+    }
     if (!G.enemies.some(e => e.alive && e.type === type) && !G.pendingResult) {   // 분열한 슬라임까지 모두 쓰러뜨리면 승리
       G.pendingResult = 'won'; G.endTimer = 2.5;
       showBanner(`${CONFIG.enemies[type].name}을 쓰러뜨렸습니다!`, '#ffd36b', 3);
@@ -4212,7 +4244,7 @@ class Enemy {
   }
   // 원거리 공격: 활(화살) 또는 마법(보라색 마법탄)
   shootAt(t, dmg) {
-    if (this.cfg.splash) { G.projectiles.push(new FireFlask(this.x, this.y - 6, t, dmg, this.cfg.splash)); return; }
+    if (this.cfg.splash) { const f = new FireFlask(this.x, this.y - 6, t, dmg, this.cfg.splash); f.source = this; f.fire = this.type === 'fireSlime'; G.projectiles.push(f); return; }
     if (this.cfg.magic) G.projectiles.push(new MagicBolt(this.x, this.y - 8, t, { damage: dmg }, { boltSpeed: 430 }, this));
     else G.projectiles.push(new Arrow(this.x, this.y - 4, t, dmg, 520, this));
   }
@@ -4310,6 +4342,11 @@ class Enemy {
       if (this.reachedEnd) { b.slot = G.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
       if (this.post) { b.post = this.post; b.guardCfg = this.guardCfg; b.state = 'guard'; }
       G.enemies.push(b);
+    }
+    if (c.deathPool) {                                              // 산성 슬라임: 죽은 자리에 산성 웅덩이
+      const P = c.deathPool; G.hazards.push(new Hazard(this.x, this.y, P.radius, P.dps * this.skillMul, P.duration, '200,220,40'));
+      for (let i = 0; i < 8; i++) FX.puff(this.x + rand(-P.radius, P.radius) * 0.5, this.y + rand(-P.radius, P.radius) * 0.3, '#c8d83a', rand(6, 11), 0.8, 0, -16, 0.55, 1.2);
+      Sound.play('sizzle', this.x, this.y, 0.4);
     }
     if (c.revive && !this.revived && killer) {                      // 해골: 3초 뒤 다시 일어남
       G.pending.push({ t: c.revive.delay, type: this.type, base: this.base, x: this.x, y: this.y, dist: this.dist, reachedEnd: this.reachedEnd, post: this.post, guardCfg: this.guardCfg, hpRatio: c.revive.hpRatio });
@@ -4481,8 +4518,9 @@ class Hero {
   }
 
   // ----- 피해 / 사망 / 부활 -----
-  takeDamage(amount) {
+  takeDamage(amount, src) {
     if (this.dead) return;
+    if (src instanceof Enemy && src.alive) { this.provoked = src; this.provokedT = G.time; }   // 나를 공격한 적 기억 (지키는 중이면 반격)
     let d = amount * (1 - Math.min(0.85, this.armor + supGuard(this)));
     if (this.buffs.warcry > 0) d *= 1 - this.buffs.warcryRed;
     this.hp -= d; this.lastHit = G.time; this.flash = 0.1;
@@ -4695,6 +4733,8 @@ class Hero {
       const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; }
     }
     if (best) return best;
+    const pv = this.provoked;                                       // 멀리서 공격하는 적: 지키는 자리에서 leash 안이면 다가가 반격
+    if (pv && pv.alive && G.time - this.provokedT < 4 && (!pv.air || c.canHitAir || pv.low) && dist(pv.x, pv.y, this.guard.x, this.guard.y) <= c.leash) return pv;
     for (const e of G.enemies) {
       if (!e.alive || (e.air && !c.canHitAir && !e.low)) continue;
       if (dist(e.x, e.y, this.guard.x, this.guard.y) > c.aggroRange) continue;
@@ -5278,7 +5318,8 @@ function drawHUD(ctx) {
   if (G.wave) {                                                       // 보스 스테이지: 웨이브 진행
     const W = G.wave, L = G.stage.waves.list, wv = L[W.i];
     txt(ctx, W.phase === 'final' ? '최종 보스' : `웨이브  ${W.i + 1} / ${L.length}`, x + 12 * k, top + 17 * k, 15 * k, '#ffb09a');
-    const bossTxt = W.boss && W.boss.alive ? ` · 보스 ${W.boss.cfg.name}${W.bossQ.length ? ` (+${W.bossQ.length})` : ''}` : '';
+    const liveB = (W.bosses || []).filter(b => b.alive);
+    const bossTxt = liveB.length > 1 ? ` · 보스 ${liveB.length}마리` : liveB.length ? ` · 보스 ${liveB[0].cfg.name}${W.bossQ.length ? ` (+${W.bossQ.length})` : ''}` : '';
     const st = W.phase === 'rest' ? `다음 웨이브까지 ${Math.ceil(W.t)}초` : W.phase === 'spawn' ? `몬스터 ${W.spawned} / ${wv.count}${bossTxt}`
       : `${CONFIG.enemies[G.stage.final.type].name} ${G.enemies.filter(e => e.alive && e.type === G.stage.final.type).length}마리`;
     fitTxt(ctx, st, x + 12 * k, top + 40 * k, 13.5 * k, w - 24 * k, '#f3e3bf', 'left', { weight: 700 });
@@ -5716,7 +5757,7 @@ function drawMinimap(ctx) {
 }
 
 // ---------- 보스 체력바 (화면 위 가운데) ----------
-function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.final ? 1 : 0) - (a.final ? 1 : 0)).slice(0, 2); }
+function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.final ? 1 : 0) - (a.final ? 1 : 0)).slice(0, G.wave ? 4 : 2); }
 function drawBossBars(ctx) {
   if (G.state !== 'playing') return 0;
   const bs = bossBars(); if (!bs.length) return 0;
