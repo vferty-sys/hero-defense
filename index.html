@@ -82,6 +82,12 @@ const CONFIG = {
   },
   wallArcher: { arrowSpeed: 700 },
 
+  // ---------------- 길목 성벽 (각 막 fromStage스테이지부터, 지도마다 정해진 자리 1~2곳) ----------------
+  // 몬스터(지상)는 성벽을 부숴야 지나감 · 공중 몬스터는 넘어감 · 영웅과 병사는 그냥 지나감
+  // 목수 1명이 repairDelay초 동안 공격이 없으면 초당 repair씩 수리 / 무너지면 웨이브 사이에 들인 비용의 rebuildRatio로 같은 레벨 재건
+  walls: { fromStage: 4, repair: 6, repairDelay: 5, rebuildRatio: 0.5,
+           levels: [ { cost: 400, hp: 1500, archers: 1 }, { cost: 600, hp: 2500, archers: 2 }, { cost: 900, hp: 4000, archers: 2, catapults: 1 } ] },
+
   // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / startGold: 시작 골드 (나중에 '지옥' 난이도 추가 예정)
   difficulty: {
@@ -297,6 +303,15 @@ const CONFIG = {
                     deathPool: { radius: 60, dps: 16, duration: 4 } },                                           // 죽으면 산성 웅덩이 (영웅·병사 지속 피해)
     fireSlime:    { name: '불꽃 슬라임', hp: 70, speed: 46, radius: 11, air: false, armor: 0, gateDamage: 6, damage: 9, attackInterval: 2.0, xp: 12, gold: 7,
                     ranged: true, range: 140, splash: 40 },                                                       // 불덩이: 떨어진 곳 주변 범위 피해
+    bombSlime:    { name: '폭탄 슬라임', hp: 50, speed: 70, radius: 11, air: false, armor: 0, gateDamage: 0, damage: 0, attackInterval: 1.0, xp: 8, gold: 6,
+                    explode: { radius: 70, damage: 45, gateDamage: 60 } },                                       // 병사·성벽·성문에 붙으면 터짐
+    poisonSlime:  { name: '독 슬라임', hp: 75, speed: 48, radius: 11, air: false, armor: 0, gateDamage: 6, damage: 7, attackInterval: 1.8, xp: 11, gold: 8,
+                    ranged: true, range: 150, splash: 26, poison: { dps: 6, duration: 4 } },                     // 독침: 맞으면 4초 동안 독 피해
+    giantSlime:   { name: '거대 슬라임', hp: 420, speed: 34, radius: 18, air: false, armor: 0.75, gateDamage: 20, damage: 18, attackInterval: 1.5, xp: 30, gold: 24, tank: true },   // 분대장 탱커: 물리 피해 1/4
+    iceSlime:     { name: '얼음 슬라임', hp: 65, speed: 46, radius: 11, air: false, armor: 0.1, gateDamage: 6, damage: 8, attackInterval: 2.0, xp: 12, gold: 8,
+                    ranged: true, range: 150, splash: 30, chill: { slow: 0.35, duration: 2.5 } },              // 얼음 덩이: 맞으면 이동·공격이 느려짐
+    healSlime:    { name: '치유 슬라임', hp: 70, speed: 46, radius: 11, air: false, armor: 0, gateDamage: 4, damage: 4, attackInterval: 1.2, xp: 12, gold: 8,
+                    healer: { radius: 130, ratio: 0.06, interval: 3 } },                                       // 3초마다 주변 몬스터 체력 6% 회복 (보스 제외)
     slimeling:    { name: '꼬마 슬라임', hp: 35, speed: 62, radius: 7,  air: false, armor: 0,    gateDamage: 2,  damage: 4,  attackInterval: 1.0, xp: 3,  gold: 2 },
     skeleton:     { name: '해골 병사', hp: 75,  speed: 70, radius: 10, air: false, armor: 0.35, gateDamage: 6,  damage: 10, attackInterval: 1.0, xp: 10, gold: 6,
                     revive: { delay: 3, hpRatio: 0.5 } },                                                         // 한 번 쓰러지면 3초 뒤 다시 일어남
@@ -332,6 +347,13 @@ const CONFIG = {
                     summon: { type: 'slime', count: 2, interval: 8 }, split: { type: 'slime', count: 4 },
                     skills: [ { id: 'poison', name: '산성 웅덩이', cooldown: 9,  first: 4, range: 260, radius: 85, delay: 0.7, dps: 26, duration: 6 },
                               { id: 'slam',   name: '내려찍기',   cooldown: 10, first: 7, trigger: 110, radius: 120, delay: 1.0, damage: 85, stun: 1.4 } ] },
+    // 슬라임 계열 중간보스
+    ironSlimeKing: { name: '강철 슬라임 왕', boss: true, slimeBoss: true, hp: 3000, speed: 32, radius: 26, air: false, armor: 0.5, gateDamage: 40, damage: 36, attackInterval: 1.5, xp: 280, gold: 180,
+                    summon: { type: 'ironSlime', count: 2, interval: 9 },
+                    skills: [ { id: 'slam', name: '강철 내려찍기', cooldown: 9, first: 5, trigger: 120, radius: 130, delay: 1.0, damage: 95, stun: 1.5 } ] },
+    poisonSlimeQueen: { name: '독 슬라임 여왕', boss: true, slimeBoss: true, hp: 2400, speed: 38, radius: 24, air: false, armor: 0.15, gateDamage: 30, damage: 28, attackInterval: 1.4, xp: 260, gold: 170,
+                    summon: { type: 'poisonSlime', count: 2, interval: 9 },
+                    skills: [ { id: 'poison', name: '독 늪', cooldown: 7, first: 3, range: 300, radius: 95, delay: 0.7, dps: 30, duration: 6, color: '150,90,210' } ] },
     // 대형 슬라임 킹 (보스 스테이지 최종보스): 쓰러지면 2마리로 분열(본체 체력의 40%씩) → 다시 4마리(20%씩). 분열해도 공격력·스킬은 그대로
     giantSlimeKing: { name: '대왕 슬라임', boss: true, final: true, hp: 13060, speed: 30, radius: 46, air: false, armor: 0.15, gateDamage: 80, damage: 50, attackInterval: 1.4, xp: 1500, gold: 1000,
                     summon: { type: 'slime', count: 3, interval: 9 }, megaSplit: { count: 2, hpRatios: [0.4, 0.2], sizes: [0.75, 0.55] },
@@ -409,41 +431,45 @@ const CONFIG = {
   waveRules: { waveBase: 8, wavePerStage: 2, first: 50, perWave: 10, cap: 150, overHp: 1 / 400, overElite: 1 / 500, overEliteMax: 0.35,
                spawnBase: 30, spawnPer: 0.15, groupBase: 4, groupMax: 12, groupGap: 0.3, squadBase: 5, squadEvery: 3, midEvery: 3, midAt: 0.5,
                countdown: 10, first0: 10,
-               midBosses: [{ type: 'slimeKing', weight: 2 }, { type: 'spiderQueen', weight: 1 }, { type: 'wolfKing', weight: 1 }] },
+               // 중간보스 후보 (minStage 스테이지부터 나옴)
+               midBosses: [{ type: 'slimeKing', weight: 3 }, { type: 'ironSlimeKing', weight: 2, minStage: 3 }, { type: 'poisonSlimeQueen', weight: 2, minStage: 5 },
+                           { type: 'spiderQueen', weight: 1 }, { type: 'wolfKing', weight: 1 }] },
   // 스테이지: map = 지도 / power = 적 체력·공격력 배율 / mix = 일반 무리 (슬라임 90% · 그 외 10%)
   // squad = 분대 구성 (tank 앞장 40% · ranged 가운데 40% · support 뒤 20%), squadWeight = 무리 대신 분대가 나올 비중
   stages: [
     { name: '첫 번째 숲길', map: 's1', power: 1.0,  desc: '입구 1곳 · 10웨이브',
       mix: [{ type: 'slime', weight: 18 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }] },
-    { name: '갈림 언덕',   map: 's2', power: 1.04, desc: '입구 2곳 · 12웨이브',
-      mix: [{ type: 'slime', weight: 12 }, { type: 'ironSlime', weight: 6 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }] },
-    { name: '안개 개울',   map: 's3', power: 1.08, desc: '입구 2곳 · 14웨이브',
-      mix: [{ type: 'slime', weight: 10 }, { type: 'ironSlime', weight: 5 }, { type: 'acidSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }] },
-    { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 16웨이브',
-      mix: [{ type: 'slime', weight: 8 }, { type: 'ironSlime', weight: 5 }, { type: 'acidSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'spider', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['acidSlime'], support: ['slime'] }, squadWeight: 2 },
-    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '양쪽 성문 · 18웨이브',
-      mix: [{ type: 'slime', weight: 7 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 3 },
-    { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 20웨이브',
-      mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 4 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
-    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '양쪽 성문 · 22웨이브',
-      mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 4 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
-    { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 24웨이브',
-      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 5 },
-    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '양쪽 성문 · 26웨이브',
-      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'spider', weight: 1 }, { type: 'harpy', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 5 },
-    { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 28웨이브',
-      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 6 },
+    { name: '갈림 언덕',   map: 's2', power: 1.04, desc: '입구 2곳 · 12웨이브 · 강철 슬라임',
+      mix: [{ type: 'slime', weight: 12 }, { type: 'ironSlime', weight: 6 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['slime'], support: ['slime'] }, squadWeight: 2 },
+    { name: '안개 개울',   map: 's3', power: 1.08, desc: '입구 2곳 · 14웨이브 · 폭탄 슬라임',
+      mix: [{ type: 'slime', weight: 10 }, { type: 'ironSlime', weight: 5 }, { type: 'bombSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['bombSlime'], support: ['slime'] }, squadWeight: 2 },
+    { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 16웨이브 · 성벽 · 산성 슬라임',
+      mix: [{ type: 'slime', weight: 8 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'spider', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['bombSlime', 'acidSlime'], support: ['slime'] }, squadWeight: 3 },
+    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '양쪽 성문 · 18웨이브 · 독 슬라임',
+      mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['poisonSlime'], support: ['acidSlime'] }, squadWeight: 3 },
+    { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 20웨이브 · 불꽃 슬라임',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime', 'bombSlime'] }, squadWeight: 4 },
+    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '양쪽 성문 · 22웨이브 · 거대 슬라임',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
+    { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 24웨이브 · 얼음 슬라임',
+      mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 2 }],
+      squad: { tank: ['giantSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['bombSlime'] }, squadWeight: 5 },
+    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '양쪽 성문 · 26웨이브 · 치유 슬라임',
+      mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'spider', weight: 2 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime'] }, squadWeight: 5 },
+    { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 28웨이브 · 모든 슬라임',
+      mix: [{ type: 'slime', weight: 3 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 3 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'wolf', weight: 2 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime', 'bombSlime'] }, squadWeight: 6 },
     // 최종보스전: 10웨이브를 막으면 대왕 슬라임 등장. 쓰러질 때까지 squadEvery초마다 정예 분대, midEvery초마다 중간보스
     { name: '대왕 슬라임', boss: true, map: 'boss1', power: 1.36, waves: 10, desc: '최종보스전 · 10웨이브',
-      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
-      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 6,
+      mix: [{ type: 'slime', weight: 3 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 3 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'wolf', weight: 2 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime', 'bombSlime'] }, squadWeight: 6,
       final: { type: 'giantSlimeKing', ent: 'E', squadEvery: 15, midEvery: 60 } },
   ],
 
@@ -1210,6 +1236,36 @@ const Art = {
       txt(ctx, String(q.i + 1), q.wx, q.top - 16, 15, sel ? '#ffe08a' : '#e8eefc', 'center', { weight: 900, stroke: 'rgba(0,0,0,0.8)' });
     }
   },
+  // 길목 성벽: 안 지었으면 점선 + 건설 표시, 지었으면 돌벽 (레벨 표시 · 체력 막대), 무너졌으면 돌무더기
+  wallSpot(ctx, wl, rt) {
+    const { a, b } = wl, sel = G.sel && G.sel.kind === 'wall' && G.sel.ref === wl.i;
+    if (!wl.level) {
+      ctx.save(); ctx.setLineDash([10, 7]); ctx.lineDashOffset = -rt * 10; ctx.strokeStyle = `rgba(232,180,60,${sel ? 0.95 : 0.7})`; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+      const n = CONFIG.walls.levels[0], ok = G.gold >= n.cost;
+      circle(ctx, wl.x, wl.y, 20); ctx.fillStyle = 'rgba(30,22,14,0.85)'; ctx.fill(); ctx.strokeStyle = ok ? '#b8ff9a' : '#e8c35a'; ctx.lineWidth = 2.5; ctx.stroke();
+      Icon.hammer(ctx, wl.x, wl.y - 2, 18);
+      txt(ctx, `성벽 ${n.cost}`, wl.x, wl.y + 32, 13, ok ? '#d8ffb8' : '#ffd98a', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.85)' });
+      return;
+    }
+    if (wl.broken) {                                              // 돌무더기
+      for (let i = 0; i <= 6; i++) { const t = i / 6, x = lerp(a.x, b.x, t), y = lerp(a.y, b.y, t); ctx.fillStyle = i % 2 ? '#6e6860' : '#857e74'; ellipse(ctx, x + Math.sin(i * 3) * 6, y + Math.cos(i * 2) * 4, 11, 7); ctx.fill(); }
+      if (wl.canRebuild()) { txt(ctx, `재건 ${wl.rebuildCost}`, wl.x, wl.y - 26, 13, G.gold >= wl.rebuildCost ? '#d8ffb8' : '#ffd98a', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.85)' }); }
+      return;
+    }
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 26; ctx.beginPath(); ctx.moveTo(a.x + 4, a.y + 6); ctx.lineTo(b.x + 4, b.y + 6); ctx.stroke();
+    ctx.strokeStyle = wl.flash > 0 ? '#e8b0a0' : '#8a847a'; ctx.lineWidth = 22; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = '#a7a196'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const n = Math.floor(wl.len / 16), ax = wl.along.x, ay = wl.along.y;     // 총안
+    ctx.fillStyle = '#6e6960';
+    for (let i = 0; i <= n; i++) { const x = a.x + ax * i * 16 - wl.back.x * 8, y = a.y + ay * i * 16 - wl.back.y * 8; ctx.fillRect(x - 4, y - 4, 8, 8); }
+    ctx.restore();
+    for (let i = 0; i < wl.level; i++) { circle(ctx, wl.x - (wl.level - 1) * 7 + i * 14, wl.y - 22, 4.5); ctx.fillStyle = '#ffd36b'; ctx.fill(); ctx.strokeStyle = '#5a3a10'; ctx.lineWidth = 1.2; ctx.stroke(); }
+    if (wl.hp < wl.maxHp) bar(ctx, wl.x - 34, wl.y - 36, 68, 7, wl.hp / wl.maxHp, '#d9a23a');
+    if (wl.repairing) Icon.hammer(ctx, wl.x + 42, wl.y - 34, 14);
+    if (sel) { ctx.strokeStyle = `rgba(255,230,140,${0.6 + Math.sin(rt * 6) * 0.3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+  },
   slimeCave(ctx, c, rt) {                                                  // 몬스터가 나오는 굴: 바위 언덕 + 검은 입구 + 보라 기운
     const x = c.x, y = c.y;
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, x + 6, y + 18, 92, 34); ctx.fill();
@@ -1651,10 +1707,14 @@ const Art = {
   },
   // 슬라임 / 꼬마 슬라임 / 슬라임 왕 (말랑한 방울)
   slime(ctx, e) {
-    const r = e.radius, giant = e.type === 'giantSlimeKing', king = e.type === 'slimeKing' || giant, fl = e.flash > 0, sq = Math.sin(e.anim * (king ? 4 : 7)) * 0.12;
+    const r = e.radius, giant = e.type === 'giantSlimeKing', king = e.type === 'slimeKing' || giant || !!e.cfg.slimeBoss, fl = e.flash > 0, sq = Math.sin(e.anim * (king ? 4 : 7)) * 0.12;
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, e.x, e.y + r * 0.35, r * 1.1, r * 0.45); ctx.fill();
     if (this.img(ctx, e.type, e.x, e.y - r * 0.3, r * 2.6, r * 2.6)) return;
-    const col = king ? ['rgba(150,80,210,0.85)', '#c8a0f0'] : { ironSlime: ['rgba(130,140,152,0.95)', '#dfe4ea'], acidSlime: ['rgba(205,215,40,0.85)', '#f4f8a0'], fireSlime: ['rgba(235,90,40,0.85)', '#ffd08a'] }[e.type] || ['rgba(90,200,70,0.82)', '#b8f0a0'];
+    const col = { ironSlime: ['rgba(130,140,152,0.95)', '#dfe4ea'], acidSlime: ['rgba(205,215,40,0.85)', '#f4f8a0'], fireSlime: ['rgba(235,90,40,0.85)', '#ffd08a'],
+                  bombSlime: ['rgba(190,60,45,0.92)', '#ffb08a'], poisonSlime: ['rgba(120,60,175,0.88)', '#d8b0ff'], giantSlime: ['rgba(40,120,95,0.93)', '#8fd8b8'],
+                  iceSlime: ['rgba(140,200,240,0.88)', '#f0fbff'], healSlime: ['rgba(250,170,205,0.9)', '#fff0f6'],
+                  ironSlimeKing: ['rgba(120,130,145,0.95)', '#e0e6ec'], poisonSlimeQueen: ['rgba(110,50,165,0.9)', '#cfa0ff'] }[e.type]
+      || (king ? ['rgba(150,80,210,0.85)', '#c8a0f0'] : ['rgba(90,200,70,0.82)', '#b8f0a0']);
     const w = r * (1 + sq), h = r * (0.85 - sq), cy = e.y - h * 0.55;
     ctx.fillStyle = fl ? '#ffffff' : col[0]; ctx.beginPath(); ctx.ellipse(e.x, cy, w, h, 0, Math.PI, 0); ctx.lineTo(e.x + w, cy + h * 0.55); ctx.quadraticCurveTo(e.x, cy + h * 0.85, e.x - w, cy + h * 0.55); ctx.closePath(); ctx.fill();
     ctx.fillStyle = col[1]; ctx.globalAlpha = 0.7; ellipse(ctx, e.x - w * 0.35, cy - h * 0.4, w * 0.25, h * 0.18); ctx.fill(); ctx.globalAlpha = 1;
@@ -1663,6 +1723,14 @@ const Art = {
     if (e.type === 'ironSlime') { ctx.strokeStyle = '#4a525c'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(e.x - w * 0.7, cy + h * 0.1); ctx.lineTo(e.x + w * 0.7, cy + h * 0.1); ctx.moveTo(e.x - w * 0.5, cy - h * 0.35); ctx.lineTo(e.x + w * 0.5, cy - h * 0.35); ctx.stroke(); }   // 강철 띠
     if (e.type === 'acidSlime' && Math.random() < 0.06) FX.puff(e.x + rand(-w, w) * 0.5, e.y, '#c8d83a', rand(3, 6), 0.6, 0, -10, 0.5, 1);   // 산성 방울
     if (e.type === 'fireSlime') { ctx.fillStyle = `rgba(255,200,80,${0.55 + Math.sin(e.anim * 12) * 0.3})`; ctx.beginPath(); ctx.moveTo(e.x - 4, cy - h * 0.8); ctx.quadraticCurveTo(e.x, cy - h * 1.6, e.x + 4, cy - h * 0.8); ctx.closePath(); ctx.fill(); }   // 머리 위 불꽃
+    if (e.type === 'bombSlime') {                                            // 폭탄: 머리 위 심지 + 불꽃
+      ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(e.x, cy - h * 0.85); ctx.quadraticCurveTo(e.x + 4, cy - h * 1.3, e.x + 2, cy - h * 1.55); ctx.stroke();
+      ctx.fillStyle = Math.sin(e.anim * 20) > 0 ? '#ffe08a' : '#ff7a2a'; circle(ctx, e.x + 2, cy - h * 1.6, 2.2); ctx.fill();
+    }
+    if (e.type === 'poisonSlime' || e.type === 'poisonSlimeQueen') { ctx.fillStyle = 'rgba(140,230,90,0.85)'; circle(ctx, e.x - w * 0.45, cy + h * 0.15, r * 0.12); ctx.fill(); circle(ctx, e.x + w * 0.5, cy - h * 0.1, r * 0.1); ctx.fill(); circle(ctx, e.x + w * 0.1, cy + h * 0.35, r * 0.08); ctx.fill(); }   // 독 반점
+    if (e.type === 'giantSlime' || e.type === 'ironSlimeKing') { ctx.strokeStyle = 'rgba(20,40,32,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, cy, w * 0.75, h * 0.6, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); ctx.beginPath(); ctx.moveTo(e.x - w * 0.8, cy + h * 0.2); ctx.lineTo(e.x + w * 0.8, cy + h * 0.2); ctx.stroke(); }   // 단단한 껍질
+    if (e.type === 'iceSlime') { ctx.fillStyle = '#e8f8ff'; for (const o of [-0.45, 0, 0.45]) { ctx.beginPath(); ctx.moveTo(e.x + w * o - 3, cy - h * 0.7); ctx.lineTo(e.x + w * o, cy - h * 1.25); ctx.lineTo(e.x + w * o + 3, cy - h * 0.7); ctx.closePath(); ctx.fill(); } }   // 얼음 결정
+    if (e.type === 'healSlime') { ctx.fillStyle = '#ffffff'; ctx.fillRect(e.x - 1.5, cy - h * 1.2, 3, 9); ctx.fillRect(e.x - 4.5, cy - h * 1.2 + 3, 9, 3); }   // 치유 십자
     if (king) {                                                              // 왕관 (대형 슬라임 킹은 몸 크기에 맞춰 크게 + 보석)
       const u = giant ? r / 22 : 1, bx = e.x, by = cy - h * 0.95;
       ctx.fillStyle = '#f2c94c'; ctx.beginPath(); ctx.moveTo(bx - 10 * u, by + 4 * u); ctx.lineTo(bx - 10 * u, by - 4 * u); ctx.lineTo(bx - 5 * u, by); ctx.lineTo(bx, by - 7 * u); ctx.lineTo(bx + 5 * u, by); ctx.lineTo(bx + 10 * u, by - 4 * u); ctx.lineTo(bx + 10 * u, by + 4 * u); ctx.closePath(); ctx.fill();
@@ -1814,7 +1882,7 @@ const Art = {
     else if (T === 'bat' || T === 'harpy') this.bat(ctx, e);
     else if (T === 'dragon') this.dragon(ctx, e);
     else if (T === 'wolf' || T === 'wolfKing') this.wolf(ctx, e);
-    else if (T === 'slime' || T === 'slimeling' || T === 'slimeKing' || T === 'giantSlimeKing' || T === 'ironSlime' || T === 'acidSlime' || T === 'fireSlime') this.slime(ctx, e);
+    else if (/[Ss]lime/.test(T)) this.slime(ctx, e);
     else if (T === 'ghost') this.ghost(ctx, e);
     else if (T === 'golem' || T === 'stoneGiant') this.golem(ctx, e);
     else this.humanoid(ctx, e);
@@ -2259,10 +2327,11 @@ const Art = {
   flask(ctx, p) {                                                          // 화염병: 그림자 + 회전하는 병 + 불꽃
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, p.x, p.y + 3, 5, 2.5); ctx.fill();
     const y = p.y - p.z;
-    ctx.fillStyle = 'rgba(255,150,50,0.35)'; circle(ctx, p.x, y, 8); ctx.fill();
+    const C = p.kind === 'poison' ? ['rgba(160,90,220,0.35)', '#8a3ad0', '#e0b0ff'] : p.kind === 'ice' ? ['rgba(170,220,255,0.4)', '#7cc4ee', '#f0fbff'] : ['rgba(255,150,50,0.35)', '#d8622a', '#ffd08a'];
+    ctx.fillStyle = C[0]; circle(ctx, p.x, y, 8); ctx.fill();
     ctx.save(); ctx.translate(p.x, y); ctx.rotate(p.spin);
-    ctx.fillStyle = '#7a4a2a'; ctx.fillRect(-1.5, -7, 3, 4);
-    ctx.fillStyle = '#d8622a'; circle(ctx, 0, 0, 4.2); ctx.fill(); ctx.fillStyle = '#ffd08a'; circle(ctx, -1.2, -1.2, 1.4); ctx.fill();
+    if (!p.kind) { ctx.fillStyle = '#7a4a2a'; ctx.fillRect(-1.5, -7, 3, 4); }
+    ctx.fillStyle = C[1]; circle(ctx, 0, 0, 4.2); ctx.fill(); ctx.fillStyle = C[2]; circle(ctx, -1.2, -1.2, 1.4); ctx.fill();
     ctx.restore();
   },
   bolt(ctx, p) {
@@ -3000,6 +3069,76 @@ class Gate {
     return working;
   }
 }
+// ---------- 길목 성벽 ----------
+class WallSpot {
+  constructor(i, seg) {
+    this.i = i; this.a = { x: seg[0][0], y: seg[0][1] }; this.b = { x: seg[1][0], y: seg[1][1] };
+    this.x = (this.a.x + this.b.x) / 2; this.y = (this.a.y + this.b.y) / 2;
+    this.level = 0; this.hp = 0; this.maxHp = 0; this.invested = 0; this.broken = false;
+    this.lastHit = -999; this.flash = 0; this.repairing = false; this.hammer = 0;
+    this.archers = []; this.catapults = [];
+    // 성 쪽(뒤) 방향 = 이 자리를 지나는 길의 진행 방향
+    let back = { x: -1, y: 0 };
+    for (const R of MAPDATA.routes) { const c = R.walls.find(q => q.wi === i); if (c) { const sp = R.sample(c.d, { x: 0, y: 0, dx: 0, dy: 0 }); back = { x: sp.dx, y: sp.dy }; break; } }
+    this.back = back;
+    const L = Math.hypot(this.b.x - this.a.x, this.b.y - this.a.y) || 1; this.along = { x: (this.b.x - this.a.x) / L, y: (this.b.y - this.a.y) / L }; this.len = L;
+  }
+  get cfg() { return CONFIG.walls.levels[this.level - 1]; }
+  get next() { return CONFIG.walls.levels[this.level] || null; }
+  get built() { return this.level > 0 && !this.broken; }
+  get rebuildCost() { return Math.round(this.invested * CONFIG.walls.rebuildRatio); }
+  canRebuild() { return this.broken && G.wave && G.wave.phase === 'count'; }
+  // 건설 · 강화 (또는 무너졌으면 재건)
+  act() {
+    if (G.state !== 'playing') return;
+    if (this.broken) {
+      if (!this.canRebuild()) { toast('무너진 성벽은 웨이브 사이에만 다시 지을 수 있어요', '#ffb09a'); Sound.play('error'); return; }
+      const c = this.rebuildCost; if (G.gold < c) { notEnoughGold(); return; }
+      G.gold -= c; this.broken = false; this.hp = this.maxHp; Sound.play('build'); FX.ring(this.x, this.y, 70, '255,215,90', 0.5);
+      toast('성벽을 다시 지었어요', '#ffe08a'); return;
+    }
+    const n = this.next; if (!n) return;
+    if (G.gold < n.cost) { notEnoughGold(); return; }
+    G.gold -= n.cost; this.invested += n.cost; const prev = this.maxHp; this.level++;
+    this.maxHp = this.cfg.hp; this.hp = this.level === 1 ? this.maxHp : Math.min(this.maxHp, this.hp + (this.maxHp - prev));
+    const bx = this.back.x, by = this.back.y, ax = this.along.x, ay = this.along.y;
+    const spots = [[0.3, 24], [-0.3, 24]];                       // 성벽 바로 뒤 궁수 자리 (성벽 길이의 비율, 뒤로 거리)
+    while (this.archers.length < this.cfg.archers) { const [f, bk] = spots[this.archers.length]; this.archers.push(new WallArcher(this.x + ax * this.len * f + bx * bk, this.y + ay * this.len * f + by * bk)); }
+    while (this.catapults.length < (this.cfg.catapults || 0)) this.catapults.push(new Catapult(this.x + bx * 70, this.y + by * 70, { side: bx < 0 ? 'R' : 'L' }));
+    FX.ring(this.x, this.y, 70, '255,215,90', 0.5); FX.spark(this.x, this.y - 20, '#ffe08a', 10); Sound.play(this.level === 1 ? 'build' : 'upgrade');
+    toast(this.level === 1 ? '길목 성벽을 지었어요' : `길목 성벽 Lv.${this.level}`, '#ffe08a');
+  }
+  takeDamage(amount) {
+    if (!this.built) return;
+    this.hp -= amount; this.lastHit = G.time; this.flash = 0.12;
+    if (Math.random() < 0.3) FX.dust(this.x + rand(-20, 20), this.y + rand(-10, 10));
+    Sound.play('thud', this.x, this.y, 0.4);
+    if (this.hp <= 0) {
+      this.hp = 0; this.broken = true;
+      FX.explosion(this.x, this.y, 0.6); shake(5, 0.4); Sound.play('explosion', this.x, this.y);
+      showBanner('길목 성벽이 무너졌습니다! 웨이브 사이에 다시 지을 수 있어요', '#ff8a6a', 2.6);
+    }
+  }
+  update(dt) {
+    if (this.flash > 0) this.flash -= dt;
+    this.repairing = false;
+    if (!this.built) return;
+    const c = G.gate.cfg;                                          // 궁수·투석기 능력치는 성문과 같음
+    for (const a of this.archers) a.update(dt, c);
+    for (const k of this.catapults) k.update(dt, c);
+    if (this.hp < this.maxHp && G.time - this.lastHit >= CONFIG.walls.repairDelay) {   // 목수 1명 수리
+      this.hp = Math.min(this.maxHp, this.hp + CONFIG.walls.repair * dt); this.repairing = true; this.hammer += dt;
+      if (Math.floor(this.hammer * 1.5) !== Math.floor((this.hammer - dt) * 1.5)) { Sound.play('hammer', this.x, this.y, 0.5); FX.spark(this.x, this.y, '#ffe6a0', 3); }
+    }
+  }
+}
+function wallsEnabled() { return G.stageIdx + 1 >= CONFIG.walls.fromStage; }
+function wallAt(x, y) {
+  for (const wl of G.walls) if (dist(x, y, wl.x, wl.y) < 46 || distToSeg(x, y, wl.a.x, wl.a.y, wl.b.x, wl.b.y) < 22) return wl.i;
+  return -1;
+}
+// 원거리 몬스터가 성벽을 쏠 때 쓰는 목표
+function wallTarget(wl) { return { x: wl.x + rand(-wl.len, wl.len) * 0.3 * wl.along.x, y: wl.y + rand(-wl.len, wl.len) * 0.3 * wl.along.y, alive: true, radius: 10, gate: true, takeDamage: d => wl.takeDamage(d) }; }
 // 가장 가까운 성문
 function nearestGate(x, y) {
   let best = G.gates[0], bd = Infinity;
@@ -3158,7 +3297,13 @@ class FireFlask {
     if (p < 1) return;
     this.done = true;
     if (this.gate) this.target.takeDamage(this.damage);
-    else for (const a of alliesIn(this.tx, this.ty, this.radius)) a.takeDamage(this.damage, this.source);
+    else for (const a of alliesIn(this.tx, this.ty, this.radius)) {
+      a.takeDamage(this.damage, this.source);
+      if (this.poison) { a.poisonT = this.poison.duration; a.poisonDps = this.poison.dps; }          // 독: 몇 초 동안 지속 피해
+      if (this.chill) { a.chillT = this.chill.duration; a.chill = this.chill.slow; }                  // 얼음: 이동·공격 느려짐
+    }
+    if (this.kind === 'poison') { for (let i = 0; i < 6; i++) FX.puff(this.tx + rand(-12, 12), this.ty + rand(-8, 8), '#9a5ad8', rand(4, 7), 0.6, 0, -14, 0.5, 1); FX.ring(this.tx, this.ty, this.radius, '160,90,220', 0.3); Sound.play('sizzle', this.tx, this.ty, 0.3); return; }
+    if (this.kind === 'ice') { for (let i = 0; i < 6; i++) FX.spark(this.tx + rand(-14, 14), this.ty + rand(-8, 8), '#cfefff', 2); FX.ring(this.tx, this.ty, this.radius, '170,220,255', 0.35); Sound.play('blizzard', this.tx, this.ty, 0.25); return; }
     for (let i = 0; i < 12; i++) {
       const a = rand(0, TAU), r = rand(0, this.radius * 0.8);
       FX.add({ k: 'flame', x: this.tx + Math.cos(a) * r, y: this.ty + Math.sin(a) * r * 0.6, vx: 0, vy: -26, g: 0, life: rand(0.3, 0.6), max: 0.6, size: rand(5, 9) });
@@ -3291,7 +3436,7 @@ class Soldier {
   get dash() { return this.rush; }                                // 돌격 중에는 붙잡히지 않음
   get maxLevel() { return this.level >= CONFIG.army[this.kind].levels.length; }
   get passive() { return this.level >= CONFIG.army.passiveLevel ? CONFIG.army[this.kind].passive : null; }   // 10레벨 패시브
-  atkMul() { const p = this.passive; return supHaste(this) * (p && p.attackSpeed ? 1 - p.attackSpeed : 1); }     // 공격 간격 배율
+  atkMul() { const p = this.passive; return supHaste(this) * (p && p.attackSpeed ? 1 - p.attackSpeed : 1) / chillMul(this); }     // 공격 간격 배율
   outDamage() { const p = this.passive; return this.damage * supMight(this) * (p && p.damage ? 1 + p.damage : 1); }
   get alive() { return !this.dead; }
   takeDamage(amount, src) {
@@ -3312,7 +3457,7 @@ class Soldier {
     const wp = Nav.route(this, { x: tx, y: ty })[0];
     const dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy);
     if (d < 0.8) return;
-    const k = Math.min(1, (this.cfg.speed * dt) / d), nx = this.x + dx * k, ny = this.y + dy * k;
+    const k = Math.min(1, (this.cfg.speed * chillMul(this) * dt) / d), nx = this.x + dx * k, ny = this.y + dy * k;
     this.face = Math.atan2(dy, dx); this.moving = true; this.walkAnim += dt;
     if (!Nav.blocked(nx, ny)) { this.x = nx; this.y = ny; }
   }
@@ -3454,7 +3599,12 @@ Soldier.prototype.march = function (dt, idx) {
 // ---------- 성직자 강화 효과 (병사·영웅 공통) ----------
 // haste: 공격 간격 -v / guard: 방어력 +v / might: 공격력 +v. 각각 남은 시간(t)과 세기(v)
 function newSup() { return { haste: 0, hasteV: 0, guard: 0, guardV: 0, might: 0, mightV: 0 }; }
-function tickSup(u, dt) { const S = u.sup; if (S.haste > 0) S.haste -= dt; if (S.guard > 0) S.guard -= dt; if (S.might > 0) S.might -= dt; }
+function tickSup(u, dt) {
+  const S = u.sup; if (S.haste > 0) S.haste -= dt; if (S.guard > 0) S.guard -= dt; if (S.might > 0) S.might -= dt;
+  if (u.chillT > 0) { u.chillT -= dt; if (Math.random() < dt * 6) FX.spark(u.x + rand(-6, 6), u.y - 8, '#cfefff', 1); }   // 얼음: 느려짐
+  if (u.poisonT > 0) { u.poisonT -= dt; u.takeDamage(u.poisonDps * dt); if (Math.random() < dt * 5) FX.puff(u.x + rand(-6, 6), u.y - 6, '#9a5ad8', rand(3, 5), 0.5, 0, -12, 0.5, 0.9); }   // 독 지속 피해
+}
+function chillMul(u) { return u.chillT > 0 ? 1 - u.chill : 1; }      // 얼음 맞은 아군: 이동 속도 배율 (공격 간격은 나눗셈)
 function supHaste(u) { return u.sup.haste > 0 ? 1 - u.sup.hasteV : 1; }
 function supGuard(u) { return u.sup.guard > 0 ? u.sup.guardV : 0; }
 function supMight(u) { return u.sup.might > 0 ? 1 + u.sup.mightV : 1; }
@@ -3624,6 +3774,7 @@ function makeElite(e) {
   const E = CONFIG.bossPower.escort;
   if (e.elite) return; e.maxHp = e.hp = Math.round(e.maxHp * E.hpMul); e.damage *= E.damageMul; e.gateDamage *= E.damageMul; e.elite = true;
 }
+function pickMidBoss() { const n = G.stageIdx + 1; return weightedPick(CONFIG.waveRules.midBosses.filter(m => !m.minStage || n >= m.minStage)).type; }
 function waveEnts() { return [...new Set(G.portals.map(q => q.key))]; }
 // 입구에서 성문으로 가는 길 하나 (길이 여러 갈래면 번갈아)
 function portalFor(ent) {
@@ -3676,7 +3827,7 @@ function updateWaves(dt) {
     if (info.mid && !W.midDone && W.spawned >= info.count * R.midAt) {   // 중간보스: 모든 입구에서 정예 분대를 이끌고
       W.midDone = true;
       const names = [];
-      for (const ent of waveEnts()) { const b = spawnStageBoss(weightedPick(R.midBosses).type, portalFor(ent), false, info.squad); names.push(b.cfg.name); }
+      for (const ent of waveEnts()) { const b = spawnStageBoss(pickMidBoss(), portalFor(ent), false, info.squad); names.push(b.cfg.name); }
       showBanner(`중간보스 ${names.length}마리가 정예 분대를 이끌고 나타났습니다! (${[...new Set(names)].join(' · ')})`, '#ffae5a', 3.4); G.banner.warn = true;
     }
     if (W.spawned >= info.count && !W.pending.length) {
@@ -3703,7 +3854,7 @@ function updateWaves(dt) {
         const pt = portalFor(waveEnts()[Math.floor(Math.random() * waveEnts().length)]), sq = { leader: null, n: 0 };
         squadList(G.stage.squad, info.squad).forEach((type, j) => W.pending.push({ t: j * R.groupGap * 1.5, type, portal: pt, sq, elite: true, lane: (j % 2 ? 1 : -1) * rand(4, 18) }));
       }
-      if (W.midT <= 0) { W.midT += F.midEvery; const b = spawnStageBoss(weightedPick(R.midBosses).type, portalFor(waveEnts()[Math.floor(Math.random() * waveEnts().length)]), false, info.squad); showBanner(`중간보스 ${b.cfg.name}이 지원하러 옵니다!`, '#ffae5a', 2.4); }
+      if (W.midT <= 0) { W.midT += F.midEvery; const b = spawnStageBoss(pickMidBoss(), portalFor(waveEnts()[Math.floor(Math.random() * waveEnts().length)]), false, info.squad); showBanner(`중간보스 ${b.cfg.name}이 지원하러 옵니다!`, '#ffae5a', 2.4); }
     } else if (!G.pendingResult) {                             // 분열한 슬라임까지 모두 쓰러뜨리면 승리
       G.pendingResult = 'won'; G.endTimer = 2.5;
       showBanner(`${CONFIG.enemies[F.type].name}을 쓰러뜨렸습니다!`, '#ffd36b', 3);
@@ -4134,6 +4285,14 @@ class Enemy {
     }
     if (this.stun > 0) { this.stun -= dt; return; }     // 기절
     if (this.cfg.regen && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.cfg.regen * dt);   // 트롤 재생
+    if (this.cfg.healer) {                                       // 치유 슬라임: 주변 몬스터 회복 (보스 제외)
+      const Hc = this.cfg.healer; this.healT = (this.healT == null ? rand(0, Hc.interval) : this.healT) - dt;
+      if (this.healT <= 0) {
+        this.healT = Hc.interval; let n = 0;
+        for (const o of G.enemies) if (o.alive && !o.boss && o !== this && o.hp < o.maxHp && dist(o.x, o.y, this.x, this.y) <= Hc.radius) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * Hc.ratio); FX.spark(o.x, o.y - 8, '#ffb0d8', 2); n++; }
+        if (n) { FX.ring(this.x, this.y, Hc.radius, '255,170,210', 0.4); this.lunge = 0.15; }
+      }
+    }
 
     switch (this.state) {
       case 'guard': this.updateGuard(dt); break;
@@ -4147,6 +4306,16 @@ class Enemy {
         break;
       }
       case 'airFight': this.updateAirFight(dt); break;
+      case 'wall': {                                            // 길목 성벽 공격 (원거리는 쏘고, 근처 병사·영웅과는 싸움)
+        const wl = this.wallT;
+        if (!wl || !wl.built) { this.wallT = null; this.state = 'walk'; break; }
+        if (this.tryEngage() || (this.ranged && this.tryShoot())) break;
+        const s2 = this.route.sample(this.dist, TMP); this.x = s2.x - s2.dy * this.lane; this.y = s2.y + s2.dx * this.lane;
+        this.face = Math.atan2(wl.y - this.y, wl.x - this.x);
+        this.atkTimer -= dt;
+        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; if (this.ranged) this.shootAt(wallTarget(wl), this.gateDamage * this.dmgMul); else wl.takeDamage(this.gateDamage * this.dmgMul); }
+        break;
+      }
       case 'walk': {
         if (this.tryEngage() || this.tryAirRaid(dt)) break;
         if (this.ranged) {
@@ -4156,6 +4325,14 @@ class Enemy {
         let nd = this.dist + this.spd * dt;
         const Ld = this.leader;                                  // 분대장·보스를 앞지르지 않음 (멈추면 함께 기다림)
         if (Ld && Ld.alive && Ld.route === this.route && !Ld.reachedEnd) nd = Math.min(nd, Math.max(this.dist, Ld.dist - (this.followGap || 0)));
+        if (!this.air && this.route.walls && this.route.walls.length) {   // 길목 성벽: 지상 몬스터는 성벽 앞에서 멈춰 부숨
+          for (const rw of this.route.walls) {
+            const wl = G.walls[rw.wi]; if (!wl || !wl.built || this.dist > rw.d) continue;
+            const stop = rw.d - (this.ranged ? Math.min(this.cfg.range * 0.7, 120) : this.radius + 14);
+            if (nd >= stop) { nd = Math.max(this.dist, stop); if (nd >= stop - 0.5) { this.wallT = wl; this.state = 'wall'; } }
+            break;
+          }
+        }
         this.dist = nd;
         if (this.dist >= this.route.length) {
           this.dist = this.route.length; this.state = 'toGate';
@@ -4188,7 +4365,7 @@ class Enemy {
         break;
       }
     }
-    if (this.cfg.explode && this.alive && (this.state === 'fight' || this.state === 'attack')) this.explode();
+    if (this.cfg.explode && this.alive && (this.state === 'fight' || this.state === 'attack' || this.state === 'wall')) this.explode();
   }
 
   // ---------- 보스 능력 ----------
@@ -4424,13 +4601,19 @@ class Enemy {
   }
   // 원거리 공격: 활(화살) 또는 마법(보라색 마법탄)
   shootAt(t, dmg) {
-    if (this.cfg.splash) { const f = new FireFlask(this.x, this.y - 6, t, dmg, this.cfg.splash); f.source = this; f.fire = this.type === 'fireSlime'; G.projectiles.push(f); return; }
+    if (this.cfg.splash) {
+      const c = this.cfg, f = new FireFlask(this.x, this.y - 6, t, dmg, c.splash); f.source = this;
+      if (c.poison) { f.kind = 'poison'; f.poison = { dps: c.poison.dps * this.skillMul, duration: c.poison.duration }; }
+      else if (c.chill) { f.kind = 'ice'; f.chill = c.chill; }
+      G.projectiles.push(f); return;
+    }
     if (this.cfg.magic) G.projectiles.push(new MagicBolt(this.x, this.y - 8, t, { damage: dmg }, { boltSpeed: 430 }, this));
     else G.projectiles.push(new Arrow(this.x, this.y - 4, t, dmg, 520, this));
   }
   // 폭탄 고블린: 부딪히면 자폭 (주변 아군·성문 피해)
   explode() {
     const x = this.cfg.explode, m = this.skillMul, gf = gateFront(this);
+    if (this.state === 'wall' && this.wallT && this.wallT.built) this.wallT.takeDamage(x.gateDamage * m);   // 성벽에서 터지면 성벽 피해
     for (const a of alliesIn(this.x, this.y, x.radius)) a.takeDamage(x.damage * m);
     if (dist(this.x, this.y, gf.x, gf.y) <= x.radius + 30) G.gate.takeDamage(x.gateDamage * m);
     FX.explosion(this.x, this.y, 0.4); Sound.play('boom', this.x, this.y, 0.6); shake(2, 0.15);
@@ -4912,7 +5095,7 @@ class Hero {
   stepToward(tx, ty, dt) {
     if (this.root > 0) return false;
     const wp = Nav.route(this, { x: tx, y: ty })[0];
-    const dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
+    const dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * chillMul(this) * dt;
     if (d < 0.5) return true;
     this.face = Math.atan2(dy, dx); this.moving = true; this.walkAnim += dt;
     const k = Math.min(1, step / d), nx = this.x + dx * k, ny = this.y + dy * k;
@@ -4985,7 +5168,7 @@ class Hero {
     if (this.mode === 'move' && this.root <= 0) {       // 명령 이동 중에는 적을 무시하고 이동 (묶이면 제자리)
       if (!this.path.length) { this.mode = 'guard'; }
       else {
-        const wp = this.path[0], dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * dt;
+        const wp = this.path[0], dx = wp.x - this.x, dy = wp.y - this.y, d = Math.hypot(dx, dy), step = this.speed * chillMul(this) * dt;
         this.moving = true; this.walkAnim += dt; this.face = Math.atan2(dy, dx);
         if (d <= step) { this.x = wp.x; this.y = wp.y; this.path.shift(); if (!this.path.length) this.mode = 'guard'; }
         else { this.x += (dx / d) * step; this.y += (dy / d) * step; }
@@ -5016,7 +5199,7 @@ class Hero {
   strike(t, isBase) {
     this.face = Math.atan2(t.y - this.y, t.x - this.x);
     if (this.atkTimer > 0) return;
-    this.atkTimer = this.atkInterval * supHaste(this); this.attackAnim = 0.25;
+    this.atkTimer = this.atkInterval * supHaste(this) / chillMul(this); this.attackAnim = 0.25;
     const DMG = this.damage * supMight(this);              // 성직자 공격력 강화
     const A = this.cfg.attack;
     const crit = this.crit && Math.random() < this.crit;           // 매의 눈 반지: 치명타 (2배)
@@ -5384,6 +5567,8 @@ function onWorldTap(w) {
   G.itemInfo = null;                                       // 아이템 정보창 닫기
   // 방향/지점 지정 스킬 조준 중이면 → 그 방향으로 스킬 사용
   if (G.aim) { const i = G.aim.skill; G.aim = null; if (h) h.cast(i, w.x, w.y); return; }
+  const wi = wallAt(w.x, w.y);
+  if (wi >= 0) { G.sel = G.sel && G.sel.kind === 'wall' && G.sel.ref === wi ? null : { kind: 'wall', ref: wi }; return; }   // 성벽 자리 탭 → 성벽 메뉴
   const gi = gateAt(w.x, w.y);
   if (gi >= 0) { G.army.gi = gi; G.sel = G.sel && G.sel.kind === 'gate' && G.sel.ref === gi ? null : { kind: 'gate', ref: gi }; return; }   // 성문 탭 → 성문 메뉴
   if (G.sel && G.sel.kind === 'gate') { setRally(G.sel.ref, w.x, w.y); G.sel = null; return; }   // 성문 메뉴가 열린 채 지도 탭 → 집결 지점
@@ -5854,9 +6039,33 @@ function drawGatePanel(ctx) {
   if (!n) costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, '최고 레벨', null, false, () => {});
   else costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, `성문 강화 → Lv.${P.level + 1}`, n.cost, G.gold >= n.cost, () => P.upgrade());
 }
+// 길목 성벽 메뉴: 건설 · 강화 · 재건
+function drawWallPanel(ctx) {
+  const wl = G.walls[G.sel.ref]; if (!wl) return;
+  const k = UI.k, L = CONFIG.walls.levels, c = wl.level ? wl.cfg : null, n = wl.next;
+  const w = 400 * k, h = 300 * k, px = 10 * UI.kt, py = (10 + 58 + 10) * UI.kt;
+  UI.block(px, py, w, h); panel(ctx, px, py, w, h, k);
+  const cs = 40 * k, cx = px + w - cs - 6 * k, cy = py + 6 * k;
+  const pr = UI.button('selClose', cx, cy, cs, cs, () => { G.sel = null; });
+  ctx.strokeStyle = pr ? '#fff' : '#d8c8a4'; ctx.lineWidth = 3 * k; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx + 13 * k, cy + 13 * k); ctx.lineTo(cx + cs - 13 * k, cy + cs - 13 * k); ctx.moveTo(cx + cs - 13 * k, cy + 13 * k); ctx.lineTo(cx + 13 * k, cy + cs - 13 * k); ctx.stroke();
+  Icon.hammer(ctx, px + 32 * k, py + 34 * k, 28 * k);
+  txt(ctx, wl.broken ? `길목 성벽 Lv.${wl.level} (무너짐)` : wl.level ? `길목 성벽 Lv.${wl.level}${n ? '' : ' (최고)'}` : '길목 성벽 (건설 전)', px + 60 * k, py + 25 * k, 19 * k, '#ffe7b8');
+  fitTxt(ctx, '몬스터는 성벽을 부숴야 지나가요 · 공중 몬스터는 넘어감', px + 60 * k, py + 49 * k, 12.5 * k, w - 120 * k, '#cdbb98', 'left', { weight: 600 });
+  const nx = n || null, rows = [
+    ['체력', c ? c.hp : '—', nx && nx.hp], ['성벽 궁수', c ? c.archers : '—', nx && nx.archers], ['투석기', c ? (c.catapults || 0) : '—', nx && (nx.catapults || 0)],
+  ].map(r => [r[0], r[1], nx && r[2] !== r[1] ? r[2] : null]);
+  drawStatRows(ctx, rows, px, py + 82 * k, w, k, 0.46, 0.74);
+  fitTxt(ctx, `목수 1명이 ${CONFIG.walls.repairDelay}초 동안 공격이 없으면 수리 · 무너지면 웨이브 사이에 재건`, px + 16 * k, py + 82 * k + rows.length * 28 * k, 12 * k, w - 32 * k, '#a8c8ff', 'left', { weight: 600 });
+  const bh = 56 * k, by = py + h - bh - 14 * k, bw = w - 32 * k;
+  if (wl.broken) costButton(ctx, 'wallAct', px + 16 * k, by, bw, bh, k, wl.canRebuild() ? '다시 짓기' : '웨이브 사이에만 재건', wl.rebuildCost, wl.canRebuild() && G.gold >= wl.rebuildCost, () => wl.act());
+  else if (!n) costButton(ctx, 'wallAct', px + 16 * k, by, bw, bh, k, '최고 레벨', null, false, () => {});
+  else costButton(ctx, 'wallAct', px + 16 * k, by, bw, bh, k, wl.level ? `성벽 강화 → Lv.${wl.level + 1}` : '성벽 짓기', n.cost, G.gold >= n.cost, () => wl.act());
+}
 function drawSelectionPanel(ctx) {
   const s = G.sel; if (!s || G.state !== 'playing') return;
   if (s.kind === 'gate') { drawGatePanel(ctx); return; }
+  if (s.kind === 'wall') { drawWallPanel(ctx); return; }
   if (s.kind !== 'facility') return;
   const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, fac = true;
   const extra = CONFIG.soldiers[s.ref].ranged || CONFIG.soldiers[s.ref].support, w = 410 * k, h = (extra ? 404 : 376) * k;
@@ -5977,6 +6186,7 @@ function drawMinimap(ctx) {
   ctx.fillStyle = G.gate.destroyed ? '#555' : '#6fb7ff';
   for (const q of G.gates) ctx.fillRect(mx(q.wx) - 2 * s, my(q.top), 4 * s, (q.bottom - q.top) * sy + 2);   // 성문
   ctx.fillStyle = '#ffe08a'; for (const R of G.rally) ctx.fillRect(mx(R.x) - 2 * s, my(R.y) - 2 * s, 4 * s, 4 * s);   // 집결 지점
+  for (const wl of G.walls) { ctx.strokeStyle = wl.built ? '#d8d0c0' : 'rgba(232,180,60,0.8)'; ctx.lineWidth = (wl.built ? 3 : 1.5) * s; ctx.beginPath(); ctx.moveTo(mx(wl.a.x), my(wl.a.y)); ctx.lineTo(mx(wl.b.x), my(wl.b.y)); ctx.stroke(); }   // 길목 성벽
   ctx.fillStyle = '#9fd8ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1.5 * s, my(u.y) - 1.5 * s, 3 * s, 3 * s);
   for (const e of G.enemies) { ctx.fillStyle = e.post ? '#a02a20' : '#ff4a3a'; ctx.fillRect(mx(e.x) - 1.2 * s, my(e.y) - 1.2 * s, 2.4 * s, 2.4 * s); }
   ctx.fillStyle = '#bfe6ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1 * s, my(u.y) - 1 * s, 2 * s, 2 * s);
@@ -6450,7 +6660,24 @@ function buildMapData() {
     if (blocked(x, y, r, 2) || crowded(x, y, r + 10)) continue;
     decor.push({ k: rng() < 0.45 ? 'rock' : 'bush', x, y, r }); i++;
   }
+  // 길목 성벽 자리를 지나는 길: 길마다 [성벽 번호, 그 지점까지 거리]
+  for (const R of routes) {
+    R.walls = [];
+    MAP.walls.forEach((w, wi) => {
+      for (let i = 1; i < R.pts.length; i++) {
+        const t = segCross(R.pts[i - 1], R.pts[i], { x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] });
+        if (t != null) { R.walls.push({ wi, d: R.cum[i - 1] + (R.cum[i] - R.cum[i - 1]) * t }); break; }
+      }
+    });
+  }
   return { seg, routes, river, riverOff: river ? [offsetPoly(river, -13), offsetPoly(river, 12)] : null, bridge, trees, decor, minX, maxX };
+}
+// 선분 p1-p2 와 q1-q2 가 만나면 p1-p2 위 비율(0~1), 아니면 null
+function segCross(p1, p2, q1, q2) {
+  const rx = p2.x - p1.x, ry = p2.y - p1.y, sx = q2.x - q1.x, sy = q2.y - q1.y, den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((q1.x - p1.x) * sy - (q1.y - p1.y) * sx) / den, u = ((q1.x - p1.x) * ry - (q1.y - p1.y) * rx) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
 }
 function distToSeg(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((px - ax) * dx + (py - ay) * dy) / L2, 0, 1);
@@ -6460,7 +6687,7 @@ function distToSeg(px, py, ax, ay, bx, by) {
 function createState() {
   return {
     state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, threatTime: 1, nextId: 1,
-    gate: null, gates: [], rally: [], heroSpawn: null, hero: null, aim: null, bases: [], portals: [], wave: null, enemies: [], projectiles: [], fx: [],
+    gate: null, gates: [], rally: [], walls: [], heroSpawn: null, hero: null, aim: null, bases: [], portals: [], wave: null, enemies: [], projectiles: [], fx: [],
     gold: 0, goldFlashUntil: 0,     // 시작 골드는 newGame에서 난이도에 따라
     soldiers: [],       // 아군 병사 (최대 병력은 성문 레벨에 따라)
     // 생산: 성문마다 대기열 (queues[성문]), gi = 병력 칸에서 고른 성문. queue/prog/full은 고른 성문 것
@@ -6491,6 +6718,8 @@ function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = sele
   G.gates = MAP.gates.map((d, i) => new Gate(i, d));
   for (const q of G.gates) q.applyLevel();
   G.rally = G.gates.map(q => q.front(150));                                  // 기본 집결 지점: 성문 앞
+  G.stageIdx = G.stageIdx || 0;
+  G.walls = (G.stageIdx + 1 >= CONFIG.walls.fromStage ? MAP.walls : []).map((w, i) => new WallSpot(i, w));   // 길목 성벽 자리 (4스테이지부터)
   G.heroSpawn = heroSpawnFor();
   G.hero = new Hero(heroType);
   G.bases = [];
@@ -6530,6 +6759,7 @@ function update(dt) {
   }
   G.time += dt;
   G.gate.update(dt);
+  for (const wl of G.walls) wl.update(dt);
   G.hero.update(dt);
   updateArmy(dt);
   updateRally();
@@ -6585,6 +6815,7 @@ function renderWorld(ctx) {
   const vis = o => o.x > cx0 && o.x < cx1 && o.y > cy0 && o.y < cy1;               // 화면 안에 있는지 (밖은 그리지 않음)
   Art.riverShimmer(ctx, realTime);
   for (const k in MAP.ents) if (MAP.ents[k].cave) Art.slimeCave(ctx, MAP.ents[k], realTime);
+  for (const wl of G.walls) Art.wallSpot(ctx, wl, realTime);
   Art.castleDynamic(ctx, realTime);
   for (let gi = 0; gi < G.gates.length; gi++) Art.rallyPoint(ctx, G.rally[gi], gi, realTime);
   for (const b of G.bases) Art.base(ctx, b, G.time, realTime);
@@ -6612,6 +6843,7 @@ function renderWorld(ctx) {
     else Art.carpenter(ctx, o);
   }
   for (const q of G.gates) for (const a of q.archers) Art.wallArcher(ctx, a);
+  for (const wl of G.walls) if (wl.built) { for (const a of wl.archers) Art.wallArcher(ctx, a); for (const k of wl.catapults) Art.catapult(ctx, k); }
   for (const p of G.projectiles) if (vis(p)) Art.projectile(ctx, p);
   for (const e of G.enemies) if (e.air && (vis(e) || e.boss)) Art.enemy(ctx, e);
   for (const z of G.zones) Art.zoneTop(ctx, z);
