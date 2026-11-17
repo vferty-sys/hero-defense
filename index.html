@@ -895,7 +895,15 @@ function loadImages() {
 // 그림은 오른쪽을 바라보는 모습 (왼쪽으로 갈 때는 뒤집어 그림). 병사는 unit_<종류>_<단계>, 없는 단계는 낮은 단계 그림을 씀
 const SPRITE_NAMES = [];
 // 동작 시트 (12자세: 1줄 서 있기·숨쉬기·맞음·스킬 / 2줄 걷기 4장 / 3줄 공격 4장). 있으면 한 장 그림 대신 사용
-const ANIM_NAMES = ['hero_knight', 'hero_archer', 'hero_mage'];
+const ANIM_NAMES = ['hero_knight', 'hero_archer', 'hero_mage', 'boss_slime_king', 'boss_giant_slime_king'];   // images/web/ 에 있는 시트만 (새 그림이 오면 추가)
+// 몬스터 종류 → 동작 시트 이름 (시트가 아직 없으면 지금처럼 도형으로 그림). animW = 서 있기 자세의 몸 너비 (몸 반지름의 몇 배)
+const ENEMY_ANIM = {
+  slime: 'enemy_slime', slimeling: 'enemy_slimeling', ironSlime: 'enemy_iron_slime', acidSlime: 'enemy_acid_slime', fireSlime: 'enemy_fire_slime',
+  bombSlime: 'enemy_bomb_slime', poisonSlime: 'enemy_poison_slime', giantSlime: 'enemy_giant_slime', iceSlime: 'enemy_ice_slime', healSlime: 'enemy_heal_slime',
+  slimeKing: 'boss_slime_king', ironSlimeKing: 'boss_iron_slime_king', poisonSlimeQueen: 'boss_poison_slime_queen',
+  spiderQueen: 'boss_spider_queen', wolfKing: 'boss_wolf_king', giantSlimeKing: 'boss_giant_slime_king',
+};
+const ENEMY_ANIM_W = { slimeKing: 3.2, giantSlimeKing: 3.0 };   // 기본 2.6
 // 시트의 몇 번째 칸을 쓸지 (0~11). 마법사 스킬 칸은 효과가 칸을 가득 채워서 서 있는 칸을 대신 씀
 const ANIM_FRAMES = { idle: [0, 1], hurt: 2, cast: 3, walk: [4, 5, 6, 7], attack: [8, 9, 10, 11] };
 const ANIM_OVERRIDE = { hero_mage: { cast: 0 }, hero_archer: { cast: 10 } };   // 궁사 스킬 칸은 빛 효과 주변이 덜 깔끔해서 조준 칸을 씀
@@ -922,18 +930,20 @@ const Sprites = {
     const flash = mk(im.width, im.height), fg = flash.getContext('2d');
     fg.drawImage(im, 0, 0); fg.globalCompositeOperation = 'source-in'; fg.fillStyle = '#ffffff'; fg.fillRect(0, 0, flash.width, flash.height);
     const cw = im.width / ANIM_COLS, ch = im.height / ANIM_ROWS;
-    let head = { x: cw / 2, y: ch * 0.12 };                                                    // 초상화용 머리 위치 (첫 칸)
+    let head = { x: cw / 2, y: ch * 0.12 }, fig = { w: cw * 0.7, h: ch * 0.6 };              // 초상화용 머리 위치 · 서 있기 자세 크기 (첫 칸)
     try {
       const c = mk(Math.round(cw), Math.round(ch)), g = c.getContext('2d'); g.drawImage(im, 0, 0);
-      const d = g.getImageData(0, 0, c.width, c.height).data; let top = -1;
+      const d = g.getImageData(0, 0, c.width, c.height).data; let top = -1, x0 = c.width, x1 = -1;
       for (let y = 0; y < c.height && top < 0; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 128) { top = y; break; }
       if (top >= 0) {
         let sx = 0, cnt = 0; const band = Math.round((c.height - top) * 0.2);
         for (let y = top; y < top + band; y++) for (let x = 0; x < c.width; x += 2) if (d[(y * c.width + x) * 4 + 3] > 128) { sx += x; cnt++; }
         head = { x: cnt ? sx / cnt : cw / 2, y: top };
+        for (let y = top; y < c.height; y += 2) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+        fig = { w: Math.max(10, x1 - x0), h: c.height * (1 - ANIM_FOOT) - top };
       }
     } catch (_) {}
-    this.anims[n] = { img: im, half, flash, cw, ch, head, frames: { ...ANIM_FRAMES, ...(ANIM_OVERRIDE[n] || {}) } };
+    this.anims[n] = { img: im, half, flash, cw, ch, head, fig, frames: { ...ANIM_FRAMES, ...(ANIM_OVERRIDE[n] || {}) } };
   },
   anim(n) { return this.anims[n] || null; },
   prepare(n, im) {
@@ -1004,6 +1014,27 @@ const Art = {
     if (u.flash > 0) { ctx.globalAlpha = Math.min(0.6, u.flash * 6); ctx.drawImage(an.flash, fx, fy, an.cw, an.ch, -W / 2, -H, W, H); }
     ctx.restore();
     return y + H * ANIM_FOOT - H + H * 0.06;                                                       // 머리 위치 (체력바용)
+  },
+  // 몬스터 동작 시트: 스킬(내려찍기는 공격 줄을 천천히) · 공격 · 맞음 · 이동 · 쉬기. 크기는 첫 칸 몸 너비를 몸 반지름에 맞춤
+  enemyAnim(ctx, an, e) {
+    const c = Math.cos(e.face); if (c < -0.25) e.flipX = true; else if (c > 0.25) e.flipX = false;
+    const F = an.frames, r = e.radius;
+    if (e.lunge > 0.1 && !(e._atkT > e.anim - 0.5)) e._atkT = e.anim;                            // 새 공격 시작
+    const at = e._atkT != null ? e.anim - e._atkT : 9; let f;
+    if (e.casting > 0 && e.castSk === 'slam') { const p = 1 - e.casting / (e.castLen || 1); f = F.attack[p < 0.45 ? 0 : p < 0.85 ? 1 : 2]; }
+    else if (e.casting > 0) f = F.cast;
+    else if (at < 0.5) f = F.attack[Math.min(F.attack.length - 1, Math.floor(at / 0.5 * F.attack.length))];
+    else if (e.flash > 0.04) f = F.hurt;
+    else if (e.bossDash || e.anim - (e.movedT ?? -9) < 0.15) f = F.walk[Math.floor(e.anim * 6) % F.walk.length];
+    else f = F.idle[Math.floor(e.anim * 1.5) % F.idle.length];
+    const H = r * (ENEMY_ANIM_W[e.type] || 2.6) / an.fig.w * an.ch, W = H * an.cw / an.ch, foot = e.y + r * 0.35;
+    const fx = (f % ANIM_COLS) * an.cw, fy = Math.floor(f / ANIM_COLS) * an.ch;
+    const small = H * pixelRatio * Camera.zoom < 170, src = small ? an.half : an.img, k = small ? 0.5 : 1;
+    ctx.save(); ctx.translate(e.x, foot + H * ANIM_FOOT); if (e.flipX) ctx.scale(-1, 1);
+    ctx.drawImage(src, fx * k, fy * k, an.cw * k, an.ch * k, -W / 2, -H, W, H);
+    if (e.flash > 0) { ctx.globalAlpha = Math.min(0.6, e.flash * 6); ctx.drawImage(an.flash, fx, fy, an.cw, an.ch, -W / 2, -H, W, H); }
+    ctx.restore();
+    e._top = foot - an.fig.h / an.ch * H;                                                         // 머리 위치 (기절 별·체력바)
   },
   // 걷기(통통 튀기·좌우 흔들림) / 공격(앞으로 숙이기) / 가만히(숨쉬기) / 기절(흔들흔들) / 방향(좌우 뒤집기)
   spriteMotion(u, rt, atkDur = 0.25) {
@@ -1911,7 +1942,9 @@ const Art = {
     if (e.frenzyT > 0) { ctx.strokeStyle = `rgba(255,70,40,${0.55 + Math.sin(e.anim * 12) * 0.3})`; ctx.lineWidth = 2.5; ellipse(ctx, e.x, e.y + 3, e.radius + 7, (e.radius + 7) * 0.55); ctx.stroke(); }   // 광란
     const T = e.type, esc = e.elite ? CONFIG.bossPower.escort.scale : 1;
     if (esc !== 1) { ctx.save(); ctx.translate(e.x, e.y); ctx.scale(esc, esc); ctx.translate(-e.x, -e.y); }   // 정예: 조금 크게
-    if (T === 'spider' || T === 'spiderQueen') this.spider(ctx, e);
+    const ean = ENEMY_ANIM[T] && Sprites.anim(ENEMY_ANIM[T]);
+    if (ean) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, e.x, e.y + e.radius * 0.35, e.radius * 1.35, e.radius * 0.5); ctx.fill(); this.enemyAnim(ctx, ean, e); }   // 동작 시트
+    else if (T === 'spider' || T === 'spiderQueen') this.spider(ctx, e);
     else if (T === 'bat' || T === 'harpy') this.bat(ctx, e);
     else if (T === 'dragon') this.dragon(ctx, e);
     else if (T === 'wolf' || T === 'wolfKing') this.wolf(ctx, e);
@@ -1920,7 +1953,7 @@ const Art = {
     else if (T === 'golem' || T === 'stoneGiant') this.golem(ctx, e);
     else this.humanoid(ctx, e);
     if (esc !== 1) ctx.restore();
-    const top = e.y - (e.air ? AIR_HEIGHT : 0) - e.radius * esc - 14;
+    const top = ean ? e.y + (e._top - e.y) * esc - 8 : e.y - (e.air ? AIR_HEIGHT : 0) - e.radius * esc - 14;
     if (e.stun > 0) this.stunStars(ctx, e.x, top + 2, e.anim);
     else if (e.taunt > 0) { ctx.fillStyle = '#ff4a3a'; circle(ctx, e.x, top - 2, 5.5); ctx.fill(); txt(ctx, '!', e.x, top - 1.5, 9, '#fff', 'center', { weight: 900 }); }
   },
@@ -2192,7 +2225,7 @@ const Art = {
 
   enemyBar(ctx, e) {
     if (e.hp >= e.maxHp || e.boss) return;          // 보스는 화면 위 큰 체력바
-    const w = e.radius * 2.4, y = e.y - (e.air ? AIR_HEIGHT : 0) - e.radius - 10;
+    const w = e.radius * 2.4, y = e._top != null && ENEMY_ANIM[e.type] && Sprites.anim(ENEMY_ANIM[e.type]) ? e._top - 8 : e.y - (e.air ? AIR_HEIGHT : 0) - e.radius - 10;
     bar(ctx, e.x - w / 2, y, w, 5, e.hp / e.maxHp, '#e04a3a');
   },
 
@@ -4293,6 +4326,8 @@ class Enemy {
   }
   update(dt) {
     this.anim += dt;
+    if (this._px !== undefined && Math.abs(this.x - this._px) + Math.abs(this.y - this._py) > 0.02) this.movedT = this.anim;   // 지난 틱에 움직였는지 (동작 시트: 이동 자세)
+    this._px = this.x; this._py = this.y;
     if (this.flash > 0) this.flash -= dt;
     if (this.lunge > 0) this.lunge -= dt;
     if (this.taunt > 0) this.taunt -= dt;
@@ -4468,7 +4503,7 @@ class Enemy {
       if (this.casting <= 0 && !this.bossDash && this.stun <= 0) {
         for (let i = 0; i < c.skills.length; i++) {
           if (this.skillCd[i] > 0) continue;
-          if (this.useSkill(c.skills[i])) { this.skillCd[i] = c.skills[i].cooldown * this.cdMul; break; }
+          if (this.useSkill(c.skills[i])) { this.skillCd[i] = c.skills[i].cooldown * this.cdMul; this.castSk = c.skills[i].id; this.castLen = this.casting; break; }
           this.skillCd[i] = 0.4;                               // 대상이 없으면 잠시 후 다시 확인
         }
       }

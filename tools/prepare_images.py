@@ -8,6 +8,10 @@
    1줄: 서 있기, 숨쉬기, 맞음, 스킬 / 2줄: 걷기 4장 / 3줄: 공격 4장
    칸마다 캐릭터를 잘라서 모든 자세를 같은 비율로 맞추고, 발 위치를 칸 아래 가운데에 맞춰
    images/web/hero_knight_anim.png (같은 크기 칸 4×3) 로 저장
+   - 자세는 칸이 아니라 그림 덩어리 단위로 나눔 (높이 뛴 자세의 머리·왕관이 윗줄 칸으로 넘어가도 그 자세에 붙음)
+   - 영웅·병사: 서 있기·걷기 키를 기준으로 크기를 맞춤 (크게 휘두르는 무기 끝은 칸 밖이면 잘림)
+   - 몬스터(enemy_ · boss_): 슬라임처럼 옆으로 넓거나 길게 늘어나는 자세가 많아서, 모든 자세가 칸 안에 들어가게 줄임
+     (게임이 첫 칸의 몸 너비를 재서 화면 크기를 맞추므로 칸 안에서 작아져도 괜찮음)
 """
 import glob, json, os
 from collections import deque
@@ -97,19 +101,57 @@ def single(path, name):
     im.save(f'{DST}/{name}.png', optimize=True)
     return f'{im.width}x{im.height}'
 
+def split_poses(src):
+    """12자세를 그림 덩어리 단위로 나눔: 덩어리(이어진 그림)의 무게중심이 있는 칸의 자세로 봄.
+    두 자세가 붙어 한 덩어리가 된 경우만 칸 경계로 자름. 반환: [(그 자세만 남긴 시트 크기 그림, 테두리 상자)] × 12"""
+    rgba = np.array(src); al = rgba[:, :, 3]; H, W = al.shape; B = 4
+    hs, ws = H // B, W // B
+    small = al[:hs * B, :ws * B].reshape(hs, B, ws, B).max(axis=(1, 3)) > 40
+    lab = np.zeros((hs, ws), np.int32); comps = []
+    for sy in range(hs):
+        for sx in np.nonzero(small[sy] & (lab[sy] == 0))[0]:
+            if lab[sy, sx]: continue
+            n = len(comps) + 1; q = deque([(sy, sx)]); lab[sy, sx] = n; pts = []
+            while q:
+                y, x = q.popleft(); pts.append((y, x))
+                for ny in (y - 1, y, y + 1):
+                    for nx in (x - 1, x, x + 1):
+                        if 0 <= ny < hs and 0 <= nx < ws and small[ny, nx] and not lab[ny, nx]:
+                            lab[ny, nx] = n; q.append((ny, nx))
+            comps.append(np.array(pts))
+    cw, ch = W / COLS, H / ROWS
+    owner = np.full((hs, ws), -1, np.int16)
+    for pts in comps:
+        ys, xs = pts[:, 0], pts[:, 1]
+        if (np.ptp(xs) + 1) * B > cw * 1.15 or (np.ptp(ys) + 1) * B > ch * 1.4:          # 두 자세가 붙음 → 칸 경계로 나눔
+            owner[ys, xs] = np.minimum(COLS - 1, (xs * B + B / 2) // cw) + COLS * np.minimum(ROWS - 1, (ys * B + B / 2) // ch)
+        else:
+            cx, cy = (xs.mean() + 0.5) * B, (ys.mean() + 0.5) * B
+            owner[ys, xs] = int(min(COLS - 1, cx // cw) + COLS * min(ROWS - 1, cy // ch))
+    out = []
+    for i in range(COLS * ROWS):
+        m = owner == i
+        if not m.any(): out.append((None, None)); continue
+        g = m.copy()
+        for _ in range(2):                                                            # 가장자리의 옅은 빛까지 포함 (다른 자세 부분은 제외)
+            d = g.copy(); d[1:] |= g[:-1]; d[:-1] |= g[1:]; d[:, 1:] |= g[:, :-1]; d[:, :-1] |= g[:, 1:]
+            g = d & ((owner == -1) | m)
+        full = np.zeros((H, W), bool); full[:hs * B, :ws * B] = np.kron(g, np.ones((B, B), bool))
+        a = rgba.copy(); a[:, :, 3] = np.where(full, a[:, :, 3], 0)
+        im = Image.fromarray(a, 'RGBA')
+        out.append((im, alpha_bbox(im)))
+    return out
+
 def sheet(path, name):
     src = remove_fake_background(Image.open(path).convert('RGBA'))
-    cw, ch = src.width / COLS, src.height / ROWS
-    frames = []
-    for r in range(ROWS):
-        for c in range(COLS):
-            cell = src.crop((round(c * cw), round(r * ch), round((c + 1) * cw), round((r + 1) * ch)))
-            bb = alpha_bbox(cell)
-            frames.append((cell, bb))
+    frames = split_poses(src)
     # 비율 기준: 서 있기 2장 + 걷기 4장의 키 중간값 → 모든 자세에 같은 비율 적용 (웅크린 자세는 작게 유지)
     hs = sorted(bb[3] - bb[1] for i, (cell, bb) in enumerate(frames) if bb and (i < 2 or 4 <= i < 8))
-    ref = hs[len(hs) // 2] if hs else ch
+    ref = hs[len(hs) // 2] if hs else src.height / ROWS
     scale = FIG_H / ref
+    if name.startswith(('enemy_', 'boss_')):                                         # 몬스터: 모든 자세가 칸 안에 들어가게
+        bbs = [bb for cell, bb in frames if bb]
+        scale = min(scale, (CELL_W - 8) / max(bb[2] - bb[0] for bb in bbs), (CELL_H - 14) / max(bb[3] - bb[1] for bb in bbs))
     out = Image.new('RGBA', (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
     for i, (cell, bb) in enumerate(frames):
         if not bb: continue
@@ -125,7 +167,7 @@ def sheet(path, name):
         part.alpha_composite(fig, (ox - cx0, oy - cy0)) if 0 <= ox - cx0 and 0 <= oy - cy0 and ox - cx0 + w <= CELL_W else part.paste(fig, (ox - cx0, oy - cy0), fig)
         out.alpha_composite(part, (cx0, cy0))
     out.save(f'{DST}/{name}_anim.png', optimize=True)
-    return f'{COLS}x{ROWS} 칸, 기준 키 {ref}px'
+    return f'{COLS}x{ROWS} 칸, 기준 키 {ref}px, 배율 {scale:.2f}'
 
 for old in glob.glob(f'{DST}/*.png'):          # 예전에 만든 게임용 그림은 지우고 새로 만듦 (원본을 지우면 게임용도 사라지게)
     os.remove(old)

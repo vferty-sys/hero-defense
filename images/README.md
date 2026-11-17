@@ -2,6 +2,9 @@
 
 AI로 만든 그림을 이 폴더에 올립니다.
 
-- 파일 이름은 프롬프트 모음(`art/prompts.html`)에 적힌 이름 그대로 (예: `hero_knight.png`)
-- 배경이 투명한 PNG, 1024×1024 권장
+- 파일 이름은 프롬프트 모음(`art/prompts.html`)에 적힌 이름 그대로 (예: `enemy_slime_sheet.png`)
+- 배경이 투명한 PNG. 동작 시트(4칸×3줄, 12자세)는 1536×1024, 한 장 그림은 1024×1024 권장
+- 올린 뒤 `python3 tools/prepare_images.py` 를 실행하면 `images/web/` 에 게임용 그림이 생깁니다
+  - 자세는 그림 덩어리 단위로 잘라서, 높이 뛴 자세가 칸 경계를 넘어도 괜찮습니다
+  - 게임에 연결: `index.html` 의 `ANIM_NAMES` 에 이름 추가 (몬스터 종류와의 연결은 `ENEMY_ANIM`)
 - 일부만 올려도 괜찮습니다. 올린 그림부터 게임에 연결합니다.
