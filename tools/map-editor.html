@@ -153,8 +153,8 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
 <script>
 (() => {
   // ---------- 게임 기준 값 (index.html 과 같음) ----------
-  const W = 2400, H = 1350, GATE = [186, 675], PATH_W = 64, WALL_HALF = 90;
-  const GAME = {"stages":[{"name":"첫 번째 숲길","map":"s1"},{"name":"갈림 언덕","map":"s2"},{"name":"안개 개울","map":"s3"},{"name":"세 갈래 들판","map":"s4"},{"name":"슬라임 굴","map":"s5"},{"name":"늪지 교차로","map":"s6"},{"name":"얼음 동굴","map":"s7"},{"name":"네 갈래 협곡","map":"s8"},{"name":"세 개의 굴","map":"s9"},{"name":"왕좌 앞 평원","map":"s10"},{"name":"대왕 슬라임","map":"boss1"}],"maps":{"s1":{"theme":"spring","ents":{"E":{"name":"동쪽 길","x":2420,"y":670}},"segments":{"g":[[420,675],[300,672],[186,675]],"e":[[2420,670],[2150,640],[1800,700],[1500,670]],"a":[[1500,670],[1250,560],[950,470],[650,520],[420,675]],"b":[[1500,670],[1250,780],[950,870],[650,830],[420,675]]},"walls":[]},"s2":{"theme":"dry","ents":{"NE":{"name":"북동쪽 길","x":2000,"y":-30},"SE":{"name":"남동쪽 길","x":2000,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[2000,-30],[1850,140],[1650,280],[1400,360]],"s":[[2000,1380],[1850,1210],[1650,1070],[1400,990]],"a":[[1400,360],[1100,400],[800,480],[560,590],[420,675]],"b":[[1400,990],[1100,950],[800,870],[560,760],[420,675]],"m":[[1400,360],[1320,520],[1300,675],[1320,830],[1400,990]]},"walls":[]},"s3":{"theme":"autumn","ents":{"E":{"name":"동쪽 길","x":2420,"y":670},"N":{"name":"북쪽 길","x":1500,"y":-30}},"segments":{"g":[[420,675],[300,672],[186,675]],"e":[[2420,670],[2100,700],[1800,650],[1600,670]],"a1":[[1600,670],[1350,560],[1050,500]],"a2":[[1050,500],[800,520],[580,600],[420,675]],"b":[[1600,670],[1350,790],[1000,860],[700,800],[420,675]],"n":[[1500,-30],[1400,150],[1220,340],[1050,500]]},"walls":[]},"s4":{"theme":"spring","ents":{"NE":{"name":"북동쪽 길","x":2000,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"SE":{"name":"남동쪽 길","x":2000,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[2000,-30],[1800,150],[1550,280],[1300,360]],"s":[[2000,1380],[1800,1200],[1550,1070],[1300,990]],"e":[[2420,670],[2150,700],[1850,650],[1600,670]],"eu":[[1600,670],[1450,500],[1300,360]],"ed":[[1600,670],[1450,840],[1300,990]],"a":[[1300,360],[950,400],[650,500],[420,675]],"b":[[1300,990],[950,950],[650,850],[420,675]]},"walls":[[[2000,585],[2000,765]]]},"s5":{"theme":"dark","ents":{"C":{"name":"슬라임 굴","x":1550,"y":670,"cave":true}},"segments":{"g":[[420,675],[300,672],[186,675]],"u":[[1550,670],[1400,500],[1150,400],[850,420],[620,540],[420,675]],"d":[[1550,670],[1400,840],[1150,940],[850,920],[620,810],[420,675]]},"walls":[[[850,330],[850,510]],[[850,830],[850,1010]]]},"s6":{"theme":"autumn","ents":{"N":{"name":"북쪽 길","x":1400,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"S":{"name":"남쪽 길","x":1400,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1400,-30],[1300,130],[1100,300]],"s":[[1400,1380],[1300,1220],[1100,1050]],"e":[[2420,670],[2100,640],[1800,700],[1500,670]],"eu":[[1500,670],[1300,480],[1100,300]],"ed":[[1500,670],[1300,860],[1100,1050]],"a":[[1100,300],[800,360],[580,520],[420,675]],"b":[[1100,1050],[800,990],[580,830],[420,675]]},"walls":[[[1760,600],[1760,790]]]},"s7":{"theme":"snow","ents":{"C":{"name":"얼음 굴","x":1500,"y":670,"cave":true},"T":{"name":"북쪽 길","x":1250,"y":-30},"D":{"name":"남쪽 길","x":1250,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"c":[[1500,670],[1300,610],[1050,560]],"t":[[1250,-30],[1200,200],[1120,400],[1050,560]],"j":[[1050,560],[800,560],[600,620],[420,675]],"d":[[1250,1380],[1200,1150],[1050,950],[800,830],[600,760],[420,675]]},"walls":[[[800,470],[800,650]],[[800,740],[800,920]]]},"s8":{"theme":"dry","ents":{"N":{"name":"북쪽 길","x":1100,"y":-30},"NE":{"name":"북동쪽 길","x":2200,"y":-30},"SE":{"name":"남동쪽 길","x":2200,"y":1380},"S":{"name":"남쪽 길","x":1100,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1100,-30],[1000,150],[800,320]],"ne":[[2200,-30],[1900,250],[1600,500],[1200,420],[800,320]],"s":[[1100,1380],[1000,1200],[800,1030]],"se":[[2200,1380],[1900,1100],[1600,850],[1200,930],[800,1030]],"a":[[800,320],[620,420],[500,560],[420,675]],"b":[[800,1030],[620,930],[500,790],[420,675]]},"walls":[[[640,320],[640,500]],[[640,850],[640,1030]]]},"s9":{"theme":"dark","ents":{"C":{"name":"가운데 굴","x":1600,"y":670,"cave":true},"U":{"name":"북쪽 굴","x":1350,"y":250,"cave":true},"D":{"name":"남쪽 굴","x":1350,"y":1100,"cave":true}},"segments":{"g":[[420,675],[300,672],[186,675]],"cu":[[1600,670],[1400,560],[1150,450]],"u":[[1350,250],[1260,340],[1150,450]],"j1":[[1150,450],[900,480],[650,560],[420,675]],"cd":[[1600,670],[1400,800],[1150,1000]],"d1":[[1350,1100],[1260,1060],[1150,1000]],"d2":[[1150,1000],[900,900],[650,800],[420,675]]},"walls":[[[900,390],[900,570]],[[900,810],[900,990]]]},"s10":{"theme":"volcano","ents":{"N":{"name":"북쪽 길","x":1100,"y":-30},"NE":{"name":"북동쪽 길","x":2100,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"SE":{"name":"남동쪽 길","x":2100,"y":1380},"S":{"name":"남쪽 길","x":1100,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"ne":[[2100,-30],[1850,180],[1550,330],[1300,400]],"e":[[2420,670],[2100,700],[1850,650],[1700,670]],"eu":[[1700,670],[1500,500],[1300,400]],"ed":[[1700,670],[1500,840],[1300,950]],"se":[[2100,1380],[1850,1170],[1550,1020],[1300,950]],"ta":[[1300,400],[1000,400],[750,450]],"ba":[[1300,950],[1000,950],[750,900]],"n":[[1100,-30],[950,180],[750,450]],"s":[[1100,1380],[950,1170],[750,900]],"ga":[[750,450],[560,540],[420,675]],"gb":[[750,900],[560,810],[420,675]]},"walls":[[[1200,310],[1200,490]],[[1200,860],[1200,1040]]]},"boss1":{"theme":"dark","ents":{"N":{"name":"북쪽 길","x":1500,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":640},"S":{"name":"남쪽 길","x":1450,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1500,-30],[1400,180],[1220,420],[1000,670]],"e":[[2420,640],[2050,700],[1700,650],[1350,700],[1000,670]],"s":[[1450,1380],[1380,1150],[1220,900],[1000,670]],"a":[[1000,670],[820,540],[600,520],[420,675]],"b":[[1000,670],[820,800],[600,830],[420,675]]},"walls":[[[680,435],[680,615]],[[680,735],[680,915]]]}}};   // 게임의 지금 지도 (index.html 의 MAPS · 스테이지 이름)
+  const W = 1600, H = 900, GATE = [186, 450], PATH_W = 64, WALL_HALF = 90, U = 2 / 3, INSET = 42;   // U: 장식·판정 크기 배율 (지도가 2400×1350 이던 때 기준 → 1600×900)
+  const GAME = {"stages":[{"name":"첫 번째 숲길","map":"s1"},{"name":"갈림 언덕","map":"s2"},{"name":"안개 개울","map":"s3"},{"name":"세 갈래 들판","map":"s4"},{"name":"슬라임 굴","map":"s5"},{"name":"늪지 교차로","map":"s6"},{"name":"얼음 동굴","map":"s7"},{"name":"네 갈래 협곡","map":"s8"},{"name":"세 개의 굴","map":"s9"},{"name":"왕좌 앞 평원","map":"s10"},{"name":"대왕 슬라임","map":"boss1"}],"maps":{"s1":{"theme":"spring","ents":{"E":{"name":"동쪽 길","x":1620,"y":447}},"segments":{"g":[[335,450],[259,448],[186,450]],"e":[[1620,447],[1440,427],[1217,467],[1025,447]],"a":[[1025,447],[866,373],[674,313],[482,347],[335,450]],"b":[[1025,447],[866,520],[674,580],[482,553],[335,450]]},"walls":[]},"s2":{"theme":"dry","ents":{"NE":{"name":"북동쪽 길","x":1345,"y":-30},"SE":{"name":"남동쪽 길","x":1345,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"n":[[1345,-30],[1249,93],[1121,187],[961,240]],"s":[[1345,930],[1249,807],[1121,713],[961,660]],"a":[[961,240],[770,267],[578,320],[425,393],[335,450]],"b":[[961,660],[770,633],[578,580],[425,507],[335,450]],"m":[[961,240],[910,347],[897,450],[910,553],[961,660]]},"walls":[]},"s3":{"theme":"autumn","ents":{"E":{"name":"동쪽 길","x":1620,"y":447},"N":{"name":"북쪽 길","x":1025,"y":-30}},"segments":{"g":[[335,450],[259,448],[186,450]],"e":[[1620,447],[1408,467],[1217,433],[1089,447]],"a1":[[1089,447],[929,373],[738,333]],"a2":[[738,333],[578,347],[438,400],[335,450]],"b":[[1089,447],[929,527],[706,573],[514,533],[335,450]],"n":[[1025,-30],[961,100],[846,227],[738,333]]},"walls":[]},"s4":{"theme":"spring","ents":{"NE":{"name":"북동쪽 길","x":1345,"y":-30},"E":{"name":"동쪽 길","x":1620,"y":447},"SE":{"name":"남동쪽 길","x":1345,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"n":[[1345,-30],[1217,100],[1057,187],[897,240]],"s":[[1345,930],[1217,800],[1057,713],[897,660]],"e":[[1620,447],[1440,467],[1249,433],[1089,447]],"eu":[[1089,447],[993,333],[897,240]],"ed":[[1089,447],[993,560],[897,660]],"a":[[897,240],[674,267],[482,333],[335,450]],"b":[[897,660],[674,633],[482,567],[335,450]]},"walls":[[[1345,360],[1345,540]]]},"s5":{"theme":"dark","ents":{"C":{"name":"슬라임 굴","x":1057,"y":447,"cave":true}},"segments":{"g":[[335,450],[259,448],[186,450]],"u":[[1057,447],[961,333],[802,267],[610,280],[463,360],[335,450]],"d":[[1057,447],[961,560],[802,627],[610,613],[463,540],[335,450]]},"walls":[[[610,190],[610,370]],[[610,523],[610,703]]]},"s6":{"theme":"autumn","ents":{"N":{"name":"북쪽 길","x":961,"y":-30},"E":{"name":"동쪽 길","x":1620,"y":447},"S":{"name":"남쪽 길","x":961,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"n":[[961,-30],[897,87],[770,200]],"s":[[961,930],[897,813],[770,700]],"e":[[1620,447],[1408,427],[1217,467],[1025,447]],"eu":[[1025,447],[897,320],[770,200]],"ed":[[1025,447],[897,573],[770,700]],"a":[[770,200],[578,240],[438,347],[335,450]],"b":[[770,700],[578,660],[438,553],[335,450]]},"walls":[[[1191,368],[1191,558]]]},"s7":{"theme":"snow","ents":{"C":{"name":"얼음 굴","x":1025,"y":447,"cave":true},"T":{"name":"북쪽 길","x":866,"y":-30},"D":{"name":"남쪽 길","x":866,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"c":[[1025,447],[897,407],[738,373]],"t":[[866,-30],[834,133],[783,267],[738,373]],"j":[[738,373],[578,373],[450,413],[335,450]],"d":[[866,930],[834,767],[738,633],[578,553],[450,507],[335,450]]},"walls":[[[578,283],[578,463]],[[578,463],[578,643]]]},"s8":{"theme":"dry","ents":{"N":{"name":"북쪽 길","x":770,"y":-30},"NE":{"name":"북동쪽 길","x":1472,"y":-30},"SE":{"name":"남동쪽 길","x":1472,"y":930},"S":{"name":"남쪽 길","x":770,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"n":[[770,-30],[706,100],[578,213]],"ne":[[1472,-30],[1281,167],[1089,333],[834,280],[578,213]],"s":[[770,930],[706,800],[578,687]],"se":[[1472,930],[1281,733],[1089,567],[834,620],[578,687]],"a":[[578,213],[463,280],[387,373],[335,450]],"b":[[578,687],[463,620],[387,527],[335,450]]},"walls":[[[476,183],[476,363]],[[476,537],[476,717]]]},"s9":{"theme":"dark","ents":{"C":{"name":"가운데 굴","x":1089,"y":447,"cave":true},"U":{"name":"북쪽 굴","x":929,"y":167,"cave":true},"D":{"name":"남쪽 굴","x":929,"y":733,"cave":true}},"segments":{"g":[[335,450],[259,448],[186,450]],"cu":[[1089,447],[961,373],[802,300]],"u":[[929,167],[872,227],[802,300]],"j1":[[802,300],[642,320],[482,373],[335,450]],"cd":[[1089,447],[961,533],[802,667]],"d1":[[929,733],[872,707],[802,667]],"d2":[[802,667],[642,600],[482,533],[335,450]]},"walls":[[[642,230],[642,410]],[[642,510],[642,690]]]},"s10":{"theme":"volcano","ents":{"N":{"name":"북쪽 길","x":770,"y":-30},"NE":{"name":"북동쪽 길","x":1408,"y":-30},"E":{"name":"동쪽 길","x":1620,"y":447},"SE":{"name":"남동쪽 길","x":1408,"y":930},"S":{"name":"남쪽 길","x":770,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"ne":[[1408,-30],[1249,120],[1057,220],[897,267]],"e":[[1620,447],[1408,467],[1249,433],[1153,447]],"eu":[[1153,447],[1025,333],[897,267]],"ed":[[1153,447],[1025,560],[897,633]],"se":[[1408,930],[1249,780],[1057,680],[897,633]],"ta":[[897,267],[706,267],[546,300]],"ba":[[897,633],[706,633],[546,600]],"n":[[770,-30],[674,120],[546,300]],"s":[[770,930],[674,780],[546,600]],"ga":[[546,300],[425,360],[335,450]],"gb":[[546,600],[425,540],[335,450]]},"walls":[[[834,177],[834,357]],[[834,543],[834,723]]]},"boss1":{"theme":"dark","ents":{"N":{"name":"북쪽 길","x":1025,"y":-30},"E":{"name":"동쪽 길","x":1620,"y":427},"S":{"name":"남쪽 길","x":993,"y":930}},"segments":{"g":[[335,450],[259,448],[186,450]],"n":[[1025,-30],[961,120],[846,280],[706,447]],"e":[[1620,427],[1376,467],[1153,433],[929,467],[706,447]],"s":[[993,930],[949,767],[846,600],[706,447]],"a":[[706,447],[591,360],[450,347],[335,450]],"b":[[706,447],[591,533],[450,553],[335,450]]},"walls":[[[560,265],[560,445]],[[470,460],[470,640]]]}}};   // 게임의 지금 지도 (index.html 의 MAPS · 스테이지 이름)
   const THEMES = { spring: ['봄 풀밭', '#5e9238'], dry: ['메마른 들', '#7a8a3e'], autumn: ['가을', '#8a8a3a'], dark: ['어두운 숲', '#53823a'], snow: ['눈밭', '#dfe6ec'], volcano: ['화산', '#4a3e38'] };
   const STAGE_LABEL = (s, i) => s.map === 'boss1' ? `최종보스전 · ${s.name}` : `${i + 1}스테이지 · ${s.name}`;
   const WALL_FROM = 4;                                       // 길목 성벽은 4스테이지부터
@@ -274,14 +274,14 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
     const snow = st.theme === 'snow';
     ctx.fillStyle = (THEMES[st.theme] || THEMES.spring)[1]; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = snow ? 'rgba(60,80,100,0.10)' : 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2;   // 150px 격자
-    for (let x = 150; x < W; x += 150) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 150; y < H; y += 150) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (let x = 100; x < W; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 100; y < H; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
     // 성
     ctx.fillStyle = '#776e60'; ctx.fillRect(0, 0, 130, H);
     ctx.fillStyle = '#958f84'; ctx.fillRect(128, 0, 44, H); ctx.fillStyle = '#aaa498'; ctx.fillRect(133, 0, 26, H);
-    ctx.fillStyle = '#2b221a'; ctx.fillRect(126, 637, 50, 76);
-    for (const ty of [609, 741]) { ctx.fillStyle = '#7e786d'; ctx.beginPath(); ctx.arc(150, ty, 27, 0, 7); ctx.fill(); ctx.fillStyle = '#a7a196'; ctx.beginPath(); ctx.arc(150, ty, 19, 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#a8472f'; ctx.fillRect(16, 250, 96, 148);
+    ctx.fillStyle = '#2b221a'; ctx.fillRect(126, GATE[1] - 38, 50, 76);
+    for (const ty of [GATE[1] - 66, GATE[1] + 66]) { ctx.fillStyle = '#7e786d'; ctx.beginPath(); ctx.arc(150, ty, 27, 0, 7); ctx.fill(); ctx.fillStyle = '#a7a196'; ctx.beginPath(); ctx.arc(150, ty, 19, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#a8472f'; ctx.fillRect(16, 170, 96, 148);
     // 길
     const segs = Object.values(A.S);
     for (const P of segs) poly(P, PATH_W + 12, 'rgba(60,42,20,0.35)');
@@ -289,50 +289,50 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
     for (const P of segs) poly(P, PATH_W, '#a47c4b');
     for (const P of segs) poly(P, PATH_W - 18, '#b28a58');
     // 고른 입구의 길 표시
-    if (focusEnt && A.routes[focusEnt]) A.routes[focusEnt].forEach((r, i) => poly(r.poly, 14, ['rgba(255,236,120,0.9)', 'rgba(140,220,255,0.9)', 'rgba(255,160,220,0.9)', 'rgba(170,255,150,0.9)'][i % 4]));
+    if (focusEnt && A.routes[focusEnt]) A.routes[focusEnt].forEach((r, i) => poly(r.poly, 10, ['rgba(255,236,120,0.9)', 'rgba(140,220,255,0.9)', 'rgba(255,160,220,0.9)', 'rgba(170,255,150,0.9)'][i % 4]));
     // 성벽 자리
     for (const w of st.walls) {
-      ctx.setLineDash([22, 14]); poly([{ x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] }], 14, '#ffd84a'); ctx.setLineDash([]);
+      ctx.setLineDash([16, 10]); poly([{ x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] }], 10, '#ffd84a'); ctx.setLineDash([]);
       const mx = (w[0][0] + w[1][0]) / 2, my = (w[0][1] + w[1][1]) / 2;
-      ctx.fillStyle = '#2a5a2a'; ctx.beginPath(); ctx.arc(mx, my, 26, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 5; ctx.stroke();
-      label('성벽', mx, my + 58, 30, '#fff3c0');
+      ctx.fillStyle = '#2a5a2a'; ctx.beginPath(); ctx.arc(mx, my, 18, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 4; ctx.stroke();
+      label('성벽', mx, my + 40, 30, '#fff3c0');
     }
     // 입구 · 굴
     for (const [k, e] of Object.entries(st.ents)) {
       if (e.cave) {
-        ctx.fillStyle = '#5f5a52'; ctx.beginPath(); ctx.ellipse(e.x, e.y, 95, 62, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = '#1b1420'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, 52, 30, 0, Math.PI, 0); ctx.fill();
-        ctx.fillStyle = 'rgba(150,90,220,0.6)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 8, 40, 12, 0, 0, 7); ctx.fill();
-        label(e.name, e.x, e.y - 82, 34, '#f3e3bf');
+        ctx.fillStyle = '#5f5a52'; ctx.beginPath(); ctx.ellipse(e.x, e.y, 66, 43, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1b1420'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 4, 36, 21, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(150,90,220,0.6)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, 28, 8, 0, 0, 7); ctx.fill();
+        label(e.name, e.x, e.y - 58, 34, '#f3e3bf');
       } else {
-        const cx = Math.min(W - 60, Math.max(60, e.x)), cy = Math.min(H - 60, Math.max(60, e.y));
+        const cx = Math.min(W - INSET, Math.max(INSET, e.x)), cy = Math.min(H - INSET, Math.max(INSET, e.y));
         const dir = e.x >= W ? Math.PI : e.y <= 0 ? Math.PI / 2 : -Math.PI / 2;   // 지도 안쪽을 가리키는 화살표
         ctx.save(); ctx.translate(cx, cy); ctx.rotate(dir);
         ctx.fillStyle = '#d8402e'; ctx.strokeStyle = '#fff1d8'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(-24, -32); ctx.lineTo(-10, 0); ctx.lineTo(-24, 32); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(-16, -22); ctx.lineTo(-7, 0); ctx.lineTo(-16, 22); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.restore();
-        const lx = e.x >= W ? cx - 100 : cx, ly = e.y <= 0 ? cy + 70 : e.y >= H ? cy - 64 : cy - 50;
+        const lx = e.x >= W ? cx - 70 : cx, ly = e.y <= 0 ? cy + 48 : e.y >= H ? cy - 44 : cy - 36;
         label(e.name, lx, ly, 32, '#fff1d8');
       }
     }
     // 성문 표시
-    ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(GATE[0], GATE[1], 30, 0, 7); ctx.stroke();
-    label('성문', GATE[0] + 70, GATE[1] - 50, 32, '#ffe9a8');
+    ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(GATE[0], GATE[1], 22, 0, 7); ctx.stroke();
+    label('성문', GATE[0] + 50, GATE[1] - 36, 32, '#ffe9a8');
     // 점 옮기기: 길의 점
     if (tool === 'move') for (const pts of Object.values(st.segments)) pts.forEach((p, i) => {
       const end = i === 0 || i === pts.length - 1;
       ctx.fillStyle = end ? '#ffffff' : '#ffe08a'; ctx.strokeStyle = '#3a2a14'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(p[0], p[1], end ? 15 : 11, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p[0], p[1], end ? 11 : 8, 0, 7); ctx.fill(); ctx.stroke();
     });
     // 이어지지 않은 끝 (맨 위에)
-    for (const p of A.dangling) { ctx.fillStyle = '#ff4030'; ctx.beginPath(); ctx.arc(p[0], p[1], 18, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke(); }
+    for (const p of A.dangling) { ctx.fillStyle = '#ff4030'; ctx.beginPath(); ctx.arc(p[0], p[1], 13, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); }
     // 긋는 중인 선 · 붙을 곳
     if (stroke && stroke.length > 1) { ctx.setLineDash([]); poly(stroke.map(p => ({ x: p[0], y: p[1] })), 10, 'rgba(255,255,255,0.9)'); }
-    if (snapHint) { ctx.strokeStyle = '#7fe0ff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(snapHint[0], snapHint[1], 34, 0, 7); ctx.stroke(); }
+    if (snapHint) { ctx.strokeStyle = '#7fe0ff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(snapHint[0], snapHint[1], 24, 0, 7); ctx.stroke(); }
     if (!stroke && !dragInfo) renderSide();                  // 긋거나 끄는 중에는 오른쪽 칸을 다시 그리지 않음
   }
   function label(t, x, y, size, col) {
-    ctx.font = `700 ${size}px "Noto Sans KR", "Apple SD Gothic Neo", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    size *= 0.72; ctx.font = `700 ${size}px "Noto Sans KR", "Apple SD Gothic Neo", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = size * 0.22; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
   }
 
@@ -366,17 +366,17 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
   function changed() { dirty = true; store.set('mapdraft:' + stageKey, { st, at: Date.now() }); updateStatus(); draw(); }
   const toastEl = document.getElementById('toast'); let toastT = 0;
   function toast(t) { toastEl.textContent = t; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 2200); }
-  const R = (world, px) => Math.max(world, px / scale);         // 누르기 판정 반경: 화면에서 너무 작지 않게
+  const R = (world, px) => Math.max(world * U, px / scale);     // 누르기 판정 반경: 화면에서 너무 작지 않게
   const nextName = (pre, obj) => { let i = 1; while (obj[pre + i]) i++; return pre + i; };
   function entKeyFor(x, y) {
-    const name = x >= W ? (y < 420 ? ['NE', '북동쪽 길'] : y > 930 ? ['SE', '남동쪽 길'] : ['E', '동쪽 길'])
-               : y <= 0 ? (x > 1700 ? ['NE', '북동쪽 길'] : x < 800 ? ['NW', '북서쪽 길'] : ['N', '북쪽 길'])
-               : (x > 1700 ? ['SE', '남동쪽 길'] : x < 800 ? ['SW', '남서쪽 길'] : ['S', '남쪽 길']);
+    const name = x >= W ? (y < 280 ? ['NE', '북동쪽 길'] : y > 620 ? ['SE', '남동쪽 길'] : ['E', '동쪽 길'])
+               : y <= 0 ? (x > 1130 ? ['NE', '북동쪽 길'] : x < 530 ? ['NW', '북서쪽 길'] : ['N', '북쪽 길'])
+               : (x > 1130 ? ['SE', '남동쪽 길'] : x < 530 ? ['SW', '남서쪽 길'] : ['S', '남쪽 길']);
     let k = name[0], n = name[1], i = 2; while (st.ents[k]) { k = name[0] + i; n = name[1] + ' ' + i; i++; }
     return [k, n];
   }
   function caveName(y) {
-    const base = y < 450 ? '북쪽 굴' : y > 900 ? '남쪽 굴' : '가운데 굴'; let n = base, i = 2;
+    const base = y < 300 ? '북쪽 굴' : y > 600 ? '남쪽 굴' : '가운데 굴'; let n = base, i = 2;
     while (Object.values(st.ents).some(e => e.name === n)) n = base + ' ' + i++;
     return n;
   }
@@ -403,15 +403,15 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
     const pts = st.segments[name], sm = smooth(pts); let ci = 0;
     for (let i = 0; i < pts.length - 1; i++) if (sm.ci[i] < at) ci = i;   // pt 바로 앞의 조절점
     const a = [...pts.slice(0, ci + 1), pt], b = [pt, ...pts.slice(ci + 1)];
-    const clean = arr => arr.filter((q, i) => i === 0 || i === arr.length - 1 || (Math.hypot(q[0] - arr[0][0], q[1] - arr[0][1]) > 30 && Math.hypot(q[0] - arr[arr.length - 1][0], q[1] - arr[arr.length - 1][1]) > 30));
+    const clean = arr => arr.filter((q, i) => i === 0 || i === arr.length - 1 || (Math.hypot(q[0] - arr[0][0], q[1] - arr[0][1]) > 20 && Math.hypot(q[0] - arr[arr.length - 1][0], q[1] - arr[arr.length - 1][1]) > 20));
     delete st.segments[name];
     st.segments[nextName('r', st.segments)] = clean(a); st.segments[nextName('r', st.segments)] = clean(b);
   }
   function finishStroke(raw) {
     let L = 0; for (let i = 1; i < raw.length; i++) L += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
-    if (L < 80) { toast('조금 더 길게 그어 주세요'); return; }
+    if (L < 55) { toast('조금 더 길게 그어 주세요'); return; }
     snapshot();
-    let pts = rdp(raw, 22).map(p => [Math.round(p[0]), Math.round(p[1])]);
+    let pts = rdp(raw, 15).map(p => [Math.round(p[0]), Math.round(p[1])]);
     const apply = idx => {                                   // 한쪽 끝씩 차례로 붙임 (먼저 나눈 길도 다음 끝에서 다시 찾음)
       const s = snapEnd(pts[idx]);
       if (s.kind === 'split') splitSeg(s.seg, s.at, s.pt);
@@ -419,7 +419,7 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
       pts[idx] = s.pt; return s;
     };
     const s0 = apply(0), s1 = apply(pts.length - 1);
-    pts = pts.filter((q, i) => i === 0 || i === pts.length - 1 || (Math.hypot(q[0] - pts[0][0], q[1] - pts[0][1]) > 40 && Math.hypot(q[0] - pts[pts.length - 1][0], q[1] - pts[pts.length - 1][1]) > 40));
+    pts = pts.filter((q, i) => i === 0 || i === pts.length - 1 || (Math.hypot(q[0] - pts[0][0], q[1] - pts[0][1]) > 28 && Math.hypot(q[0] - pts[pts.length - 1][0], q[1] - pts[pts.length - 1][1]) > 28));
     if (s0.kind === 'gate' && s1.kind !== 'gate') pts.reverse();             // 성문 쪽이 끝이 되게 (보기 좋게만)
     if (pts.length < 2 || keyOf(pts[0]) === keyOf(pts[pts.length - 1])) { undo.pop(); toast('양 끝이 같은 곳이에요'); return; }
     st.segments[nextName('r', st.segments)] = pts;
@@ -430,14 +430,14 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
   }
   function hitSeg(x, y, r) { let best = null; for (const [n, pts] of Object.entries(st.segments)) { const d = nearestOnPoly(smooth(pts).pts, x, y); if (d.d < r && (!best || d.d < best.d)) best = { n, ...d }; } return best; }
   function hitWall(x, y, r) { return st.walls.findIndex(w => nearestOnPoly([{ x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] }], x, y).d < r); }
-  function hitEnt(x, y, r) { for (const [k, e] of Object.entries(st.ents)) { const cx = Math.min(W - 60, Math.max(60, e.x)), cy = Math.min(H - 60, Math.max(60, e.y)); if (Math.hypot(x - cx, y - cy) < r) return k; } return null; }
+  function hitEnt(x, y, r) { for (const [k, e] of Object.entries(st.ents)) { const cx = Math.min(W - INSET, Math.max(INSET, e.x)), cy = Math.min(H - INSET, Math.max(INSET, e.y)); if (Math.hypot(x - cx, y - cy) < r) return k; } return null; }
   function dropOrphanEdges() {                               // 길이 하나도 붙지 않은 가장자리 입구는 지움 (굴은 남김)
     const used = new Set(); for (const pts of Object.values(st.segments)) { used.add(keyOf(pts[0])); used.add(keyOf(pts[pts.length - 1])); }
     for (const [k, e] of Object.entries(st.ents)) if (!e.cave && !used.has(keyOf([e.x, e.y]))) delete st.ents[k];
   }
   function onTap(x, y) {
     if (tool === 'cave') {
-      if (x < 320) { toast('성 바로 앞에는 굴을 놓을 수 없어요'); return; }
+      if (x < 230) { toast('성 바로 앞에는 굴을 놓을 수 없어요'); return; }
       const k = hitEnt(x, y, R(100, 24)); if (k && st.ents[k].cave) { toast('여기에는 이미 굴이 있어요'); return; }
       snapshot(); let ck = 'C', i = 2; while (st.ents[ck]) ck = 'C' + i++;
       st.ents[ck] = { name: caveName(y), x: Math.round(x), y: Math.round(y), cave: true }; toast('굴을 놓았어요 · 굴에서 성문 쪽으로 길을 그어 주세요'); changed();
@@ -445,7 +445,7 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
       const wi = hitWall(x, y, R(40, 16)); if (wi >= 0) { snapshot(); st.walls.splice(wi, 1); toast('성벽 자리를 지웠어요'); changed(); return; }
       const h = hitSeg(x, y, R(60, 20)); if (!h) { toast('길 위를 눌러 주세요'); return; }
       if (st.walls.length >= 2) { toast('성벽 자리는 2곳까지예요'); return; }
-      if (Math.hypot(h.x - GATE[0], h.y - GATE[1]) < 280) { toast('성문과 너무 가까워요 (병사가 모이는 자리)'); return; }
+      if (Math.hypot(h.x - GATE[0], h.y - GATE[1]) < 190) { toast('성문과 너무 가까워요 (병사가 모이는 자리)'); return; }
       const L = Math.hypot(h.tx, h.ty) || 1, nx = -h.ty / L, ny = h.tx / L;
       snapshot(); st.walls.push([[Math.round(h.x - nx * WALL_HALF), Math.round(h.y - ny * WALL_HALF)], [Math.round(h.x + nx * WALL_HALF), Math.round(h.y + ny * WALL_HALF)]]);
       toast('성벽 자리를 만들었어요'); changed();
@@ -469,7 +469,7 @@ button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px so
     return { refs, ents };
   }
   function moveVertex(d, x, y) {
-    let nx = Math.round(Math.max(200, Math.min(W - 10, x))), ny = Math.round(Math.max(10, Math.min(H - 10, y)));
+    let nx = Math.round(Math.max(190, Math.min(W - 10, x))), ny = Math.round(Math.max(10, Math.min(H - 10, y)));
     const e = d.ents.find(q => !q.cave);
     if (e) { if (e.x >= W) nx = W + 20; else if (e.y <= 0) ny = -30; else if (e.y >= H) ny = H + 30; }
     for (const r of d.refs) { r.p[0] = nx; r.p[1] = ny; }
