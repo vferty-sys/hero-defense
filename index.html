@@ -60,24 +60,39 @@ const CONFIG = {
   speeds: [1, 2],                        // 배속 버튼 단계
   prepTime: 5,                           // 스테이지 시작 후 준비 시간(초): 적·시간이 멈추고 병력 대기열만 만들 수 있음
 
+  // ---------------- 성문 (2개 · 체력 공유 · 하나라도 무너지면 패배) ----------------
+  // 업그레이드하면 두 성문이 함께 오름 (즉시 적용). 궁수·투석기·목수·끓는 기름·마법 타워는 성문마다 붙음
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
     carpenterSpeed: 55,           // 목수 이동 속도(px/초)
-    // 성문 능력치 (업그레이드 없음). oilDamage·oilInterval·oilRadius를 넣으면 성문에 붙은 적에게 끓는 기름
+    repairPerCarpenter: 6,        // 목수 1명이 초당 수리하는 양
+    archerDamage: 11, archerInterval: 0.85, archerRange: 320,
+    oilDamage: 70, oilInterval: 6, oilRadius: 120,                                // 끓는 기름 (성문에 붙은 적에게)
+    catapult: { damage: 45, radius: 75, interval: 4.5, range: 480, minRange: 110 },   // 투석기: 멀리 있는 지상 적 무리에 돌 (범위 피해)
+    magicTower: { damage: 40, splash: 80, interval: 2.6, range: 420 },                // 마법 타워: 광역 마법탄 (공중도 맞힘)
+    rallyRange: 700,              // 집결 지점은 성문에서 이 거리 안에만 찍을 수 있음
+    // cost = 이 레벨로 올리는 비용 / maxHp = 두 성문이 함께 쓰는 체력 / pop = 인구 상한 / 나머지는 성문 하나당
     levels: [
-      { maxHp: 2500, carpenters: 1, repairPerCarpenter: 6, archers: 2, archerDamage: 11, archerInterval: 0.85, archerRange: 320 },   // 끓는 기름 없음
+      { cost: 0,    maxHp: 3000, pop: 30, archers: 2, catapults: 0, carpenters: 1 },
+      { cost: 800,  maxHp: 4000, pop: 40, archers: 3, catapults: 0, carpenters: 1 },
+      { cost: 1500, maxHp: 5000, pop: 50, archers: 3, catapults: 1, carpenters: 2 },
+      { cost: 2500, maxHp: 6500, pop: 60, archers: 4, catapults: 1, carpenters: 2, oil: true },
+      { cost: 4000, maxHp: 8000, pop: 80, archers: 4, catapults: 2, carpenters: 3, oil: true, tower: true },
     ],
   },
   wallArcher: { arrowSpeed: 700 },
 
   // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
-  // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / baseHp: 적 기지 체력 배율 / startGold: 시작 골드
-  // (선택) spawnMul: 적 생산 간격 배율 / groupMul: 적 무리 크기 배율
+  // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / startGold: 시작 골드 (나중에 '지옥' 난이도 추가 예정)
   difficulty: {
-    easy:   { name: '쉬움',   enemyHp: 0.95, enemyDmg: 0.9,  baseHp: 0.7,  startGold: 450 },
-    normal: { name: '보통',   enemyHp: 1.2,  enemyDmg: 1.15, baseHp: 0.9,  startGold: 300 },
-    hard:   { name: '어려움', enemyHp: 1.5,  enemyDmg: 1.4,  baseHp: 1.15, startGold: 300 },   // 보통을 모두 깨면 열림
+    normal: { name: '보통',   enemyHp: 1.2,  enemyDmg: 1.15, startGold: 300 },
+    hard:   { name: '어려움', enemyHp: 1.5,  enemyDmg: 1.4,  startGold: 300 },   // 보통 1막(최종보스전 포함)을 깨면 열림
   },
+  // ---------------- 골드 ----------------
+  // 일반 몬스터는 기본 골드 × goldMul, 정예(보스 부하·정예 분대)는 그 eliteMul배
+  // 중간보스 = midBoss[0] + 스테이지 번호 × midBoss[1], 최종보스 = finalBoss (분열체는 체력 비율만큼)
+  // 바로 시작 보너스 = 다음 웨이브까지 남은 초 × rushPerSec (최대 rushMax)
+  economy: { goldMul: 1.5, eliteMul: 3, midBoss: [300, 50], finalBoss: 2000, rushPerSec: 10, rushMax: 100 },
 
   // ---------------- 효과 (일시정지 화면에서 켜기/끄기) ----------------
   effects: { damageNumbers: true, screenShake: true, sfxVolume: 0.7, musicVolume: 0.6, muted: false },   // 소리 크기 0~1
@@ -318,7 +333,7 @@ const CONFIG = {
                     skills: [ { id: 'poison', name: '산성 웅덩이', cooldown: 9,  first: 4, range: 260, radius: 85, delay: 0.7, dps: 26, duration: 6 },
                               { id: 'slam',   name: '내려찍기',   cooldown: 10, first: 7, trigger: 110, radius: 120, delay: 1.0, damage: 85, stun: 1.4 } ] },
     // 대형 슬라임 킹 (보스 스테이지 최종보스): 쓰러지면 2마리로 분열(본체 체력의 40%씩) → 다시 4마리(20%씩). 분열해도 공격력·스킬은 그대로
-    giantSlimeKing: { name: '대형 슬라임 킹', boss: true, final: true, hp: 14800, speed: 30, radius: 46, air: false, armor: 0.15, gateDamage: 80, damage: 50, attackInterval: 1.4, xp: 1500, gold: 1000,
+    giantSlimeKing: { name: '대왕 슬라임', boss: true, final: true, hp: 13060, speed: 30, radius: 46, air: false, armor: 0.15, gateDamage: 80, damage: 50, attackInterval: 1.4, xp: 1500, gold: 1000,
                     summon: { type: 'slime', count: 3, interval: 9 }, megaSplit: { count: 2, hpRatios: [0.4, 0.2], sizes: [0.75, 0.55] },
                     skills: [ { id: 'poison', name: '산성 웅덩이', cooldown: 8,  first: 4, range: 300, radius: 110, delay: 0.8, dps: 34, duration: 6 },
                               { id: 'slam',   name: '내려찍기',   cooldown: 9,  first: 6, trigger: 150, radius: 160, delay: 1.0, damage: 110, stun: 1.5 } ] },
@@ -385,74 +400,51 @@ const CONFIG = {
     },
   },
 
-  // ---------------- 스테이지 ---------------- (영웅 선택 화면에서 고름. 앞 스테이지를 깨면 다음 스테이지가 열림)
-  // map: 지도(MAPS) / bases: 나오는 적 기지 / power: 적·기지 체력과 공격력 배율 / spawnMul: 적 생산 간격 배율(클수록 적게) / startGold: 시작 골드 추가
-  // extraSpawns: 이 스테이지에서 기지별로 더 나오는 몬스터 (기지 기본 몬스터에 추가)
-  // mid: 중간보스 — first초부터 interval초마다, 남은 기지 중 한 곳에서 그 기지의 보스(byBase) 등장
-  // final: 최종보스 — base 체력이 triggerHpRatio 이하가 되면 type 보스가 나와 기지를 지킴 (hpMul: 체력 배율, protectBase: 살아 있는 동안 기지 무적)
+  // ---------------- 1막: 스테이지 10개 + 최종보스전 (적 기지 없음 · 웨이브 방식) ----------------
+  // 웨이브 수 = waveBase + 스테이지 번호 × wavePerStage (1스테이지 10 → 10스테이지 28) / 최종보스전은 waves 지정
+  // 웨이브 마리 수 = first + (웨이브-1) × perWave, 최대 cap (넘치는 만큼은 체력이 오르고 정예가 섞임: overHp·overElite)
+  // 몬스터가 나오는 시간 = spawnBase + 마리 수 × spawnPer초 / 무리 크기 = groupBase + 웨이브/2 (최대 groupMax)
+  // 분대 크기 = squadBase + (웨이브-1)/squadEvery / 3·6·9…웨이브 중간(midAt)에 모든 입구에서 중간보스 + 정예 분대
+  // 웨이브가 끝나면(몬스터가 다 나오면) countdown초 뒤 다음 웨이브 ("바로 시작"으로 앞당기면 보너스 골드)
+  waveRules: { waveBase: 8, wavePerStage: 2, first: 50, perWave: 10, cap: 150, overHp: 1 / 400, overElite: 1 / 500, overEliteMax: 0.35,
+               spawnBase: 30, spawnPer: 0.15, groupBase: 4, groupMax: 12, groupGap: 0.3, squadBase: 5, squadEvery: 3, midEvery: 3, midAt: 0.5,
+               countdown: 10, first0: 10,
+               midBosses: [{ type: 'slimeKing', weight: 2 }, { type: 'spiderQueen', weight: 1 }, { type: 'wolfKing', weight: 1 }] },
+  // 스테이지: map = 지도 / power = 적 체력·공격력 배율 / mix = 일반 무리 (슬라임 90% · 그 외 10%)
+  // squad = 분대 구성 (tank 앞장 40% · ranged 가운데 40% · support 뒤 20%), squadWeight = 무리 대신 분대가 나올 비중
   stages: [
-    { name: '고요한 숲', map: 'forest', bases: ['cave', 'goblin'], power: 1.05, spawnMul: 0.8, startGold: 0,
-      desc: '기지 2곳 · 고블린 주술사', extraSpawns: { cave: [{ type: 'wolf', count: 3, weight: 3 }] },
-      mid: { first: 150, interval: 170, byBase: { cave: 'spiderQueen' } },
-      final: { base: 'goblin', type: 'goblinShaman', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '오크 협곡', map: 'canyon', bases: ['goblin', 'cave', 'orc'], power: 1.05, spawnMul: 1.25, startGold: 100,
-      desc: '기지 3곳 · 오크 족장', extraSpawns: { goblin: [{ type: 'bomber', count: 2, weight: 2 }], cave: [{ type: 'wolf', count: 3, weight: 2 }] },
-      mid: { first: 160, interval: 170, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
-      final: { base: 'orc', type: 'orcChief', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '늑대 언덕', map: 'forestM', bases: ['cave', 'goblin'], power: 1.25, spawnMul: 0.8, startGold: 150,
-      desc: '기지 2곳 · 늑대 왕', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 6 }, { type: 'harpy', count: 2, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
-      mid: { first: 150, interval: 160, byBase: { goblin: 'goblinShaman', cave: 'spiderQueen' } },
-      final: { base: 'cave', type: 'wolfKing', triggerHpRatio: 0.5, hpMul: 2.4, protectBase: true } },
-    { name: '안개 늪', map: 'marsh', bases: ['cave', 'goblin', 'orc'], power: 1.26, spawnMul: 1.3, startGold: 200,
-      desc: '기지 3곳 · 슬라임 왕', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 4 }], orc: [{ type: 'slime', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
-      mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
-      final: { base: 'orc', type: 'slimeKing', triggerHpRatio: 0.5, hpMul: 2.0, protectBase: true } },
-    { name: '용의 둥지', map: 'dragon', bases: ['cave', 'goblin', 'orc'], power: 1.32, spawnMul: 1.35, startGold: 250,
-      desc: '기지 3곳 · 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 2, weight: 3 }], goblin: [{ type: 'wolf', count: 3, weight: 2 }] },
-      mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman', orc: 'orcChief' } },
-      final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1, protectBase: true } },
-    { name: '잊힌 묘지', map: 'crypt', bases: ['goblin', 'graveyard', 'cave'], power: 1.36, spawnMul: 1.35, startGold: 300,
-      desc: '기지 3곳 · 리치', extraSpawns: { cave: [{ type: 'ghost', count: 2, weight: 3 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
-      mid: { first: 150, interval: 160, byBase: { cave: 'spiderQueen', goblin: 'goblinShaman' } },
-      final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.0, protectBase: true } },
-    { name: '얼어붙은 고개', map: 'canyonM', bases: ['goblin', 'cave', 'orc'], power: 1.3, spawnMul: 1.35, startGold: 350,
-      desc: '기지 3곳 · 바위 거인', extraSpawns: { cave: [{ type: 'wolf', count: 4, weight: 4 }], orc: [{ type: 'golem', count: 1, weight: 3 }], goblin: [{ type: 'harpy', count: 2, weight: 2 }] },
-      mid: { first: 150, interval: 160, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', orc: 'orcChief' } },
-      final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 1.6, protectBase: true } },
-    { name: '저주받은 늪', map: 'marshM', bases: ['cave', 'goblin', 'orc', 'graveyard'], power: 1.08, spawnMul: 2.0, startGold: 400,
-      desc: '기지 4곳 · 리치', extraSpawns: { cave: [{ type: 'slime', count: 2, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'bomber', count: 2, weight: 2 }] },
-      mid: { first: 150, interval: 150, byBase: { cave: 'slimeKing', goblin: 'goblinShaman', orc: 'orcChief' } },
-      final: { base: 'graveyard', type: 'lich', triggerHpRatio: 0.5, hpMul: 2.6, protectBase: true } },
-    { name: '불타는 협곡', map: 'cryptM', bases: ['goblin', 'graveyard', 'orc', 'cave'], power: 1.06, spawnMul: 2.0, startGold: 450,
-      desc: '기지 4곳 · 바위 거인', extraSpawns: { orc: [{ type: 'golem', count: 1, weight: 3 }], cave: [{ type: 'harpy', count: 3, weight: 3 }], goblin: [{ type: 'bomber', count: 3, weight: 2 }] },
-      mid: { first: 140, interval: 150, byBase: { graveyard: 'lich', cave: 'wolfKing', goblin: 'goblinShaman' } },
-      final: { base: 'orc', type: 'stoneGiant', triggerHpRatio: 0.5, hpMul: 2.2, protectBase: true } },
-    { name: '용의 왕좌', map: 'dragonM', bases: ['cave', 'goblin', 'graveyard', 'orc'], power: 1.2, spawnMul: 2.05, startGold: 500,
-      desc: '기지 4곳 · 분노한 드래곤', extraSpawns: { cave: [{ type: 'harpy', count: 3, weight: 3 }], orc: [{ type: 'golem', count: 1, weight: 2 }], goblin: [{ type: 'wolf', count: 4, weight: 2 }, { type: 'bomber', count: 2, weight: 2 }] },
-      mid: { first: 140, interval: 140, byBase: { cave: 'wolfKing', goblin: 'goblinShaman', graveyard: 'lich', orc: 'orcChief' } },
-      final: { base: 'orc', type: 'dragon', triggerHpRatio: 0.5, hpMul: 1.4, protectBase: true } },
-    // ---- 보스 스테이지 (10스테이지를 깨면 열림): 적 기지 없음, 세 갈래 길(roads)에서 웨이브로 몬스터가 옴, 최종보스를 쓰러뜨리면 승리 ----
-    // waves.first: 첫 웨이브까지(초) / rest: 웨이브가 끝난 뒤 쉬는 시간 / groupSizes: 웨이브별 한 무리 크기(갈수록 한꺼번에) / groupGap: 무리 안 간격
-    // bossAt: 웨이브 몬스터가 이 비율만큼 나왔을 때 웨이브 보스 등장 (웨이브 중간). 웨이브는 몬스터가 다 나오고 보스를 모두 쓰러뜨리면 끝
-    // list: count 몬스터 수 · duration 몬스터가 나오는 시간(초) · mix 몬스터 비중 · boss 웨이브 끝에 나오는 보스(여럿이면 하나씩 차례로) · road 보스가 나오는 길
-    { name: '대형 슬라임 킹', boss: true, map: 'kingdom', bases: [], roads: ['north', 'east', 'south'], power: 1.2, startGold: 550,
-      desc: '보스 스테이지 · 5웨이브',
-      waves: { first: 10, rest: 15, groupSizes: [4, 6, 8, 10, 12], groupGap: 0.3, bossAt: 0.5, list: [
-        { count: 60,  duration: 45, boss: ['wolfKing'], road: 'north',
-          mix: [{ type: 'wolf', weight: 5 }, { type: 'spider', weight: 3 }, { type: 'bat', weight: 2 }, { squad: 'shield', weight: 2 }] },
-        { count: 75,  duration: 50, boss: ['goblinShaman'], road: 'south',
-          mix: [{ type: 'goblin', weight: 5 }, { type: 'goblinArcher', weight: 3 }, { type: 'bomber', weight: 2 }, { type: 'fireGoblin', weight: 1 }, { squad: 'shield', weight: 2 }] },
-        { count: 90,  duration: 55, boss: ['orcChief'], road: 'east',
-          mix: [{ type: 'orc', weight: 5 }, { type: 'wolf', weight: 2 }, { type: 'goblin', weight: 2 }, { type: 'troll', weight: 1 }, { squad: 'shield', weight: 3 }] },
-        { count: 105, duration: 60, boss: ['lich'], road: 'north',
-          mix: [{ type: 'skeleton', weight: 5 }, { type: 'ghost', weight: 3 }, { type: 'skeletonMage', weight: 2 }, { squad: 'shieldDead', weight: 2 }] },
-        { count: 120, duration: 65, boss: ['wolfKing', 'goblinShaman', 'orcChief', 'lich'], together: true,   // together: 보스가 한꺼번에 등장
-          mix: [{ type: 'orc', weight: 3 }, { type: 'wolf', weight: 3 }, { type: 'skeleton', weight: 3 }, { type: 'goblin', weight: 3 }, { type: 'harpy', weight: 2 }, { type: 'slime', weight: 2 }, { type: 'troll', weight: 1 },
-                { type: 'goblinArcher', weight: 2 }, { squad: 'shield', weight: 3 }] },
-      ] },
-      // reinforce: 최종보스가 살아 있는 동안 interval초마다 count마리 슬라임 지원군이 세 길에서 나옴
-      final: { type: 'giantSlimeKing', road: 'east',
-               reinforce: { interval: 8, count: 5, mix: [{ type: 'slime', weight: 3 }, { type: 'ironSlime', weight: 2 }, { type: 'acidSlime', weight: 2 }, { type: 'fireSlime', weight: 2 }] } } },
+    { name: '첫 번째 숲길', map: 's1', power: 1.0,  desc: '입구 1곳 · 10웨이브',
+      mix: [{ type: 'slime', weight: 18 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }] },
+    { name: '갈림 언덕',   map: 's2', power: 1.04, desc: '입구 2곳 · 12웨이브',
+      mix: [{ type: 'slime', weight: 12 }, { type: 'ironSlime', weight: 6 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }] },
+    { name: '안개 개울',   map: 's3', power: 1.08, desc: '입구 2곳 · 14웨이브',
+      mix: [{ type: 'slime', weight: 10 }, { type: 'ironSlime', weight: 5 }, { type: 'acidSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }] },
+    { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 16웨이브',
+      mix: [{ type: 'slime', weight: 8 }, { type: 'ironSlime', weight: 5 }, { type: 'acidSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'spider', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['acidSlime'], support: ['slime'] }, squadWeight: 2 },
+    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '양쪽 성문 · 18웨이브',
+      mix: [{ type: 'slime', weight: 7 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 3 },
+    { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 20웨이브',
+      mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 4 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
+    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '양쪽 성문 · 22웨이브',
+      mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 4 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
+    { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 24웨이브',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 5 },
+    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '양쪽 성문 · 26웨이브',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'spider', weight: 1 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 5 },
+    { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 28웨이브',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 6 },
+    // 최종보스전: 10웨이브를 막으면 대왕 슬라임 등장. 쓰러질 때까지 squadEvery초마다 정예 분대, midEvery초마다 중간보스
+    { name: '대왕 슬라임', boss: true, map: 'boss1', power: 1.36, waves: 10, desc: '최종보스전 · 10웨이브',
+      mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'acidSlime', weight: 4 }, { type: 'fireSlime', weight: 5 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
+      squad: { tank: ['ironSlime'], ranged: ['fireSlime'], support: ['acidSlime'] }, squadWeight: 6,
+      final: { type: 'giantSlimeKing', ent: 'E', squadEvery: 15, midEvery: 60 } },
   ],
 
   // ---------------- 아이템 ----------------
@@ -462,7 +454,7 @@ const CONFIG = {
       { id: 'rare',      name: '희귀', prefix: '빛나는', color: '#5aa8ff', mul: 1.8, weight: 30, sell: 90 },
       { id: 'legendary', name: '전설', prefix: '전설의', color: '#ff9a2a', mul: 2.6, weight: 10, sell: 200 },
     ],
-    dropChance: { midBoss: 0.3, finalBoss: 0.5, base: 0.2 },   // 드랍 확률: 중간보스 30% / 드래곤 50% / 기지 파괴 20% (한 판에 평균 2개 안팎)
+    dropChance: { midBoss: 0.3, finalBoss: 1, base: 0 },   // 드랍 확률: 중간보스 30% / 최종보스 100%
     finalBossLegendaryWeight: 45,             // 최종보스는 전설이 더 잘 나옴
     // 선택한 직업 전용 아이템만 드랍. stats는 '일반' 기준 (등급 배율 적용)
     heroes: {
@@ -484,8 +476,8 @@ const CONFIG = {
     },
   },
 
-  // 시간이 지날수록 적 강화: interval초마다 위협 레벨 +1, 기지가 하나 파괴될 때마다 남은 기지가 baseLostBonus만큼 더 강해짐
-  escalation: { interval: 50, baseLostBonus: 1, hpMul: 1.05, damageMul: 1.03, spawnIntervalMul: 0.95, minSpawnInterval: 2.5, groupGrowth: 0.05 },   // groupGrowth: 위협 레벨당 적 무리 크기 +5%
+  // 웨이브가 지날수록 적 강화 (위협 레벨 = 웨이브 번호): 웨이브마다 체력 × hpMul, 공격력 × damageMul (최종보스전도 같음)
+  escalation: { hpMul: 1.03, damageMul: 1.02 },
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -497,171 +489,136 @@ const CONFIG = {
 const CASTLE_LAYOUT = {
   pathWidth: 64,
   riverWidth: 62,
-  castle: { wallX: 128, wallW: 44, gateTop: 637, gateBottom: 713 },
-  gate: { x: 150, y: 675 },
-  heroSpawn: { x: 238, y: 675 },  // 영웅 시작·부활 위치 (성문 앞)
-  startView: { x: 700, y: 640 },  // 게임 시작 시 화면 중심
-  wallArcherSpots: [[150, 609], [150, 741], [150, 525], [150, 825]],   // 성벽 궁수 위치 (레벨업 시 순서대로 추가)
-  towers: [[150, 609, 27], [150, 741, 27], [150, 225, 34], [150, 1125, 34]],
+  castle: { wallX: 128, wallW: 44 },   // 왼쪽 성벽 (오른쪽 성은 좌우 대칭)
+  gateHalf: 38,                        // 성문 높이의 절반
   keep: { x: 16, y: 601, w: 96, h: 148 },
   houses: [[18, 60, 80, 54], [30, 252, 70, 62], [14, 399, 88, 50], [24, 505, 76, 50], [30, 790, 70, 56],
            [24, 894, 78, 58], [40, 1050, 62, 52], [16, 1180, 86, 60], [22, 1280, 80, 50]],
 };
-// 지도별: seed = 나무·장식 배치용 난수 (바꾸면 숲 모양이 바뀜) / grass = 풀밭 색
-// bases = 적 기지 위치와 경로 / segments = 길 구간 (곡선으로 이어짐, 기지별 경로 = 구간들을 이어 붙인 것, 성문까지 가는 마지막 구간 이름은 main)
-// river = 강 (main 길과 만나는 곳에 다리가 자동으로 놓임) / forests = 숲 (나무는 길·강을 자동으로 피함)
-const MAPS = {
-  forest: {                       // 1스테이지: 고요한 숲
-    ...CASTLE_LAYOUT, seed: 2207, theme: 'spring',
-    bases: {
-      cave:   { x: 1880, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-      goblin: { x: 2060, y: 1075, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
-    },
-    segments: {
-      cave:   [[1880, 300], [1840, 430], [1730, 520], [1600, 590], [1490, 640]],
-      goblin: [[2005, 1027], [1900, 930], [1760, 800], [1610, 700], [1490, 640]],
-      main:   [[1490, 640], [1330, 600], [1190, 670], [1040, 712], [880, 660], [700, 720], [520, 650], [350, 690], [186, 675]],
-    },
-    river: [[1090, -60], [1050, 200], [1110, 450], [1040, 700], [1090, 950], [1030, 1200], [1070, 1410]],
-    forests: [
-      { x: 450, y: 300, r: 200, n: 100 }, { x: 450, y: 1060, r: 200, n: 100 }, { x: 820, y: 250, r: 150, n: 60 },
-      { x: 800, y: 1100, r: 160, n: 70 }, { x: 1350, y: 330, r: 170, n: 80 }, { x: 1350, y: 1050, r: 190, n: 90 },
-      { x: 1700, y: 1200, r: 140, n: 50 }, { x: 2250, y: 520, r: 150, n: 60 }, { x: 2250, y: 820, r: 120, n: 40 },
-      { x: 1600, y: 110, r: 120, n: 40 }, { x: 2320, y: 1250, r: 110, n: 30 },
-    ],
-    scatterTrees: 130,
-  },
-  canyon: {                       // 2스테이지: 오크 협곡 (메마른 풀밭)
-    ...CASTLE_LAYOUT, seed: 3301, theme: 'dry',
-    bases: {
-      goblin: { x: 1600, y: 230,  hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
-      cave:   { x: 1400, y: 1135, hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-      orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'main'] },
-    },
-    segments: {
-      goblin: [[1560, 272], [1520, 400], [1420, 530], [1290, 650], [1200, 700]],
-      cave:   [[1385, 1092], [1330, 960], [1300, 820], [1200, 700]],
-      orc:    [[2132, 625], [1980, 700], [1810, 640], [1640, 720], [1450, 740], [1200, 700]],
-      main:   [[1200, 700], [1030, 640], [860, 700], [690, 735], [520, 660], [350, 700], [186, 675]],
-    },
-    river: [[620, -60], [690, 250], [630, 520], [700, 780], [640, 1050], [690, 1410]],
-    forests: [
-      { x: 400, y: 280, r: 170, n: 70 }, { x: 420, y: 1080, r: 180, n: 80 }, { x: 1000, y: 300, r: 150, n: 50 },
-      { x: 1000, y: 1080, r: 160, n: 60 }, { x: 1950, y: 330, r: 200, n: 80 }, { x: 1950, y: 1050, r: 200, n: 80 },
-      { x: 2320, y: 1000, r: 100, n: 30 }, { x: 1700, y: 950, r: 110, n: 35 },
-    ],
-    scatterTrees: 80,
-  },
-  dragon: {                       // 3스테이지: 용의 둥지
-    ...CASTLE_LAYOUT, seed: 1115, theme: 'dark',
-    bases: {
-      cave:   { x: 1452, y: 258,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-      goblin: { x: 1855, y: 1072, hitRadius: 95,  barOffset: 96,  path: ['goblin', 'm1m2', 'main'] },
-      orc:    { x: 2212, y: 615,  hitRadius: 100, barOffset: 112, path: ['orc', 'm1m2', 'main'] },
-      graveyard: { x: 1330, y: 1150, hitRadius: 92, barOffset: 96, path: ['graveyard', 'main'] },
-    },
-    segments: {
-      graveyard: [[1300, 1095], [1270, 960], [1200, 820], [1140, 720], [1096, 660]],
-      cave:   [[1452, 298], [1418, 435], [1300, 525], [1176, 597], [1096, 660]],
-      goblin: [[1798, 1024], [1735, 935], [1660, 830], [1592, 705]],
-      orc:    [[2132, 625], [1964, 669], [1833, 645], [1703, 702], [1592, 705]],
-      m1m2:   [[1592, 705], [1444, 758], [1266, 714], [1096, 660]],
-      main:   [[1096, 660], [933, 603], [762, 660], [592, 720], [421, 663], [290, 678], [186, 675]],
-    },
-    river: [[866, -60], [832, 165], [764, 382], [770, 600], [705, 840], [727, 1080], [671, 1410]],
-    forests: [
-      { x: 429, y: 292, r: 180, n: 90 },  { x: 429, y: 1072, r: 195, n: 100 },
-      { x: 1103, y: 322, r: 160, n: 66 }, { x: 1158, y: 1102, r: 188, n: 86 },
-      { x: 1932, y: 300, r: 218, n: 100 }, { x: 2212, y: 1155, r: 160, n: 60 },
-      { x: 1483, y: 1162, r: 130, n: 44 }, { x: 2020, y: 880, r: 110, n: 34 },
-      { x: 2330, y: 330, r: 110, n: 30 },  { x: 1700, y: 120, r: 120, n: 34 },
-    ],
-    scatterTrees: 120,
-  },
-};
-// 4기지 지도 2개
-MAPS.marsh = {                    // 늪지: 네 방향에서 모이는 길
-  ...CASTLE_LAYOUT, seed: 4409, theme: 'swamp',
-  bases: {
-    cave:      { x: 1700, y: 220,  hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-    goblin:    { x: 2150, y: 470,  hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
-    orc:       { x: 2212, y: 960,  hitRadius: 100, barOffset: 112, path: ['orc', 'main'] },
-    graveyard: { x: 1620, y: 1150, hitRadius: 92,  barOffset: 96,  path: ['graveyard', 'main'] },
-  },
-  segments: {
-    cave:      [[1700, 262], [1640, 380], [1540, 500], [1440, 600], [1350, 680]],
-    goblin:    [[2075, 505], [1920, 560], [1760, 600], [1560, 650], [1350, 680]],
-    orc:       [[2132, 970], [1980, 900], [1800, 830], [1600, 760], [1350, 680]],
-    graveyard: [[1590, 1095], [1520, 980], [1460, 850], [1400, 750], [1350, 680]],
-    main:      [[1350, 680], [1200, 620], [1050, 690], [900, 720], [740, 650], [560, 700], [380, 650], [260, 690], [186, 675]],
-  },
-  river: [[930, -60], [880, 230], [950, 470], [890, 720], [960, 980], [900, 1200], [940, 1410]],
-  forests: [
-    { x: 450, y: 280, r: 190, n: 80 }, { x: 460, y: 1070, r: 190, n: 80 }, { x: 1200, y: 300, r: 170, n: 60 },
-    { x: 1150, y: 1080, r: 170, n: 60 }, { x: 2050, y: 150, r: 150, n: 50 }, { x: 1950, y: 1250, r: 140, n: 40 }, { x: 2300, y: 720, r: 90, n: 20 },
-  ],
-  scatterTrees: 110,
-};
-MAPS.crypt = {                    // 묘지 협곡: 강이 성에서 멀리 있음
-  ...CASTLE_LAYOUT, seed: 5531, theme: 'waste',
-  bases: {
-    goblin:    { x: 1750, y: 250,  hitRadius: 95,  barOffset: 96,  path: ['goblin', 'main'] },
-    graveyard: { x: 2150, y: 400,  hitRadius: 92,  barOffset: 96,  path: ['graveyard', 'main'] },
-    orc:       { x: 2212, y: 800,  hitRadius: 100, barOffset: 112, path: ['orc', 'main'] },
-    cave:      { x: 1760, y: 1130, hitRadius: 85,  barOffset: 90,  path: ['cave', 'main'] },
-  },
-  segments: {
-    goblin:    [[1712, 292], [1660, 400], [1600, 540], [1500, 700]],
-    graveyard: [[2105, 445], [1960, 530], [1760, 600], [1600, 650], [1500, 700]],
-    orc:       [[2132, 810], [1980, 820], [1800, 770], [1640, 730], [1500, 700]],
-    cave:      [[1740, 1085], [1680, 960], [1600, 830], [1500, 700]],
-    main:      [[1500, 700], [1360, 660], [1200, 720], [1040, 680], [860, 620], [680, 690], [500, 740], [340, 680], [186, 675]],
-  },
-  river: [[1240, -60], [1180, 240], [1250, 520], [1170, 760], [1230, 1000], [1160, 1410]],
-  forests: [
-    { x: 500, y: 260, r: 200, n: 70 }, { x: 560, y: 1080, r: 200, n: 70 }, { x: 950, y: 300, r: 140, n: 40 },
-    { x: 980, y: 1050, r: 150, n: 45 }, { x: 1450, y: 330, r: 120, n: 35 }, { x: 1400, y: 1050, r: 130, n: 40 }, { x: 2300, y: 1150, r: 120, n: 30 },
-  ],
-  scatterTrees: 90,
-};
-// 위아래를 뒤집은 지도 (성은 그대로)
-// 보스 스테이지: 왕국으로 통하는 세 갈래 길 (기지 없음, bases = 몬스터가 들어오는 길 입구)
-MAPS.kingdom = {
-  ...CASTLE_LAYOUT, seed: 4409, theme: 'dark',
-  rally: { x: 860, y: 668 },                 // 공격할 기지가 없을 때 병력이 모이는 곳 (세 길이 만나는 곳 앞)
-  bases: {
-    north: { name: '북쪽 길', x: 1500, y: -30,  hitRadius: 40, barOffset: 0, path: ['north', 'main'] },
-    east:  { name: '동쪽 길', x: 2430, y: 640,  hitRadius: 40, barOffset: 0, path: ['east', 'main'] },
-    south: { name: '남쪽 길', x: 1450, y: 1380, hitRadius: 40, barOffset: 0, path: ['south', 'main'] },
-  },
-  segments: {
-    north: [[1500, -30], [1480, 120], [1400, 300], [1260, 450], [1120, 580], [1000, 670]],
-    east:  [[2430, 640], [2200, 700], [1960, 620], [1720, 700], [1480, 640], [1240, 700], [1000, 670]],
-    south: [[1450, 1380], [1430, 1220], [1350, 1040], [1230, 880], [1110, 760], [1000, 670]],
-    main:  [[1000, 670], [840, 640], [680, 700], [520, 650], [350, 690], [186, 675]],
-  },
-  river: [[620, -60], [580, 250], [640, 520], [600, 780], [650, 1050], [610, 1410]],
-  forests: [
-    { x: 1760, y: 300, r: 230, n: 90 }, { x: 1780, y: 1050, r: 230, n: 90 }, { x: 1120, y: 220, r: 150, n: 55 },
-    { x: 1080, y: 1130, r: 150, n: 55 }, { x: 380, y: 300, r: 180, n: 75 }, { x: 400, y: 1060, r: 180, n: 75 },
-    { x: 860, y: 360, r: 120, n: 40 }, { x: 860, y: 990, r: 120, n: 40 }, { x: 2260, y: 230, r: 140, n: 45 }, { x: 2260, y: 1150, r: 140, n: 45 },
-  ],
-  scatterTrees: 110,
-};
-function mirrorMap(m, o) {
-  const H = CONFIG.world.height, fy = p => [p[0], H - p[1]];
-  const bases = {}; for (const k in m.bases) bases[k] = { ...m.bases[k], y: H - m.bases[k].y };
-  const segments = {}; for (const k in m.segments) segments[k] = m.segments[k].map(fy);
-  return { ...m, ...o, bases, segments, river: m.river.map(fy).reverse(), forests: m.forests.map(f => ({ ...f, y: H - f.y })) };
+// 성문 배치: A형 = 왼쪽 성벽 위·아래 / B형 = 지도 양쪽 끝에 하나씩
+const GATES_A = [{ side: 'L', y: 380 }, { side: 'L', y: 970 }];
+const GATES_B = [{ side: 'L', y: 675 }, { side: 'R', y: 675 }];
+// 지도: gates = 성문 / ents = 몬스터 입구 { 이름, 좌표, cave(굴) } / segments = 길 구간 (곡선으로 이어짐)
+// paths = [입구, 성문 번호, [구간 이름들]] (구간 이름 앞에 '-'를 붙이면 거꾸로) / walls = 길목 성벽 자리 [[x1, y1], [x2, y2]]
+// seed = 나무·장식 배치 난수 / theme = 분위기 / 숲은 길을 피해 자동 배치
+function mkMap(o) {
+  const B = o.gates[1].side === 'R';
+  return { ...CASTLE_LAYOUT, keep: B ? { x: 16, y: 250, w: 96, h: 148 } : CASTLE_LAYOUT.keep, river: null, scatterTrees: 110, walls: [],
+           startView: { x: B ? 1200 : 820, y: 675 }, forests: autoForests(o.seed), ...o };
 }
-MAPS.forestM = mirrorMap(MAPS.forest, { seed: 6121, theme: 'autumn' });
-MAPS.canyonM = mirrorMap(MAPS.canyon, { seed: 7207, theme: 'snow' });
-MAPS.marshM  = mirrorMap(MAPS.marsh,  { seed: 8317, theme: 'dark' });
-MAPS.cryptM  = mirrorMap(MAPS.crypt,  { seed: 9419, theme: 'volcano' });
-MAPS.dragonM = mirrorMap(MAPS.dragon, { seed: 1213, theme: 'volcano' });
-let MAP = MAPS.dragon;            // 지금 지도 (스테이지를 고르면 바뀜)
+function autoForests(seed) {
+  const r = mulberry32(seed + 7), out = [];
+  for (let gx = 0; gx < 5; gx++) for (let gy = 0; gy < 3; gy++) out.push({ x: 380 + gx * 430 + (r() - 0.5) * 200, y: 200 + gy * 470 + (r() - 0.5) * 200, r: 120 + r() * 90, n: 40 + Math.floor(r() * 40) });
+  return out;
+}
+const MAPS = {
+  s1: mkMap({ seed: 1101, theme: 'spring', gates: GATES_A,
+    ents: { E: { name: '동쪽 길', x: 2420, y: 670 } },
+    segments: { e: [[2420, 670], [2150, 640], [1800, 700], [1500, 670]],
+                a: [[1500, 670], [1250, 560], [950, 430], [600, 395], [186, 380]],
+                b: [[1500, 670], [1250, 780], [950, 910], [600, 955], [186, 970]] },
+    paths: [['E', 0, ['e', 'a']], ['E', 1, ['e', 'b']]] }),
+  s2: mkMap({ seed: 1202, theme: 'dry', gates: GATES_A,
+    ents: { NE: { name: '북동쪽 길', x: 2000, y: -30 }, SE: { name: '남동쪽 길', x: 2000, y: 1380 } },
+    segments: { n: [[2000, -30], [1850, 120], [1650, 240], [1500, 300]],
+                s: [[2000, 1380], [1850, 1230], [1650, 1110], [1500, 1050]],
+                a: [[1500, 300], [1100, 330], [700, 350], [186, 380]],
+                b: [[1500, 1050], [1100, 1020], [700, 1000], [186, 970]],
+                m: [[1500, 300], [1330, 480], [1300, 675], [1330, 870], [1500, 1050]] },
+    paths: [['NE', 0, ['n', 'a']], ['NE', 1, ['n', 'm', 'b']], ['SE', 1, ['s', 'b']], ['SE', 0, ['s', '-m', 'a']]] }),
+  s3: mkMap({ seed: 1303, theme: 'autumn', gates: GATES_A,
+    ents: { E: { name: '동쪽 길', x: 2420, y: 670 }, N: { name: '북쪽 길', x: 1500, y: -30 } },
+    segments: { e: [[2420, 670], [2100, 700], [1800, 650], [1600, 670]],
+                a1: [[1600, 670], [1350, 540], [1000, 440]],
+                a2: [[1000, 440], [600, 400], [186, 380]],
+                b: [[1600, 670], [1350, 800], [1000, 920], [600, 960], [186, 970]],
+                n: [[1500, -30], [1400, 150], [1200, 320], [1000, 440]] },
+    paths: [['E', 0, ['e', 'a1', 'a2']], ['E', 1, ['e', 'b']], ['N', 0, ['n', 'a2']]] }),
+  s4: mkMap({ seed: 1404, theme: 'spring', gates: GATES_A,
+    ents: { NE: { name: '북동쪽 길', x: 2000, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 }, SE: { name: '남동쪽 길', x: 2000, y: 1380 } },
+    segments: { n: [[2000, -30], [1800, 150], [1550, 280], [1300, 340]],
+                s: [[2000, 1380], [1800, 1200], [1550, 1070], [1300, 1000]],
+                e: [[2420, 670], [2150, 700], [1850, 650], [1600, 670]],
+                eu: [[1600, 670], [1450, 500], [1300, 340]],
+                ed: [[1600, 670], [1450, 840], [1300, 1000]],
+                a: [[1300, 340], [900, 360], [500, 390], [186, 380]],
+                b: [[1300, 1000], [900, 990], [500, 960], [186, 970]] },
+    paths: [['NE', 0, ['n', 'a']], ['SE', 1, ['s', 'b']], ['E', 0, ['e', 'eu', 'a']], ['E', 1, ['e', 'ed', 'b']]],
+    walls: [[[2000, 585], [2000, 765]]] }),
+  s5: mkMap({ seed: 1505, theme: 'dark', gates: GATES_B,
+    ents: { C: { name: '슬라임 굴', x: 1200, y: 670, cave: true } },
+    segments: { l: [[1200, 670], [1000, 560], [800, 520], [600, 620], [400, 720], [186, 675]],
+                r: [[1200, 670], [1400, 780], [1600, 830], [1800, 730], [2000, 620], [2214, 675]] },
+    paths: [['C', 0, ['l']], ['C', 1, ['r']]],
+    walls: [[[660, 500], [660, 690]], [[1740, 670], [1740, 860]]] }),
+  s6: mkMap({ seed: 1606, theme: 'autumn', gates: GATES_A,
+    ents: { N: { name: '북쪽 길', x: 1400, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 }, S: { name: '남쪽 길', x: 1400, y: 1380 } },
+    segments: { n: [[1400, -30], [1300, 130], [1100, 300]],
+                s: [[1400, 1380], [1300, 1220], [1100, 1050]],
+                e: [[2420, 670], [2100, 640], [1800, 700], [1500, 670]],
+                eu: [[1500, 670], [1300, 480], [1100, 300]],
+                ed: [[1500, 670], [1300, 860], [1100, 1050]],
+                a: [[1100, 300], [700, 340], [186, 380]],
+                b: [[1100, 1050], [700, 1010], [186, 970]] },
+    paths: [['N', 0, ['n', 'a']], ['S', 1, ['s', 'b']], ['E', 0, ['e', 'eu', 'a']], ['E', 1, ['e', 'ed', 'b']]],
+    walls: [[[1760, 600], [1760, 790]]] }),
+  s7: mkMap({ seed: 1707, theme: 'snow', gates: GATES_B,
+    ents: { C: { name: '얼음 굴', x: 1200, y: 670, cave: true }, T: { name: '북쪽 길', x: 1200, y: -30 }, D: { name: '남쪽 길', x: 1200, y: 1380 } },
+    segments: { l: [[1200, 670], [1000, 600], [800, 560], [600, 640], [400, 710], [186, 675]],
+                r: [[1200, 670], [1400, 740], [1600, 800], [1800, 720], [2000, 640], [2214, 675]],
+                t: [[1200, -30], [1160, 200], [1190, 450], [1200, 670]],
+                d: [[1200, 1380], [1240, 1150], [1210, 900], [1200, 670]] },
+    paths: [['C', 0, ['l']], ['C', 1, ['r']], ['T', 0, ['t', 'l']], ['T', 1, ['t', 'r']], ['D', 0, ['d', 'l']], ['D', 1, ['d', 'r']]],
+    walls: [[[600, 545], [600, 735]], [[1800, 625], [1800, 815]]] }),
+  s8: mkMap({ seed: 1808, theme: 'dry', gates: GATES_A,
+    ents: { N: { name: '북쪽 길', x: 1100, y: -30 }, NE: { name: '북동쪽 길', x: 2200, y: -30 }, SE: { name: '남동쪽 길', x: 2200, y: 1380 }, S: { name: '남쪽 길', x: 1100, y: 1380 } },
+    segments: { n: [[1100, -30], [1000, 150], [800, 320]],
+                ne: [[2200, -30], [1900, 250], [1600, 500], [1200, 420], [800, 320]],
+                s: [[1100, 1380], [1000, 1200], [800, 1030]],
+                se: [[2200, 1380], [1900, 1100], [1600, 850], [1200, 930], [800, 1030]],
+                a: [[800, 320], [500, 360], [186, 380]],
+                b: [[800, 1030], [500, 990], [186, 970]] },
+    paths: [['N', 0, ['n', 'a']], ['NE', 0, ['ne', 'a']], ['S', 1, ['s', 'b']], ['SE', 1, ['se', 'b']]],
+    walls: [[[560, 262], [560, 442]], [[560, 905], [560, 1085]]] }),
+  s9: mkMap({ seed: 1909, theme: 'dark', gates: GATES_B,
+    ents: { C: { name: '가운데 굴', x: 1200, y: 670, cave: true }, U: { name: '북쪽 굴', x: 1200, y: 220, cave: true }, D: { name: '남쪽 굴', x: 1200, y: 1130, cave: true } },
+    segments: { cl: [[1200, 670], [950, 600], [700, 640], [450, 700], [186, 675]],
+                cr: [[1200, 670], [1450, 740], [1700, 700], [1950, 650], [2214, 675]],
+                ul: [[1200, 220], [900, 330], [600, 480], [400, 620], [186, 675]],
+                ur: [[1200, 220], [1500, 330], [1800, 480], [2000, 620], [2214, 675]],
+                dl: [[1200, 1130], [900, 1020], [600, 870], [400, 730], [186, 675]],
+                dr: [[1200, 1130], [1500, 1020], [1800, 870], [2000, 730], [2214, 675]] },
+    paths: [['C', 0, ['cl']], ['C', 1, ['cr']], ['U', 0, ['ul']], ['U', 1, ['ur']], ['D', 0, ['dl']], ['D', 1, ['dr']]],
+    walls: [[[300, 560], [300, 790]], [[2100, 560], [2100, 790]]] }),
+  s10: mkMap({ seed: 2010, theme: 'volcano', gates: GATES_A,
+    ents: { N: { name: '북쪽 길', x: 1100, y: -30 }, NE: { name: '북동쪽 길', x: 2100, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 },
+            SE: { name: '남동쪽 길', x: 2100, y: 1380 }, S: { name: '남쪽 길', x: 1100, y: 1380 } },
+    segments: { ne: [[2100, -30], [1850, 180], [1550, 330], [1300, 400]],
+                e: [[2420, 670], [2100, 700], [1850, 650], [1700, 670]],
+                eu: [[1700, 670], [1500, 500], [1300, 400]],
+                ed: [[1700, 670], [1500, 840], [1300, 950]],
+                se: [[2100, 1380], [1850, 1170], [1550, 1020], [1300, 950]],
+                ta: [[1300, 400], [1000, 380], [700, 360]],
+                ba: [[1300, 950], [1000, 970], [700, 990]],
+                n: [[1100, -30], [950, 150], [700, 360]],
+                s: [[1100, 1380], [950, 1200], [700, 990]],
+                ga: [[700, 360], [450, 370], [186, 380]],
+                gb: [[700, 990], [450, 980], [186, 970]] },
+    paths: [['NE', 0, ['ne', 'ta', 'ga']], ['E', 0, ['e', 'eu', 'ta', 'ga']], ['E', 1, ['e', 'ed', 'ba', 'gb']], ['SE', 1, ['se', 'ba', 'gb']],
+            ['N', 0, ['n', 'ga']], ['S', 1, ['s', 'gb']]],
+    walls: [[[1200, 300], [1200, 480]], [[1200, 870], [1200, 1050]]] }),
+  boss1: mkMap({ seed: 4409, theme: 'dark', gates: GATES_A,
+    ents: { N: { name: '북쪽 길', x: 1500, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 640 }, S: { name: '남쪽 길', x: 1450, y: 1380 } },
+    segments: { n: [[1500, -30], [1400, 180], [1220, 420], [1000, 670]],
+                e: [[2420, 640], [2050, 700], [1700, 650], [1350, 700], [1000, 670]],
+                s: [[1450, 1380], [1380, 1150], [1220, 900], [1000, 670]],
+                a: [[1000, 670], [800, 560], [500, 430], [186, 380]],
+                b: [[1000, 670], [800, 780], [500, 920], [186, 970]] },
+    paths: [['N', 0, ['n', 'a']], ['N', 1, ['n', 'b']], ['E', 0, ['e', 'a']], ['E', 1, ['e', 'b']], ['S', 0, ['s', 'a']], ['S', 1, ['s', 'b']]],
+    walls: [[[440, 330], [440, 520]], [[440, 830], [440, 1020]]] }),
+};
+let MAP = MAPS.s1;               // 지금 지도 (스테이지를 고르면 바뀜)
 
-// 지도 분위기 (색): 풀밭 · 물 · 나무 · 덤불. 지도마다 theme 으로 고름
 const THEMES = {
   spring:  { grass: '#5e9238', spot: ['rgba(135,180,80,0.09)', 'rgba(35,70,20,0.10)'], blade: ['rgba(38,80,24,0.5)', 'rgba(150,200,95,0.4)'], flowers: ['#f4f0d6', '#f3d34a', '#ee93b4', '#b9a3ec'],
              water: ['#2a6598', '#347bb2', '#428cc4'], bank: ['#a99c6c', '#7f7a52'], reed: ['#3d5e22', '#557a2c'], shimmer: 'rgba(220,240,255,0.33)',
@@ -1039,7 +996,7 @@ const Art = {
   },
 
   river(g, rng) {
-    const P = MAPDATA.river, w = MAP.riverWidth, T = theme();
+    const P = MAPDATA.river, w = MAP.riverWidth, T = theme(); if (!P) return;
     strokePoly(g, P, w + 26, 'rgba(40,50,25,0.4)');
     strokePoly(g, P, w + 14, T.bank[0]);
     strokePoly(g, P, w + 4, T.bank[1]);
@@ -1136,8 +1093,17 @@ const Art = {
     g.fillStyle = MAP.theme === 'snow' ? 'rgba(255,255,255,0.6)' : 'rgba(190,230,130,0.35)'; circle(g, x - r * 0.38, y - r * 0.44, r * 0.16); g.fill();
   },
 
+  // 성: 성문이 있는 쪽마다 그림 (오른쪽 성은 좌우를 뒤집어 같은 그림)
   castle(g, rng) {
-    const c = MAP.castle, H = CONFIG.world.height, wx = c.wallX, ww = c.wallW;
+    for (const side of ['L', 'R']) {
+      const gys = MAP.gates.filter(q => q.side === side).map(q => q.y); if (!gys.length) continue;
+      g.save(); if (side === 'R') { g.translate(CONFIG.world.width, 0); g.scale(-1, 1); }
+      this.castleSide(g, rng, gys);
+      g.restore();
+    }
+  },
+  castleSide(g, rng, gys) {
+    const c = MAP.castle, H = CONFIG.world.height, wx = c.wallX, ww = c.wallW, gh = MAP.gateHalf;
     g.fillStyle = '#776e60'; g.fillRect(0, 0, wx + 2, H);                        // 성 안 돌바닥
     const tones = ['#867d6e', '#8f8677', '#7e7568', '#978e7f'];
     for (let y = 0, row = 0; y < H; y += 13, row++) {
@@ -1145,8 +1111,8 @@ const Art = {
     }
     const kp = MAP.keep;
     g.fillStyle = 'rgba(70,55,40,0.25)';
-    g.fillRect(kp.x + kp.w - 4, c.gateTop + 10, wx - (kp.x + kp.w) + 8, c.gateBottom - c.gateTop - 20);
-    for (const h of MAP.houses) this.roof(g, h[0], h[1], h[2], h[3], rng);
+    for (const gy of gys) g.fillRect(40, gy - gh + 10, wx - 32, gh * 2 - 20);       // 성문에서 성 안으로 난 길
+    for (const h of MAP.houses) if (!gys.some(gy => h[1] < gy + gh + 20 && h[1] + h[3] > gy - gh - 20) && !(h[1] < kp.y + kp.h + 10 && h[1] + h[3] > kp.y - 10)) this.roof(g, h[0], h[1], h[2], h[3], rng);
     this.keep(g, kp);
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(wx + ww, 0, 10, H);              // 성벽 그림자
     g.fillStyle = '#958f84'; g.fillRect(wx, 0, ww, H);                           // 성벽
@@ -1161,8 +1127,11 @@ const Art = {
       g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(wx + ww - 11, y, 11, 2);
     }
     g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(wx, 0, 3, H);
-    g.fillStyle = '#2b221a'; g.fillRect(wx - 2, c.gateTop, ww + 6, c.gateBottom - c.gateTop); // 성문 통로
-    for (const t of MAP.towers) this.tower(g, t[0], t[1], t[2]);
+    g.fillStyle = '#2b221a'; for (const gy of gys) g.fillRect(wx - 2, gy - gh, ww + 6, gh * 2);   // 성문 통로
+    const tw = [];                                                     // 성문 양옆 탑 + 모서리 탑
+    for (const gy of gys) tw.push([gy - 66, 27], [gy + 66, 27]);
+    for (const ty of [120, H - 120]) if (!gys.some(gy => Math.abs(gy - ty) < 160)) tw.push([ty, 34]);
+    for (const [ty, r] of tw) this.tower(g, wx + ww / 2, ty, r);
   },
 
   roof(g, x, y, w, h, rng) {
@@ -1212,6 +1181,7 @@ const Art = {
 
   // ---------------- 매 프레임 그리는 것들 ----------------
   riverShimmer(ctx, t) {
+    if (!MAPDATA.riverOff) return;
     ctx.save();
     ctx.setLineDash([10, 34]); ctx.lineCap = 'round'; ctx.lineWidth = 2.2;
     ctx.strokeStyle = theme().shimmer;
@@ -1221,17 +1191,69 @@ const Art = {
     this.bridge(ctx);   // 물결이 다리를 덮지 않도록 다리를 다시 그림
   },
 
-  castleDynamic(ctx, gate, rt) {
-    this.gateDoor(ctx, gate);
-    if (gate.cfg.oilDamage && !gate.destroyed) this.cauldron(ctx, gate, rt);
-    const kp = MAP.keep;
-    this.flag(ctx, kp.x + kp.w / 2, kp.y + kp.h / 2, '#2f5fb3', rt, 1.2);
-    this.flag(ctx, 150, 150, '#2f5fb3', rt + 1, 1);
-    this.flag(ctx, 150, 750, '#2f5fb3', rt + 2, 1);
+  castleDynamic(ctx, rt) {
+    const W = CONFIG.world.width, H = CONFIG.world.height, kp = MAP.keep;
+    for (const side of ['L', 'R']) {
+      if (!G.gates.some(q => q.side === side)) continue;
+      const X = x => side === 'L' ? x : W - x;
+      this.flag(ctx, X(kp.x + kp.w / 2), kp.y + kp.h / 2, '#2f5fb3', rt, 1.2);
+      this.flag(ctx, X(150), 150, '#2f5fb3', rt + 1, 1);
+      this.flag(ctx, X(150), H - 150, '#2f5fb3', rt + 2, 1);
+    }
+    for (const q of G.gates) {
+      this.gateDoor(ctx, q);
+      if (q.cfg.oil && !q.destroyed) this.cauldron(ctx, q, rt);
+      for (const k of q.catapults) this.catapult(ctx, k);
+      if (q.tower) this.magicTower(ctx, q.tower, rt);
+      const sel = G.sel && G.sel.kind === 'gate' && G.sel.ref === q.i;          // 고른 성문: 테두리 + 번호
+      if (sel) { ctx.strokeStyle = `rgba(255,230,140,${0.6 + Math.sin(rt * 6) * 0.3})`; ctx.lineWidth = 3; ctx.strokeRect(q.wx - 26, q.top - 8, 52, q.bottom - q.top + 16); }
+      txt(ctx, String(q.i + 1), q.wx, q.top - 16, 15, sel ? '#ffe08a' : '#e8eefc', 'center', { weight: 900, stroke: 'rgba(0,0,0,0.8)' });
+    }
+  },
+  slimeCave(ctx, c, rt) {                                                  // 몬스터가 나오는 굴: 바위 언덕 + 검은 입구 + 보라 기운
+    const x = c.x, y = c.y;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, x + 6, y + 18, 92, 34); ctx.fill();
+    ctx.fillStyle = '#5d5650'; ellipse(ctx, x, y - 6, 86, 48); ctx.fill();
+    ctx.fillStyle = '#716a62'; ellipse(ctx, x - 18, y - 22, 46, 26); ctx.fill(); ellipse(ctx, x + 30, y - 18, 34, 22); ctx.fill();
+    ctx.fillStyle = '#8a837a'; ellipse(ctx, x - 24, y - 30, 20, 10); ctx.fill();
+    ctx.fillStyle = '#16120f'; ctx.beginPath(); ctx.ellipse(x, y + 4, 38, 26, 0, Math.PI, 0); ctx.lineTo(x + 38, y + 14); ctx.lineTo(x - 38, y + 14); ctx.closePath(); ctx.fill();
+    const g = 0.25 + Math.sin(rt * 2.5) * 0.12;
+    ctx.fillStyle = `rgba(150,90,220,${g})`; ellipse(ctx, x, y + 6, 30, 14); ctx.fill();
+    txt(ctx, c.name, x, y - 62, 14, '#e8d8ff', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.8)' });
+  },
+  rallyPoint(ctx, p, gi, rt) {                                            // 집결 지점 깃발 (성문 번호). 그 성문을 고르면 성문에서 이어지는 점선
+    const sel = G.sel && G.sel.kind === 'gate' && G.sel.ref === gi, q = G.gates[gi];
+    if (sel) {
+      ctx.save(); ctx.setLineDash([8, 7]); ctx.lineDashOffset = -rt * 20; ctx.strokeStyle = 'rgba(160,200,255,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(q.fx, q.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.setLineDash([]); ctx.strokeStyle = 'rgba(160,200,255,0.25)'; circle(ctx, q.fx, q.y, CONFIG.gate.rallyRange); ctx.stroke(); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, p.x, p.y + 2, 9, 4); ctx.fill();
+    ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 30); ctx.stroke();
+    const w = Math.sin(rt * 5 + gi) * 2;
+    ctx.fillStyle = sel ? '#ffd36b' : '#3f6fc0'; ctx.beginPath(); ctx.moveTo(p.x, p.y - 30); ctx.lineTo(p.x + 18, p.y - 25 + w); ctx.lineTo(p.x, p.y - 19); ctx.closePath(); ctx.fill();
+    txt(ctx, String(gi + 1), p.x + 7, p.y - 24.5 + w * 0.5, 9, '#fff', 'center', { weight: 900 });
+  },
+  catapult(ctx, k) {                                                       // 투석기: 나무 틀 + 던지는 팔
+    ctx.save(); ctx.translate(k.x, k.y);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, 3, 12, 22, 8); ctx.fill();
+    ctx.fillStyle = '#6b4a2a'; ctx.fillRect(-18, -8, 36, 18); ctx.fillStyle = '#4a3018'; ctx.fillRect(-18, -8, 36, 4); ctx.fillRect(-18, 6, 36, 4);
+    ctx.fillStyle = '#2e2e2e'; for (const [wx, wy] of [[-14, -10], [14, -10], [-14, 12], [14, 12]]) { circle(ctx, wx, wy, 4); ctx.fill(); }
+    const swing = k.arm > 0 ? (1 - k.arm / 0.4) : 1, a = k.aim + Math.PI - swing * 2.2;
+    ctx.rotate(a); ctx.fillStyle = '#8a5e34'; ctx.fillRect(0, -2.5, 26, 5); ctx.fillStyle = '#3a2a1a'; circle(ctx, 26, 0, 5); ctx.fill();
+    ctx.restore();
+  },
+  magicTower(ctx, t, rt) {                                                 // 마법 타워: 둥근 돌탑 + 보라 수정
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, t.x + 4, t.y + 18, 26, 10); ctx.fill();
+    ctx.fillStyle = '#7f7a86'; circle(ctx, t.x, t.y, 24); ctx.fill(); ctx.fillStyle = '#605a6c'; circle(ctx, t.x, t.y, 17); ctx.fill();
+    const g = 0.5 + Math.sin(rt * 4) * 0.2 + (t.glow > 0 ? 0.4 : 0);
+    ctx.fillStyle = `rgba(190,140,255,${Math.min(0.9, g * 0.5)})`; circle(ctx, t.x, t.y - 20, 16); ctx.fill();
+    ctx.fillStyle = '#c9a8ff'; ctx.beginPath(); ctx.moveTo(t.x, t.y - 34); ctx.lineTo(t.x + 7, t.y - 20); ctx.lineTo(t.x, t.y - 8); ctx.lineTo(t.x - 7, t.y - 20); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#efe2ff'; ctx.lineWidth = 1.2; ctx.stroke();
   },
 
   gateDoor(ctx, gate) {
-    const c = MAP.castle, x = c.wallX + 2, y = c.gateTop, w = c.wallW - 2, h = c.gateBottom - c.gateTop;
+    const c = MAP.castle, w = c.wallW - 2, x = gate.side === 'L' ? c.wallX + 2 : CONFIG.world.width - c.wallX - c.wallW, y = gate.top, h = gate.bottom - gate.top;
     if (gate.destroyed) {
       ctx.fillStyle = '#1e1813'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#5c3b1f';
@@ -1261,7 +1283,7 @@ const Art = {
       ctx.stroke();
     }
     if (ratio < 0.5) { ctx.fillStyle = `rgba(20,10,5,${(0.5 - ratio) * 0.6})`; ctx.fillRect(x, y, w, h); }
-    if (gate.flash > 0) { ctx.fillStyle = `rgba(255,90,60,${Math.min(0.6, gate.flash * 4)})`; ctx.fillRect(x, y, w, h); }
+    if (gate.flash > 0) { ctx.fillStyle = `rgba(255,90,60,${Math.min(0.6, gate.flash * 4)})`; ctx.fillRect(x, y, w, h); }   // 맞은 성문만 깜빡임
     if (gate.openAnim > 0) {                                     // 병사가 나올 때 문이 잠깐 열림
       const o = Math.sin(clamp(gate.openAnim / 0.7, 0, 1) * Math.PI) * h * 0.42;
       ctx.fillStyle = '#16100a'; ctx.fillRect(x, y + h / 2 - o / 2, w, o);
@@ -2225,6 +2247,11 @@ const Art = {
 
   projectile(ctx, p) {
     if (p instanceof FireFlask) { this.flask(ctx, p); return; }
+    if (p instanceof Boulder) {                                             // 투석기 돌
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ellipse(ctx, p.x, p.y + 3, 7, 3); ctx.fill();
+      ctx.fillStyle = '#7a7368'; circle(ctx, p.x, p.y - p.z, 7); ctx.fill(); ctx.fillStyle = '#a49c90'; circle(ctx, p.x - 2, p.y - p.z - 2, 3); ctx.fill();
+      return;
+    }
     if (p instanceof Fireball) this.fireball(ctx, p);
     else if (p instanceof MagicBolt) this.bolt(ctx, p);
     else this.arrow(ctx, p);
@@ -2254,7 +2281,7 @@ const Art = {
   },
 
   cauldron(ctx, gate, rt) {
-    const x = MAP.castle.wallX + MAP.castle.wallW / 2 - 2, y = MAP.gate.y;
+    const x = gate.wx - gate.dir * 2, y = gate.y;
     ctx.fillStyle = '#26221f'; circle(ctx, x, y, 9); ctx.fill();
     const ready = gate.oilTimer < 1.2;
     ctx.fillStyle = ready ? '#ff9a3a' : '#c0602a'; circle(ctx, x, y, 6); ctx.fill();
@@ -2827,31 +2854,89 @@ const Music = {
 // ==========================================================================
 
 // ---------- 성문 ----------
-class Gate {
+// 두 성문이 함께 쓰는 체력·레벨 (G.gate). 업그레이드하면 두 성문이 같이 오름
+class GatePool {
   constructor() {
-    this.level = 1; this.maxHp = 0; this.hp = 0;
-    this.lastHit = -999; this.flash = 0; this.destroyed = false; this.openAnim = 0;
-    this.carpenters = []; this.archers = [];
-    this.repairing = false; this.repairAccum = 0; this.repairTextTimer = 0; this.oilTimer = 0;
-    this.slots = Gate.buildSlots();
+    this.level = 1; this.maxHp = 0; this.hp = 0; this.lastHit = -999; this.destroyed = false;
+    this.repairing = false; this.repairAccum = 0; this.repairTextTimer = 0;
+    this.maxHp = this.hp = this.cfg.maxHp;
+  }
+  // 레벨 능력치 + 공통 능력치 (궁수 공격력 등)
+  get cfg() { const L = CONFIG.gate.levels[this.level - 1]; return this._c && this._c.L === L ? this._c : (this._c = { ...CONFIG.gate, ...L, L }); }
+  get next() { return CONFIG.gate.levels[this.level] || null; }
+  get underAttack() { return G.time - this.lastHit < 1.0; }
+  get flash() { return Math.max(0, ...G.gates.map(q => q.flash)); }
+  upgrade() {
+    const n = this.next; if (!n || G.state !== 'playing') return;
+    if (G.gold < n.cost) { notEnoughGold(); return; }
+    G.gold -= n.cost; const prev = this.maxHp; this.level++;
+    this.maxHp = this.cfg.maxHp; this.hp = Math.min(this.maxHp, this.hp + (this.maxHp - prev));
+    for (const q of G.gates) { q.applyLevel(); FX.ring(q.wx, q.y, 80, '255,215,90', 0.6); FX.spark(q.wx, q.y - 20, '#ffe08a', 12); }
+    showBanner(`성문 Lv.${this.level}! 체력 ${this.maxHp} · 인구 ${this.cfg.pop}`, '#ffe08a', 2.6); Sound.play('upgrade');
+  }
+  takeDamage(amount, gate) {
+    if (this.destroyed) return;
+    const q = gate || G.gates[0];
+    this.hp -= amount; this.lastHit = G.time; q.flash = 0.12;
+    Sound.play('gateHit', q.wx, q.y);
+    for (const g2 of G.gates) for (const k of g2.carpenters) k.goHome();       // 공격받으면 목수는 성 안으로
+    if (Math.random() < 0.35) FX.dust(q.fx + q.dir * 4, q.y + rand(-30, 30));
+    if (this.hp <= 0) {
+      this.hp = 0; this.destroyed = true;
+      FX.explosion(q.wx + q.dir * 10, q.y, 0.9); shake(10, 0.6); Sound.play('explosion');
+      showBanner('성문이 무너졌습니다!', '#ff6a55', 3);
+      if (!G.pendingResult) { G.pendingResult = 'lost'; G.endTimer = 1.8; }
+    }
+  }
+  update(dt) {
+    let working = 0;
+    for (const q of G.gates) working += q.update(dt);
+    this.repairing = working > 0;
+    if (working > 0 && !this.destroyed) {
+      const before = this.hp;
+      this.hp = Math.min(this.maxHp, this.hp + working * this.cfg.repairPerCarpenter * dt);
+      this.repairAccum += this.hp - before;
+      this.repairTextTimer -= dt;
+      if (this.repairTextTimer <= 0) {
+        this.repairTextTimer = 1;
+        if (this.repairAccum >= 1) for (const q of G.gates) if (q.carpenters.some(k => k.state === 'work')) FX.text(q.fx + q.dir * 40, q.y - 58, '+' + Math.round(this.repairAccum / G.gates.length), '#7dff6a', 18);
+        this.repairAccum = 0;
+      }
+    } else this.repairTextTimer = 0.3;
+  }
+}
+// 성문 하나: 위치 · 공격 자리 · 목수 · 궁수 · 투석기 · 끓는 기름 · 마법 타워
+class Gate {
+  constructor(i, def) {
+    const W = CONFIG.world.width, c = MAP.castle, L = def.side === 'L';
+    this.i = i; this.side = def.side; this.dir = L ? 1 : -1; this.y = def.y;
+    this.wx = L ? c.wallX + c.wallW / 2 : W - c.wallX - c.wallW / 2;    // 성벽 가운데
+    this.fx = L ? c.wallX + c.wallW : W - c.wallX - c.wallW;            // 성문 바깥 면
+    this.x = this.fx; this.top = this.y - MAP.gateHalf; this.bottom = this.y + MAP.gateHalf;
+    this.flash = 0; this.openAnim = 0; this.oilTimer = 0;
+    this.carpenters = []; this.archers = []; this.catapults = []; this.tower = null;
+    this.slots = this.buildSlots();
     this.cracks = [];
-    for (let i = 0; i < 7; i++) {
+    for (let k = 0; k < 7; k++) {
       let x = rand(0.15, 0.85), y = rand(0.08, 0.92), a = rand(0, TAU); const pts = [[x, y]];
       for (let j = 0; j < 4; j++) { a += rand(-0.9, 0.9); x = clamp(x + Math.cos(a) * 0.16, 0, 1); y = clamp(y + Math.sin(a) * 0.12, 0, 1); pts.push([x, y]); }
       this.cracks.push(pts);
     }
-    this.applyLevel(true);
   }
-  get cfg() { return CONFIG.gate.levels[this.level - 1]; }
-  get underAttack() { return G.time - this.lastHit < 1.0; }
+  get cfg() { return G.gate.cfg; }
+  get destroyed() { return G.gate.destroyed; }
+  get hp() { return G.gate.hp; }
+  get maxHp() { return G.gate.maxHp; }
+  front(off = 10) { return { x: this.fx + this.dir * off, y: this.y }; }
+  takeDamage(amount) { G.gate.takeDamage(amount, this); }
   // 성문 앞 공격 자리 (반원 모양으로 여러 줄)
-  static buildSlots() {
-    const cx = MAP.castle.wallX + MAP.castle.wallW, cy = MAP.gate.y, slots = [];
+  buildSlots() {
+    const slots = [];
     for (const r of [22, 46, 70, 94, 118, 142]) {
       const arc = Math.PI * 0.85, n = Math.max(1, Math.floor((r * arc) / 24));
-      for (let i = 0; i < n; i++) {
-        const a = -arc / 2 + arc * (n === 1 ? 0.5 : i / (n - 1));
-        slots.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, r, ground: null, air: null });
+      for (let k = 0; k < n; k++) {
+        const a = -arc / 2 + arc * (n === 1 ? 0.5 : k / (n - 1));
+        slots.push({ x: this.fx + this.dir * Math.cos(a) * r, y: this.y + Math.sin(a) * r, r, ground: null, air: null });
       }
     }
     return slots;
@@ -2859,104 +2944,127 @@ class Gate {
   claimSlot(e) {
     const key = e.air ? 'air' : 'ground';
     let best = null, bc = Infinity;
-    for (const s of this.slots) {
-      if (s[key]) continue;
-      const c = s.r * 2 + Math.hypot(s.x - e.x, s.y - e.y);
-      if (c < bc) { bc = c; best = s; }
+    for (const sl of this.slots) {
+      if (sl[key]) continue;
+      const c = sl.r * 2 + Math.hypot(sl.x - e.x, sl.y - e.y);
+      if (c < bc) { bc = c; best = sl; }
     }
     if (best) best[key] = e;
     return best;
   }
-
-  applyLevel(fill) {
-    const c = this.cfg, prevMax = this.maxHp;
-    this.maxHp = c.maxHp;
-    this.hp = fill ? c.maxHp : Math.min(c.maxHp, this.hp + (c.maxHp - prevMax));
-    while (this.archers.length < c.archers) {
-      const s = MAP.wallArcherSpots[this.archers.length];
-      this.archers.push(new WallArcher(s[0], s[1]));
-    }
+  // 레벨에 맞게 궁수·투석기·마법 타워 배치 (성벽 위 · 성 안)
+  applyLevel() {
+    const c = this.cfg, H = CONFIG.world.height, ins = x => this.side === 'L' ? x : CONFIG.world.width - x;
+    const spots = [[this.wx, this.y - 66], [this.wx, this.y + 66], [this.wx, this.y - 140], [this.wx, this.y + 140]].map(([x, y]) => [x, clamp(y, 40, H - 40)]);
+    while (this.archers.length < Math.min(c.archers, spots.length)) { const sp = spots[this.archers.length]; this.archers.push(new WallArcher(sp[0], sp[1])); }
+    const cs = [[ins(92), this.y - 72], [ins(92), this.y + 72]];
+    while (this.catapults.length < Math.min(c.catapults || 0, cs.length)) { const sp = cs[this.catapults.length]; this.catapults.push(new Catapult(sp[0], clamp(sp[1], 40, H - 40), this)); }
+    if (c.tower && !this.tower) this.tower = new MagicTower(ins(60), clamp(this.y - 150, 60, H - 60), this);
   }
-
-  takeDamage(amount) {
-    if (this.destroyed) return;
-    this.hp -= amount; this.lastHit = G.time; this.flash = 0.12;
-    Sound.play('gateHit', MAP.gate.x, MAP.gate.y);
-    for (const k of this.carpenters) k.goHome();       // 공격받으면 목수는 성 안으로
-    if (Math.random() < 0.35) FX.dust(MAP.castle.wallX + MAP.castle.wallW + 4, MAP.gate.y + rand(-30, 30));
-    if (this.hp <= 0) {
-      this.hp = 0; this.destroyed = true;
-      FX.explosion(MAP.gate.x + 10, MAP.gate.y, 0.9); shake(10, 0.6); Sound.play('explosion');
-      showBanner('성문이 무너졌습니다!', '#ff6a55', 3);
-      if (!G.pendingResult) { G.pendingResult = 'lost'; G.endTimer = 1.8; }
-    }
-  }
-
+  // 이 성문 목수가 지금 수리 중인 수 (G.gate가 체력을 채움)
   update(dt) {
     if (this.flash > 0) this.flash -= dt;
     if (this.openAnim > 0) this.openAnim -= dt;
-    const c = this.cfg;
+    const c = this.cfg, P = G.gate;
     for (const a of this.archers) a.update(dt, c);
-
-    // 3레벨: 성문에 붙은 적에게 끓는 기름 (광역 피해)
-    if (c.oilDamage && !this.destroyed) {
+    for (const k of this.catapults) k.update(dt, c);
+    if (this.tower) this.tower.update(dt, c);
+    if (c.oil && !P.destroyed) {                                   // 끓는 기름: 성문에 붙은 적에게 광역 피해
       this.oilTimer -= dt;
       if (this.oilTimer <= 0) {
-        const ox = MAP.castle.wallX + MAP.castle.wallW, oy = MAP.gate.y;
-        if (G.enemies.some(e => e.alive && e.state === 'attack' && !e.air)) {
+        const ox = this.fx, oy = this.y;
+        if (G.enemies.some(e => e.alive && e.gate === this && e.state === 'attack' && !e.air)) {
           this.oilTimer = c.oilInterval;
           for (const e of G.enemies) if (e.alive && !e.air && dist(e.x, e.y, ox, oy) <= c.oilRadius) e.takeDamage(c.oilDamage, 'tower', true);
-          for (let i = 0; i < 16; i++) {
-            const a = rand(-1.3, 1.3), r = rand(10, c.oilRadius * 0.8);
-            FX.puff(ox + Math.cos(a) * r, oy + Math.sin(a) * r, '#6b3510', rand(8, 15), 0.9, 0, 0, 0.7, 0.4);
-            FX.add({ k: 'flame', x: ox + Math.cos(a) * r, y: oy + Math.sin(a) * r, vx: 0, vy: -20, g: 0, life: rand(0.3, 0.6), max: 0.6, size: rand(6, 11) });
-            if (i % 2) FX.puff(ox + Math.cos(a) * r, oy + Math.sin(a) * r, '#efe8dc', rand(8, 14), 1.4, rand(-6, 6), -30, 0.4, 1.4);
+          for (let k = 0; k < 16; k++) {
+            const a = rand(-1.3, 1.3), r = rand(10, c.oilRadius * 0.8), px = ox + this.dir * Math.cos(a) * r, py = oy + Math.sin(a) * r;
+            FX.puff(px, py, '#6b3510', rand(8, 15), 0.9, 0, 0, 0.7, 0.4);
+            FX.add({ k: 'flame', x: px, y: py, vx: 0, vy: -20, g: 0, life: rand(0.3, 0.6), max: 0.6, size: rand(6, 11) });
           }
-          FX.text(ox + 50, oy - 70, '끓는 기름!', '#ffae5a', 20, 1.2); Sound.play('sizzle', ox, oy);
+          FX.text(ox + this.dir * 50, oy - 70, '끓는 기름!', '#ffae5a', 20, 1.2); Sound.play('sizzle', ox, oy);
         } else this.oilTimer = 0.3;
       }
     }
-
     // 자동 수리: repairDelay초 동안 공격이 없으면 목수 출동
-    if (!this.destroyed) {
-      const needRepair = this.hp < this.maxHp - 0.01;
-      const idle = G.time - this.lastHit;
+    if (!P.destroyed) {
+      const needRepair = P.hp < P.maxHp - 0.01, idle = G.time - P.lastHit;
       if (needRepair && idle >= CONFIG.gate.repairDelay) {
         for (const k of this.carpenters) k.goOut();
         const used = new Set(this.carpenters.map(k => k.idx));
-        for (let i = 0; i < c.carpenters; i++) if (!used.has(i)) this.carpenters.push(new Carpenter(i, c.carpenters));
-      } else if (!needRepair) {
-        for (const k of this.carpenters) k.goHome();
-      }
+        for (let k = 0; k < c.carpenters; k++) if (!used.has(k)) this.carpenters.push(new Carpenter(k, c.carpenters, this));
+      } else if (!needRepair) for (const k of this.carpenters) k.goHome();
     } else for (const k of this.carpenters) k.goHome();
-
     let working = 0;
     for (const k of this.carpenters) { k.update(dt); if (k.state === 'work') working++; }
     compact(this.carpenters, k => !k.done);
-    this.repairing = working > 0;
-    if (working > 0) {
-      const before = this.hp;
-      this.hp = Math.min(this.maxHp, this.hp + working * c.repairPerCarpenter * dt);
-      this.repairAccum += this.hp - before;
-      this.repairTextTimer -= dt;
-      if (this.repairTextTimer <= 0) {
-        this.repairTextTimer = 1;
-        if (this.repairAccum >= 1) FX.text(MAP.castle.wallX + MAP.castle.wallW + 40, MAP.gate.y - 58, '+' + Math.round(this.repairAccum), '#7dff6a', 18);
-        this.repairAccum = 0;
-      }
-    } else this.repairTextTimer = 0.3;
+    return working;
+  }
+}
+// 가장 가까운 성문
+function nearestGate(x, y) {
+  let best = G.gates[0], bd = Infinity;
+  for (const q of G.gates) { const d = dist(x, y, q.fx, q.y); if (d < bd) { bd = d; best = q; } }
+  return best;
+}
+
+// ---------- 투석기 (성 안): 멀리 있는 지상 적 무리에 돌을 던져 범위 피해 ----------
+class Catapult {
+  constructor(x, y, gate) { this.x = x; this.y = y; this.gate = gate; this.cd = rand(1, 2.5); this.arm = 0; this.aim = gate.side === 'L' ? 0 : Math.PI; }
+  update(dt, c) {
+    const C = c.catapult; if (this.arm > 0) this.arm -= dt;
+    this.cd -= dt; if (this.cd > 0) return;
+    let best = null, bs = 0;
+    for (const e of G.enemies) {                                  // 주변에 적이 가장 많이 모인 곳
+      if (!e.alive || e.air) continue;
+      const d = dist(this.x, this.y, e.x, e.y); if (d > C.range || d < C.minRange) continue;
+      let n = 0; for (const o of G.enemies) if (o.alive && !o.air && Math.abs(o.x - e.x) < C.radius && Math.abs(o.y - e.y) < C.radius) n++;
+      if (n > bs) { bs = n; best = e; }
+    }
+    if (!best) { this.cd = 0.4; return; }
+    this.cd = C.interval * rand(0.9, 1.1); this.arm = 0.4; this.aim = Math.atan2(best.y - this.y, best.x - this.x);
+    G.projectiles.push(new Boulder(this.x, this.y - 10, best.x + rand(-12, 12), best.y + rand(-12, 12), C.damage, C.radius));
+    Sound.play('catapult', this.x, this.y, 0.6);
+  }
+}
+class Boulder {
+  constructor(x, y, tx, ty, damage, radius) {
+    this.sx = x; this.sy = y; this.x = x; this.y = y; this.tx = tx; this.ty = ty; this.z = 0; this.damage = damage; this.radius = radius;
+    this.total = Math.max(1, dist(x, y, tx, ty)); this.T = Math.max(0.6, this.total / 380); this.t = 0; this.spin = 0; this.done = false;
+  }
+  update(dt) {
+    this.t += dt; this.spin += dt * 6;
+    const p = Math.min(1, this.t / this.T);
+    this.x = lerp(this.sx, this.tx, p); this.y = lerp(this.sy, this.ty, p); this.z = Math.sin(p * Math.PI) * Math.min(160, this.total * 0.4);
+    if (p < 1) return;
+    this.done = true;
+    for (const e of G.enemies) if (e.alive && !e.air && dist(e.x, e.y, this.tx, this.ty) <= this.radius + e.radius) e.takeDamage(this.damage, 'tower');
+    for (let k = 0; k < 8; k++) FX.dust(this.tx + rand(-this.radius, this.radius) * 0.6, this.ty + rand(-this.radius, this.radius) * 0.4);
+    FX.ring(this.tx, this.ty, this.radius, '200,170,120', 0.35); Sound.play('thud', this.tx, this.ty, 0.8); shake(1.5, 0.12);
+  }
+}
+// ---------- 마법 타워 (성문 5레벨): 광역 마법탄 ----------
+class MagicTower {
+  constructor(x, y, gate) { this.x = x; this.y = y; this.gate = gate; this.cd = 1; this.glow = 0; }
+  update(dt, c) {
+    const C = c.magicTower; if (this.glow > 0) this.glow -= dt;
+    this.cd -= dt; if (this.cd > 0) return;
+    let best = null, bd = C.range;
+    for (const e of G.enemies) { if (!e.alive) continue; const d = dist(this.x, this.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
+    if (!best) { this.cd = 0.3; return; }
+    this.cd = C.interval; this.glow = 0.4;
+    G.projectiles.push(new MagicBolt(this.x, this.y - 40, best, { damage: C.damage, splash: C.splash }, { boltSpeed: 520 }, 'tower'));
+    Sound.play('magic', this.x, this.y, 0.4);
   }
 }
 
-// ---------- 목수 ----------
+// ---------- 목수 ----------// ---------- 목수 ----------
 class Carpenter {
-  constructor(idx, total) {
-    const offs = total <= 2 ? [-20, 20] : [-30, 0, 30];
+  constructor(idx, total, gate) {
+    const offs = total <= 1 ? [0] : total <= 2 ? [-20, 20] : [-30, 0, 30];
     const oy = offs[idx] != null ? offs[idx] : (idx - (total - 1) / 2) * 26;
-    const c = MAP.castle;
-    this.idx = idx;
-    this.home = { x: c.wallX + c.wallW / 2, y: MAP.gate.y + oy * 0.4 };
-    this.work = { x: c.wallX + c.wallW + 18 + (idx % 2) * 4, y: MAP.gate.y + oy };
+    this.idx = idx; this.gate = gate;
+    this.home = { x: gate.wx, y: gate.y + oy * 0.4 };
+    this.work = { x: gate.fx + gate.dir * (18 + (idx % 2) * 4), y: gate.y + oy };
     this.x = this.home.x; this.y = this.home.y;
     this.state = 'out'; this.face = 0; this.walk = 0; this.done = false;
     this.phase = Math.random() * 3; this.swings = Math.floor((this.phase * 9) / TAU);
@@ -2971,11 +3079,12 @@ class Carpenter {
     return false;
   }
   update(dt) {
-    if (this.state === 'out') { if (this.moveTo(this.work, dt)) { this.state = 'work'; this.face = Math.PI; } }
+    const back = this.gate.dir > 0 ? Math.PI : 0;                   // 성문 쪽을 봄
+    if (this.state === 'out') { if (this.moveTo(this.work, dt)) { this.state = 'work'; this.face = back; } }
     else if (this.state === 'work') {
-      this.face = Math.PI; this.phase += dt;
+      this.face = back; this.phase += dt;
       const sw = Math.floor((this.phase * 9) / TAU);
-      if (sw !== this.swings) { this.swings = sw; Sound.play('hammer', this.x, this.y); FX.spark(MAP.castle.wallX + MAP.castle.wallW + 1, this.y + rand(-4, 4), '#ffe6a0', 3); }
+      if (sw !== this.swings) { this.swings = sw; Sound.play('hammer', this.x, this.y); FX.spark(this.gate.fx + this.gate.dir, this.y + rand(-4, 4), '#ffe6a0', 3); }
     } else if (this.state === 'in') { if (this.moveTo(this.home, dt)) this.done = true; }
   }
 }
@@ -3059,19 +3168,22 @@ class FireFlask {
 }
 
 // ---------- 병력 생산: 병력 칸을 누른 순서대로 대기열에 쌓이고, 성문에서 1명씩 나옴 (무료) ----------
-function armyCap() { return CONFIG.army.popCap; }
+function armyCap() { return G.gate.cfg.pop; }                    // 인구 상한: 성문 레벨에 따라 (두 성문이 함께 씀)
 function popOf(kind) { return CONFIG.army[kind].pop || 1; }
 function armyPop() { let n = 0; for (const u of G.soldiers) n += popOf(u.kind); return n; }   // 지금 쓰는 인구
 function unitStats(kind) { const L = G.army.lv[kind]; return L ? CONFIG.army[kind].levels[L - 1] : null; }
+// 성문마다 생산 대기열이 따로 있음 (A.gi = 병력 칸에서 고른 성문)
 function updateArmy(dt) {
-  const A = G.army, q = A.queue;
-  A.full = false;
-  if (!q.length || G.gate.destroyed) { A.prog = 0; return; }
-  const kind = q[0], st = unitStats(kind);
-  A.prog = Math.min(st.spawnTime, A.prog + dt);
-  if (A.prog < st.spawnTime) return;
-  if (armyPop() + popOf(kind) > armyCap()) { A.full = true; return; }   // 인구가 비면 바로 나옴
-  q.shift(); A.prog = 0; spawnSoldier(kind);
+  const A = G.army;
+  for (let gi = 0; gi < A.queues.length; gi++) {
+    const q = A.queues[gi]; A.fulls[gi] = false;
+    if (!q.length || G.gate.destroyed) { A.progs[gi] = 0; continue; }
+    const kind = q[0], st = unitStats(kind);
+    A.progs[gi] = Math.min(st.spawnTime, A.progs[gi] + dt);
+    if (A.progs[gi] < st.spawnTime) continue;
+    if (armyPop() + popOf(kind) > armyCap()) { A.fulls[gi] = true; continue; }   // 인구가 비면 바로 나옴
+    q.shift(); A.progs[gi] = 0; spawnSoldier(kind, gi);
+  }
 }
 // 생산 대기열: 맨 뒤에 1명 추가 / i번째 취소
 function queueUnit(kind) {
@@ -3083,12 +3195,37 @@ function unqueueUnit(i) {
   const A = G.army; if (i < 0 || i >= A.queue.length) return;
   A.queue.splice(i, 1); if (i === 0) A.prog = 0;
 }
-function spawnSoldier(kind) {
-  const u = new Soldier(kind);
+function spawnSoldier(kind, gi = G.army.gi) {
+  const u = new Soldier(kind, gi);
   G.soldiers.push(u); G.stats.trained++;
   FX.dust(u.x, u.y); FX.ring(u.x, u.y, 18, '255,240,180', 0.3);
-  G.gate.openAnim = 0.7;
+  G.gates[gi].openAnim = 0.7;
   return u;
+}
+// 집결 지점: 성문마다 하나. 성문을 누른 뒤 지도를 탭하면 옮겨짐 (성문에서 rallyRange 안)
+function setRally(gi, x, y) {
+  const q = G.gates[gi], f = q.front(0), R = CONFIG.gate.rallyRange, d = dist(f.x, f.y, x, y);
+  if (d > R) { x = f.x + (x - f.x) / d * R; y = f.y + (y - f.y) / d * R; }
+  const pt = Nav.clampTarget(x, y); G.rally[gi] = pt;
+  FX.ring(pt.x, pt.y, 30, '140,190,255', 0.5); toast(`성문${gi + 1} 병력의 집결 지점을 옮겼어요`, '#bfe0ff');
+}
+// 집결 지점 둘레의 자리: 근접은 앞줄(적 쪽), 원거리·성직자는 뒷줄. 줄마다 6명, 넘치면 한 줄 뒤로
+function updateRally() {
+  for (let gi = 0; gi < G.gates.length; gi++) {
+    const R = G.rally[gi], dir = G.gates[gi].dir; let fi = 0, bi = 0;
+    for (const u of G.soldiers) {
+      if (u.dead || u.home !== gi) continue;
+      const front = u.cfg.line === 'front', k = front ? fi++ : bi++, col = Math.floor(k / 6), row = k % 6;
+      const oy = (row % 2 ? 1 : -1) * Math.ceil(row / 2) * 26 + (row === 0 ? 0 : 0);
+      const ox = -dir * ((front ? 0 : 56) + col * 26);
+      u.slotPos = Nav.clampTarget(R.x + ox, R.y + oy);
+    }
+  }
+}
+// 지도에서 성문 근처를 눌렀는지
+function gateAt(x, y) {
+  for (const q of G.gates) if (Math.abs(x - q.wx) < 60 && y > q.top - 40 && y < q.bottom + 40) return q.i;
+  return -1;
 }
 // 훈련 시설 건설(레벨 0 → 1) / 강화
 function upgradeFacility(kind) {
@@ -3099,8 +3236,7 @@ function upgradeFacility(kind) {
   G.gold -= cost; A.lv[kind] = L + 1; G.stats.built++;
   const st = unitStats(kind), name = CONFIG.soldiers[kind].name;
   for (const u of G.soldiers) if (u.kind === kind) u.applyStats(A.lv[kind], st);
-  const gx = MAP.castle.wallX + MAP.castle.wallW / 2;
-  FX.ring(gx, MAP.gate.y, 70, '255,215,90', 0.5); FX.spark(gx, MAP.gate.y - 20, '#ffe08a', 10);
+  for (const q of G.gates) { FX.ring(q.wx, q.y, 70, '255,215,90', 0.5); FX.spark(q.wx, q.y - 20, '#ffe08a', 10); }
   if (L === 0) { showBanner(`${c.facility} 건설! 이제 성문에서 ${josa(name, '이', '가')} 나옵니다`, '#ffe08a', 2.6); Sound.play('build'); }
   else { toast(`${c.facility} Lv.${L + 1} — ${name} 강화!`, '#ffd36b'); Sound.play('upgrade'); }
 }
@@ -3133,11 +3269,12 @@ function updateMarch() {
 // 행동 우선순위: 1) 주변 적과 싸움  2) 길을 따라 목표 적 기지로 진군  3) 기지에 닿으면 기지 공격
 //   원거리 병사는 앞장선 근접 병사 뒤, 성직자는 가장 앞선 병사 뒤를 따라감
 class Soldier {
-  constructor(kind) {
+  constructor(kind, gi = 0) {
     this.kind = kind; this.cfg = CONFIG.soldiers[kind];
     this.radius = this.cfg.radius; this.maxBlock = this.cfg.maxBlock;
     this.applyStats(G.army.lv[kind], unitStats(kind), true);
-    this.x = MAP.castle.wallX + MAP.castle.wallW + 16 + rand(0, 8); this.y = MAP.gate.y + rand(-16, 16); this.face = 0;
+    const gt = G.gates[gi]; this.home = gi; this.slotPos = null;          // 나온 성문 (그 성문의 집결 지점을 지킴)
+    this.x = gt.fx + gt.dir * (16 + rand(0, 8)); this.y = gt.y + rand(-16, 16); this.face = gt.dir > 0 ? 0 : Math.PI;
     this.engaged = new Set(); this.target = null; this.retarget = 0; this.anchor = null;
     this.mk = null; this.md = 0; this.snap = true; this.lane = rand(-CONFIG.march.lane, CONFIG.march.lane);   // 진군 중인 길 / 길 위 위치 / 길 가운데에서 벗어난 폭
     this.atkTimer = rand(0, 0.5); this.attackAnim = 0; this.flash = 0;
@@ -3249,11 +3386,17 @@ class Soldier {
       this.snap = true;                                            // 싸움이 끝나면 가까운 길 위치로 복귀
       return;
     }
-    // 2, 3) 길 따라 진군 → 기지 공격
-    this.march(dt, idx);
+    // 2) 집결 지점의 내 자리로
+    this.hold(dt);
   }
 }
 
+// 집결 지점의 내 자리로 가서 적 쪽을 보고 대기
+Soldier.prototype.hold = function (dt) {
+  const pt = this.slotPos; if (!pt) return;
+  if (dist(this.x, this.y, pt.x, pt.y) > 5) this.stepToward(pt.x, pt.y, dt);
+  else this.face = G.gates[this.home].dir > 0 ? 0 : Math.PI;
+};
 // 길 위 내 자리 (다리처럼 좁은 곳에서는 길 가운데 쪽으로)
 Soldier.prototype.lanePt = function (s) {
   for (const f of [1, 0.5, 0]) {
@@ -3340,7 +3483,7 @@ Soldier.prototype.supportUpdate = function (dt, idx) {
       this.attackAnim = 0.4; Sound.play('heal', this.x, this.y, 0.18);
     } else this.castT = 0.5;
   }
-  this.march(dt, idx);                                            // 이동: 가장 앞선 병사 뒤를 따라 진군
+  this.hold(dt);                                                  // 이동: 집결 지점 뒷줄
 };
 
 // 병사 자동 스킬 (5레벨부터) — Soldier에 붙임
@@ -3429,7 +3572,7 @@ function spawnBoss(type, base, asFinal) {
   const fin = e.final;
   if (fin) {                                               // 최종보스: 요새 앞을 지키며 다가오는 영웅·병사와 싸움
     G.finalBoss = e;
-    const a = Math.atan2(MAP.gate.y - base.y, MAP.gate.x - base.x), r = base.m.hitRadius * 0.8 + 130;
+    const a = Math.atan2(G.gates[0].y - base.y, G.gates[0].fx - base.x), r = base.m.hitRadius * 0.8 + 130;
     e.post = Nav.clampTarget(base.x + Math.cos(a) * r, base.y + Math.sin(a) * r);
     e.guardCfg = { aggro: 340, leash: 560 }; e.state = 'guard';
   }
@@ -3451,102 +3594,138 @@ function joinSquad(e, sq) {
   e.leader = sq.leader; e.followGap = e.cfg.tank ? -8 : CONFIG.squadFollowGap + (sq.n++ % 3) * 10;
 }
 
-// ---------- 보스 스테이지 ----------
-// 길 입구: 적 기지 대신 몬스터가 들어오는 곳 (공격·파괴 불가). Enemy가 쓰는 route · spawns · cfg.name 을 가짐
+// ---------- 웨이브 ----------
+// 몬스터가 들어오는 길 (입구 → 성문 하나). Enemy가 쓰는 route · spawns · cfg.name 을 가짐 (공격·파괴 불가)
 class Portal {
-  constructor(key) {
-    this.key = key; this.m = MAP.bases[key]; this.x = this.m.x; this.y = this.m.y;
-    this.cfg = { name: this.m.name || '길' }; this.route = MAPDATA.routes[key];
-    this.spawns = []; this.escorts = []; this.defenders = []; this.alive = true; this.enabled = false;
+  constructor(i) {
+    this.route = MAPDATA.routes[i]; this.key = this.route.ent; this.m = MAP.ents[this.key];
+    this.x = this.m.x; this.y = this.m.y; this.cfg = { name: this.m.name || '길' };
+    this.spawns = (G.stage.mix || []).filter(m => m.type); this.escorts = []; this.defenders = []; this.alive = true; this.enabled = false;
   }
 }
-// 웨이브 진행: rest(쉬는 중) → spawn(몬스터) → boss(웨이브 보스, 여럿이면 차례로) → rest … 마지막 웨이브 뒤 final(최종보스)
+function stageWaves() { const R = CONFIG.waveRules; return G.stage.waves || (R.waveBase + (G.stageIdx + 1) * R.wavePerStage); }
+// w번째 웨이브(0부터): 마리 수 · 나오는 시간 · 무리 크기 · 분대 크기 · 중간보스 여부 · 상한을 넘친 만큼의 강화
+function waveInfo(w) {
+  const R = CONFIG.waveRules, raw = R.first + w * R.perWave, count = Math.min(R.cap, raw), over = Math.max(0, raw - R.cap);
+  return { count, raw, duration: R.spawnBase + count * R.spawnPer, group: Math.min(R.groupMax, R.groupBase + Math.floor(w / 2)),
+           squad: R.squadBase + Math.floor(w / R.squadEvery), mid: (w + 1) % R.midEvery === 0,
+           hpBoost: 1 + over * R.overHp, eliteChance: Math.min(R.overEliteMax, over * R.overElite) };
+}
+// 분대 구성: 탱커 40% 앞 · 원거리 40% 가운데 · 지원 20% 뒤
+function squadList(sq, size) {
+  const nT = Math.max(1, Math.round(size * 0.4)), nR = Math.max(1, Math.round(size * 0.4)), nS = Math.max(0, size - nT - nR), out = [];
+  for (let i = 0; i < nT; i++) out.push(sq.tank[i % sq.tank.length]);
+  for (let i = 0; i < nR; i++) out.push(sq.ranged[i % sq.ranged.length]);
+  for (let i = 0; i < nS; i++) out.push((sq.support || sq.tank)[i % (sq.support || sq.tank).length]);
+  return out;
+}
+// 정예: 체력·공격력 상승 + 골드 eliteMul배
+function makeElite(e) {
+  const E = CONFIG.bossPower.escort;
+  if (e.elite) return; e.maxHp = e.hp = Math.round(e.maxHp * E.hpMul); e.damage *= E.damageMul; e.gateDamage *= E.damageMul; e.elite = true;
+}
+function waveEnts() { return [...new Set(G.portals.map(q => q.key))]; }
+// 입구에서 성문으로 가는 길 하나 (길이 여러 갈래면 번갈아)
+function portalFor(ent) {
+  const W = G.wave, list = G.portals.filter(q => q.key === ent); W.pr[ent] = (W.pr[ent] || 0) + 1;
+  return list[W.pr[ent] % list.length];
+}
+function spawnWaveMonster(q) {
+  const e = new Enemy(q.type, q.portal, q.lane != null ? q.lane : rand(-28, 28), G.threat);
+  if (q.hpBoost && q.hpBoost > 1) e.maxHp = e.hp = Math.round(e.maxHp * q.hpBoost);
+  if (q.elite || Math.random() < (q.eliteChance || 0)) makeElite(e);
+  if (q.sq) joinSquad(e, q.sq);
+  G.enemies.push(e); FX.dust(e.x, e.y);
+}
+function rushWave() {                                                // 바로 시작: 남은 초만큼 보너스 골드
+  const W = G.wave; if (!W || W.phase !== 'count' || G.prep > 0) return;
+  const E = CONFIG.economy, bonus = Math.min(E.rushMax, Math.ceil(W.t) * E.rushPerSec);
+  if (bonus > 0) { addGold(bonus); FX.text(G.gates[0].fx + 160, G.gates[0].y - 80, `바로 시작 +${bonus} 골드`, '#ffd84a', 20, 1.6); }
+  W.t = 0;
+}
+// 웨이브 진행: count(다음 웨이브까지) → spawn(몬스터가 나옴, 3·6·9…웨이브 중간에 모든 입구에서 중간보스)
+//   → 다 나오면 다음 count … 마지막 웨이브가 다 나오면 clear(남은 적 처치 = 승리) 또는 final(최종보스)
 function updateWaves(dt) {
-  const W = G.wave, S = G.stage.waves, list = S.list, wv = list[W.i];
+  const W = G.wave, R = CONFIG.waveRules, total = stageWaves(), info = waveInfo(W.i);
   for (const q of W.pending) q.t -= dt;                     // 무리 안에서 조금씩 시간차
-  for (const q of W.pending) if (q.t <= 0) {
-    const e = new Enemy(q.type, q.portal, q.lane != null ? q.lane : rand(-26, 26), G.threat);
-    if (q.sq) joinSquad(e, q.sq);
-    G.enemies.push(e); FX.dust(e.x, e.y);
-  }
+  for (const q of W.pending) if (q.t <= 0) spawnWaveMonster(q);
   compact(W.pending, q => q.t > 0);
-  if (W.phase === 'rest') {
+  if (W.phase === 'count') {
     W.t -= dt;
     if (W.t <= 0) {
-      W.phase = 'spawn'; W.spawned = 0; W.groupT = 0; W.bossStarted = false; W.bossQ = []; W.boss = null; W.bossN = 0; W.bosses = [];
-      for (const pt of G.portals) pt.spawns = wv.mix.filter(m => m.type);
-      showBanner(`웨이브 ${W.i + 1} / ${list.length} 시작! 몬스터 ${wv.count}마리가 세 갈래 길로 몰려옵니다`, '#ff9a6a', 3); Sound.play('horn'); G.banner.warn = true;
+      W.phase = 'spawn'; W.spawned = 0; W.groupT = 0; W.midDone = false; G.threat = W.i + 1;
+      showBanner(`웨이브 ${W.i + 1} / ${total} 시작! 몬스터 ${info.count}마리${info.mid ? ' · 중간보스 출현 예정' : ''}`, '#ff9a6a', 2.8); Sound.play('horn'); G.banner.warn = true;
     }
   } else if (W.phase === 'spawn') {
-    const gs = (S.groupSizes && S.groupSizes[W.i]) || S.groupSize || 4;
     W.groupT -= dt;
-    if (W.groupT <= 0 && W.spawned < wv.count) {
-      W.groupT += wv.duration / Math.ceil(wv.count / gs);
-      const pt = G.portals[W.road++ % G.portals.length], g = weightedPick(wv.mix);
-      if (g.squad) {                                             // 분대 (탱커 + 원거리·광역)
-        const sq = { leader: null, n: 0 }, mem = squadMembers(g.squad).slice(0, wv.count - W.spawned);
-        mem.forEach((type, j) => W.pending.push({ t: j * S.groupGap * 1.5, type, portal: pt, sq, lane: (j % 2 ? 1 : -1) * rand(4, 18) }));
+    if (W.groupT <= 0 && W.spawned < info.count) {
+      W.groupT += info.duration / Math.ceil(info.count / info.group);
+      const ents = waveEnts(), pt = portalFor(ents[W.road++ % ents.length]), st = G.stage;
+      const opts = (st.mix || []).slice(); if (st.squad) opts.push({ squad: true, weight: st.squadWeight || 1 });
+      const g = weightedPick(opts), left = info.count - W.spawned;
+      if (g.squad) {                                          // 분대: 탱커가 앞장, 원거리·지원이 뒤따름
+        const sq = { leader: null, n: 0 }, mem = squadList(st.squad, info.squad).slice(0, left);
+        mem.forEach((type, j) => W.pending.push({ t: j * R.groupGap * 1.5, type, portal: pt, sq, lane: (j % 2 ? 1 : -1) * rand(4, 18), hpBoost: info.hpBoost, eliteChance: info.eliteChance }));
         W.spawned += mem.length;
       } else {
-        const n = Math.min(gs, wv.count - W.spawned);
-        for (let j = 0; j < n; j++) W.pending.push({ t: j * S.groupGap, type: g.type, portal: pt });
+        const n = Math.min(info.group, left);
+        for (let j = 0; j < n; j++) W.pending.push({ t: j * R.groupGap, type: g.type, portal: pt, hpBoost: info.hpBoost, eliteChance: info.eliteChance });
         W.spawned += n;
       }
     }
-    if (!W.bossStarted && W.spawned >= wv.count * (S.bossAt != null ? S.bossAt : 1)) {   // 웨이브 중간에 보스 등장
-      W.bossStarted = true; W.bossQ = wv.boss.slice(); W.bossDelay = 0.5;
+    if (info.mid && !W.midDone && W.spawned >= info.count * R.midAt) {   // 중간보스: 모든 입구에서 정예 분대를 이끌고
+      W.midDone = true;
+      const names = [];
+      for (const ent of waveEnts()) { const b = spawnStageBoss(weightedPick(R.midBosses).type, portalFor(ent), false, info.squad); names.push(b.cfg.name); }
+      showBanner(`중간보스 ${names.length}마리가 정예 분대를 이끌고 나타났습니다! (${[...new Set(names)].join(' · ')})`, '#ffae5a', 3.4); G.banner.warn = true;
     }
-    if (W.bossStarted && W.bossQ.length && (wv.together || !W.bosses.some(b => b.alive))) {   // 보스 등장: together면 한꺼번에, 아니면 앞 보스를 쓰러뜨린 뒤 차례로
-      W.bossDelay -= dt;
-      if (W.bossDelay <= 0) {
-        const roads = G.portals, names = [];
-        do {
-          const pt = (wv.road && roads.find(r => r.key === wv.road)) || roads[W.bossN % roads.length];
-          const type = W.bossQ.shift(); W.bossN++;
-          W.boss = spawnStageBoss(type, pt, false); W.bosses.push(W.boss); names.push(`${W.boss.cfg.name}(${pt.cfg.name})`);
-        } while (wv.together && W.bossQ.length);
-        showBanner(wv.together ? `웨이브 ${W.i + 1} 보스 ${names.length}마리가 한꺼번에 몰려옵니다! ${names.join(' · ')}`
-          : `웨이브 ${W.i + 1} 보스: ${names[0]} · 정예 부하 ${CONFIG.bossPower.escort.mid}마리${W.bossQ.length ? ` · 남은 보스 ${W.bossQ.length}` : ''}`, '#ffae5a', 3.6); G.banner.warn = true;
-        if (wv.together) { G.redFlash = 0.6; shake(8, 0.6); }
-        W.bossDelay = 2.5;
-      }
-    }
-    const done = W.spawned >= wv.count && !W.pending.length && W.bossStarted && !W.bossQ.length && !W.bosses.some(b => b.alive);
-    if (done) {
-      if (W.i >= list.length - 1) {                            // 마지막 웨이브 → 최종보스
-        W.phase = 'final';
-        const F = G.stage.final, pt = G.portals.find(r => r.key === F.road) || G.portals[0];
-        W.boss = spawnStageBoss(F.type, pt, true); W.rt = F.reinforce ? F.reinforce.interval * 0.5 : 0;
+    if (W.spawned >= info.count && !W.pending.length) {
+      if (W.i >= total - 1) {
+        if (G.stage.final) {                                   // 최종보스전: 마지막 웨이브 뒤 최종보스
+          W.phase = 'final';
+          const F = G.stage.final, pt = portalFor(F.ent || waveEnts()[0]);
+          spawnStageBoss(F.type, pt, true, CONFIG.bossPower.escort.final);
+          W.sqT = F.squadEvery; W.midT = F.midEvery;
+        } else { W.phase = 'clear'; showBanner('마지막 웨이브입니다! 남은 적을 모두 물리치세요', '#ffd36b', 3); }
       } else {
-        W.i++; W.phase = 'rest'; W.t = S.rest;
-        showBanner(`웨이브 ${W.i} 완료! ${S.rest}초 뒤 웨이브 ${W.i + 1}`, '#ffe08a', 3);
+        W.i++; W.phase = 'count'; W.t = R.countdown;
+        showBanner(`웨이브 ${W.i} 완료! ${R.countdown}초 뒤 웨이브 ${W.i + 1} (바로 시작하면 보너스 골드)`, '#ffe08a', 2.6);
       }
     }
+  } else if (W.phase === 'clear') {
+    if (!G.pendingResult && !W.pending.length && !G.pending.length && !G.enemies.some(e => e.alive)) { G.pendingResult = 'won'; G.endTimer = 2; showBanner('모든 웨이브를 막아냈습니다!', '#ffd36b', 3); }
   } else if (W.phase === 'final') {
-    const type = G.stage.final.type, RF = G.stage.final.reinforce;
-    if (RF && G.enemies.some(e => e.alive && e.type === type)) {   // 슬라임 지원군 (최종보스가 살아 있는 동안)
-      W.rt -= dt;
-      if (W.rt <= 0) {
-        W.rt += RF.interval;
-        for (let j = 0; j < RF.count; j++) {
-          const pt = G.portals[W.road++ % G.portals.length];
-          W.pending.push({ t: Math.floor(j / G.portals.length) * S.groupGap * 2, type: weightedPick(RF.mix).type, portal: pt });
-        }
+    const F = G.stage.final, alive = G.enemies.some(e => e.alive && e.type === F.type);
+    if (alive) {                                               // 최종보스가 살아 있는 동안: 정예 분대 · 중간보스가 계속
+      W.sqT -= dt; W.midT -= dt;
+      if (W.sqT <= 0 && G.stage.squad) {
+        W.sqT += F.squadEvery;
+        const pt = portalFor(waveEnts()[Math.floor(Math.random() * waveEnts().length)]), sq = { leader: null, n: 0 };
+        squadList(G.stage.squad, info.squad).forEach((type, j) => W.pending.push({ t: j * R.groupGap * 1.5, type, portal: pt, sq, elite: true, lane: (j % 2 ? 1 : -1) * rand(4, 18) }));
       }
-    }
-    if (!G.enemies.some(e => e.alive && e.type === type) && !G.pendingResult) {   // 분열한 슬라임까지 모두 쓰러뜨리면 승리
+      if (W.midT <= 0) { W.midT += F.midEvery; const b = spawnStageBoss(weightedPick(R.midBosses).type, portalFor(waveEnts()[Math.floor(Math.random() * waveEnts().length)]), false, info.squad); showBanner(`중간보스 ${b.cfg.name}이 지원하러 옵니다!`, '#ffae5a', 2.4); }
+    } else if (!G.pendingResult) {                             // 분열한 슬라임까지 모두 쓰러뜨리면 승리
       G.pendingResult = 'won'; G.endTimer = 2.5;
-      showBanner(`${CONFIG.enemies[type].name}을 쓰러뜨렸습니다!`, '#ffd36b', 3);
+      showBanner(`${CONFIG.enemies[F.type].name}을 쓰러뜨렸습니다!`, '#ffd36b', 3);
     }
   }
 }
-// 보스 스테이지의 보스: 길을 따라 성문으로 행진 (정예 부하 동반). final = 최종보스
-function spawnStageBoss(type, portal, final) {
-  const e = new Enemy(type, portal, 0, G.threat), E = CONFIG.bossPower.escort;
-  if (final) { e.final = true; e.gen = 0; e.rootHp = e.maxHp; G.finalBoss = e; }
+// 보스: 길을 따라 성문으로 행진 + 정예 분대 동반. final = 최종보스 (골드 = economy.finalBoss), 아니면 중간보스 (골드 = 300 + 스테이지 × 50)
+function spawnStageBoss(type, portal, final, escortN) {
+  const e = new Enemy(type, portal, 0, G.threat), E = CONFIG.economy;
+  if (final) { e.final = true; e.gen = 0; e.rootHp = e.maxHp; G.finalBoss = e; e.goldOverride = E.finalBoss; }
+  else e.goldOverride = E.midBoss[0] + (G.stageIdx + 1) * E.midBoss[1];
   G.enemies.push(e);
   for (let i = 0; i < 4; i++) FX.dust(e.x + rand(-20, 20), e.y + rand(-10, 10));
-  const n = spawnEscorts(portal, e, final ? E.final : E.mid, false);
+  let n = 0;
+  if (G.stage.squad) {                                       // 정예 분대 (보스 곁을 지킴)
+    for (const type of squadList(G.stage.squad, escortN)) {
+      const m = new Enemy(type, portal, rand(-28, 28), G.threat); makeElite(m);
+      m.dist = Math.max(0, e.dist + rand(-40, 40)); m.leader = e; m.followGap = -CONFIG.bossPower.escort.followLead;
+      const sp = m.route.sample(m.dist, TMP); m.x = sp.x - sp.dy * m.lane; m.y = sp.y + sp.dx * m.lane;
+      G.enemies.push(m); FX.dust(m.x, m.y); n++;
+    }
+  } else n = spawnEscorts(portal, e, escortN, false);
   if (final) { showBanner(`최종 보스 ${e.cfg.name} 출현! 정예 부하 ${n}마리와 함께 ${portal.cfg.name}로 옵니다`, '#ff6a4a', 4); G.banner.warn = true; G.redFlash = 0.7; setTimeout(() => Sound.play('roar'), 600); }
   Sound.play('bossWarn'); shake(final ? 10 : 5, final ? 0.8 : 0.4);
   return e;
@@ -3767,7 +3946,7 @@ function nearestAlly(x, y, range) {
   for (const u of G.soldiers) { if (u.dead) continue; const d = dist(x, y, u.x, u.y); if (d < bd) { bd = d; best = u; } }
   return best;
 }
-function gateFront() { return { x: MAP.castle.wallX + MAP.castle.wallW + 10, y: MAP.gate.y }; }
+function gateFront(p) { return nearestGate(p ? p.x : 0, p ? p.y : 0).front(10); }      // 가장 가까운 성문 앞
 
 // 예고 표시: 바닥에 범위를 보여주고 delay초 뒤 onHit 발동 (그 전에 보스가 죽으면 취소)
 // shape: 'circle' (x, y, r) / 'line' (x, y → x2, y2, 폭 w) · follow: 보스를 따라 움직임 · meteor: 하늘에서 떨어지는 불덩이 그림
@@ -3799,6 +3978,7 @@ class Enemy {
   constructor(type, base, lane, threat) {
     const cfg = CONFIG.enemies[type], esc = CONFIG.escalation, lv = cfg.final ? 0 : threat - 1;   // 최종보스는 위협 레벨 영향 없음
     this.id = G.nextId++; this.type = type; this.cfg = cfg; this.base = base; this.route = base.route; this.final = !!cfg.final;
+    this.gate = (G.gates && G.gates[(base.route && base.route.gate) || 0]) || null;   // 이 적이 노리는 성문 (길이 끝나는 곳)
     const D = G.diff || CONFIG.difficulty.normal, P = G.stage ? G.stage.power : 1;   // 난이도 · 스테이지 배율
     this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv) * D.enemyHp * P); this.hp = this.maxHp;
     this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv) * D.enemyDmg * P;
@@ -3946,7 +4126,7 @@ class Enemy {
     }
     if (this.knock) {                                   // 밀려나는 중
       const k = this.knock;
-      this.x = clamp(this.x + k.vx * dt, MAP.castle.wallX + MAP.castle.wallW + 8, CONFIG.world.width - 8);
+      this.x = clamp(this.x + k.vx * dt, MAPDATA.minX - 4, MAPDATA.maxX + 4);
       this.y = clamp(this.y + k.vy * dt, 8, CONFIG.world.height - 8);
       k.t -= dt;
       if (k.t <= 0) { this.knock = null; if (this.state === 'walk') { this.dist = this.route.nearestDist(this.x, this.y, this.dist); this.state = 'rejoin'; } }
@@ -3960,10 +4140,10 @@ class Enemy {
       case 'shoot': this.updateShoot(dt); break;
       case 'siege': {                                   // 원거리 적: 성문 앞에서 활로 성문 공격
         if (this.tryEngage() || this.tryShoot()) break;
-        this.face = Math.atan2(MAP.gate.y - this.y, MAP.castle.wallX + MAP.castle.wallW - this.x);
+        this.face = Math.atan2(this.gate.y - this.y, this.gate.fx - this.x);
         if (G.gate.destroyed) break;
         this.atkTimer -= dt;
-        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; this.shootAt(gateTarget(), this.gateDamage * this.dmgMul); }
+        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; this.shootAt(gateTarget(this.gate), this.gateDamage * this.dmgMul); }
         break;
       }
       case 'airFight': this.updateAirFight(dt); break;
@@ -3979,8 +4159,8 @@ class Enemy {
         this.dist = nd;
         if (this.dist >= this.route.length) {
           this.dist = this.route.length; this.state = 'toGate';
-          this.slot = G.gate.claimSlot(this);
-          if (!this.slot) { const a = rand(-1.25, 1.25), r = rand(150, 180); this.fallback = { x: MAP.castle.wallX + MAP.castle.wallW + Math.cos(a) * r, y: MAP.gate.y + Math.sin(a) * r }; }
+          this.slot = this.gate.claimSlot(this);
+          if (!this.slot) { const a = rand(-1.25, 1.25), r = rand(150, 180); this.fallback = { x: this.gate.fx + this.gate.dir * Math.cos(a) * r, y: this.gate.y + Math.sin(a) * r }; }
         }
         const s = this.route.sample(this.dist, TMP);
         this.x = s.x - s.dy * this.lane; this.y = s.y + s.dx * this.lane; this.face = Math.atan2(s.dy, s.dx);
@@ -4001,10 +4181,10 @@ class Enemy {
       }
       case 'attack': {
         if (this.tryEngage() || this.tryAirRaid(dt)) break;
-        this.face = Math.atan2(MAP.gate.y - this.y, MAP.castle.wallX + MAP.castle.wallW - this.x);
+        this.face = Math.atan2(this.gate.y - this.y, this.gate.fx - this.x);
         if (G.gate.destroyed) break;
         this.atkTimer -= dt;
-        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; G.gate.takeDamage(this.gateDamage * this.dmgMul); }
+        if (this.atkTimer <= 0) { this.atkTimer += this.cfg.attackInterval; this.lunge = 0.15; G.gate.takeDamage(this.gateDamage * this.dmgMul, this.gate); }
         break;
       }
     }
@@ -4050,7 +4230,7 @@ class Enemy {
         const h = G.hero;
         if (h && !h.dead) { const d = dist(this.x, this.y, h.x, h.y); if (d < bd) { bd = d; t = h; } }
         for (const u of G.soldiers) { if (u.dead) continue; const d = dist(this.x, this.y, u.x, u.y); if (d < bd) { bd = d; t = u; } }
-        const gx = MAP.castle.wallX + MAP.castle.wallW + 20, gy = MAP.gate.y;
+        const gfr = gateFront(this), gx = gfr.x, gy = gfr.y;
         if (t) this.breathAt(t.x, t.y);
         else if (dist(this.x, this.y, gx, gy) < b.range) this.breathAt(gx, gy);
         this.breathT = t || dist(this.x, this.y, gx, gy) < b.range ? b.interval * this.cdMul * (this.enraged ? c.enrage.cdMul : 1) : 0.5;
@@ -4087,7 +4267,7 @@ class Enemy {
     FX.text(this.x, this.y - (this.air ? AIR_HEIGHT * 1.6 : 0) - this.radius * (this.cfg.drawScale || 1) - 20, sk.name + '!', '#ffb36b', 21, 1.2);
   }
   useSkill(sk) {
-    const m = this.skillMul, gf = gateFront();
+    const m = this.skillMul, gf = gateFront(this);
     const tele = o => G.telegraphs.push(new Telegraph(Object.assign({ owner: this }, o)));
     switch (sk.id) {
       case 'web': {                                            // 거미 여왕: 거미줄 → 범위 안 아군 묶임
@@ -4213,7 +4393,7 @@ class Enemy {
     const h = G.hero;
     if (h && !h.dead && dist(h.x, h.y, tx, ty) <= b.radius) h.takeDamage(dmg);
     for (const u of G.soldiers) if (!u.dead && dist(u.x, u.y, tx, ty) <= b.radius) u.takeDamage(dmg);
-    if (dist(tx, ty, MAP.castle.wallX + MAP.castle.wallW, MAP.gate.y) <= b.radius + 20) G.gate.takeDamage(dmg);
+    const ng = nearestGate(tx, ty); if (dist(tx, ty, ng.fx, ng.y) <= b.radius + 20) G.gate.takeDamage(dmg, ng);
     this.breathAnim = 0.7; this.breathTo = { x: tx, y: ty }; Sound.play('breath', tx, ty); this.face = Math.atan2(ty - this.y, tx - this.x);
     const sx = this.x + Math.cos(this.face) * 30, sy = this.y - AIR_HEIGHT * 1.6 + Math.sin(this.face) * 30;
     for (let i = 0; i < 26; i++) {
@@ -4250,7 +4430,7 @@ class Enemy {
   }
   // 폭탄 고블린: 부딪히면 자폭 (주변 아군·성문 피해)
   explode() {
-    const x = this.cfg.explode, m = this.skillMul, gf = gateFront();
+    const x = this.cfg.explode, m = this.skillMul, gf = gateFront(this);
     for (const a of alliesIn(this.x, this.y, x.radius)) a.takeDamage(x.damage * m);
     if (dist(this.x, this.y, gf.x, gf.y) <= x.radius + 30) G.gate.takeDamage(x.gateDamage * m);
     FX.explosion(this.x, this.y, 0.4); Sound.play('boom', this.x, this.y, 0.6); shake(2, 0.15);
@@ -4299,6 +4479,12 @@ class Enemy {
     }
   }
 
+  // 처치 골드: 일반 × goldMul, 정예 × eliteMul, 중간·최종보스는 정해진 골드 (분열체는 체력 비율만큼)
+  goldValue() {
+    const E = CONFIG.economy, r = this.rewardMul || 1;
+    if (this.goldOverride != null) return Math.round(this.goldOverride * r);
+    return Math.round((this.cfg.gold || 0) * (this.boss ? 1 : E.goldMul) * (this.elite ? E.eliteMul : 1) * r);
+  }
   // 대형 슬라임 킹: 쓰러지면 작은 몸 여러 개로 분열 (체력은 본체 체력 × hpRatios, 공격력·스킬·스킬 간격은 그대로)
   megaSplit() {
     const c = this.cfg, M = c.megaSplit, g = (this.gen || 0) + 1;
@@ -4306,12 +4492,12 @@ class Enemy {
     const root = this.rootHp || this.maxHp, kids = [];
     for (let i = 0; i < M.count; i++) {
       const b = new Enemy(this.type, this.base, rand(-14, 14), G.threat);
-      b.gen = g; b.rootHp = root; b.final = this.final;
+      b.gen = g; b.rootHp = root; b.final = this.final; b.goldOverride = this.goldOverride;
       b.maxHp = b.hp = Math.round(root * M.hpRatios[g - 1]);
       b.damage = this.damage; b.gateDamage = this.gateDamage; b.skillMul = this.skillMul; b.cdMul = this.cdMul; b.armor = this.armor; b.frenzied = this.frenzied;
       b.radius = Math.round(c.radius * M.sizes[g - 1]); b.xp = this.xp * M.hpRatios[g - 1]; b.rewardMul = M.hpRatios[g - 1];
       const a = (i / M.count) * TAU + rand(-0.4, 0.4); b.x = this.x + Math.cos(a) * this.radius * 0.8; b.y = this.y + Math.sin(a) * this.radius * 0.5;
-      if (this.reachedEnd) { b.dist = this.route.length; b.state = 'toGate'; b.slot = G.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
+      if (this.reachedEnd) { b.dist = this.route.length; b.state = 'toGate'; b.slot = b.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
       else { b.dist = this.route.nearestDist(b.x, b.y, this.dist); b.state = 'rejoin'; }
       b.skillCd = b.skillCd.map(t => t * 0.5); b.stun = 0.6;
       G.enemies.push(b); kids.push(b); FX.ring(b.x, b.y, b.radius + 10, '170,110,230', 0.5);
@@ -4339,7 +4525,7 @@ class Enemy {
       const b = new Enemy(c.split.type, this.base, rand(-12, 12), G.threat);
       const a = (i / c.split.count) * TAU; b.x = this.x + Math.cos(a) * 12; b.y = this.y + Math.sin(a) * 10;
       b.dist = this.reachedEnd ? this.route.length : this.route.nearestDist(b.x, b.y, this.dist); b.state = this.reachedEnd ? 'toGate' : 'rejoin';
-      if (this.reachedEnd) { b.slot = G.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
+      if (this.reachedEnd) { b.slot = b.gate.claimSlot(b); if (!b.slot) b.fallback = { x: b.x, y: b.y }; }
       if (this.post) { b.post = this.post; b.guardCfg = this.guardCfg; b.state = 'guard'; }
       G.enemies.push(b);
     }
@@ -4367,7 +4553,7 @@ class Enemy {
     }
     if (killer) {
       G.stats.kills++;
-      addGold(Math.round((this.cfg.gold || 0) * (this.rewardMul || 1)));
+      addGold(this.goldValue());
       const h = G.hero;
       if (h && !h.dead) h.gainXp(killer === h ? this.xp : this.xp * CONFIG.heroLevels.sharedXp);
     }
@@ -4375,14 +4561,15 @@ class Enemy {
 }
 
 // 원거리 적이 성문을 쏠 때 쓰는 목표 (화살이 따라갈 위치 + 맞으면 성문 피해)
-function gateTarget() {
-  return { x: MAP.castle.wallX + MAP.castle.wallW - 4, y: MAP.gate.y + rand(-30, 30), alive: true, radius: 10, gate: true, takeDamage: d => G.gate.takeDamage(d) };
+function gateTarget(q) {
+  q = q || G.gates[0];
+  return { x: q.fx - q.dir * 4, y: q.y + rand(-30, 30), alive: true, radius: 10, gate: true, takeDamage: d => G.gate.takeDamage(d, q) };
 }
 
 // ---------- 이동 도우미: 강은 다리로만 건널 수 있음, 성 안으로는 못 들어감 ----------
 const Nav = {
   riverXAt(y) {
-    const R = MAPDATA.river;
+    const R = MAPDATA.river; if (!R) return -1e9;
     if (y <= R[0].y) return R[0].x;
     for (let i = 1; i < R.length; i++) if (R[i].y >= y) { const a = R[i - 1], b = R[i], t = (y - a.y) / ((b.y - a.y) || 1); return a.x + (b.x - a.x) * t; }
     return R[R.length - 1].x;
@@ -4398,14 +4585,14 @@ const Nav = {
     const dx = x - b.x, dy = y - b.y, c = Math.cos(-b.angle), s = Math.sin(-b.angle);
     return Math.abs(dx * c - dy * s) <= b.len / 2 + 16 && Math.abs(dx * s + dy * c) <= b.wid / 2 + 10;
   },
-  inWater(x, y) { return !this.onBridge(x, y) && Math.abs(x - this.riverXAt(y)) < MAP.riverWidth / 2 + 4; },
+  inWater(x, y) { return !!MAPDATA.river && !this.onBridge(x, y) && Math.abs(x - this.riverXAt(y)) < MAP.riverWidth / 2 + 4; },
   side(x, y) { return x < this.riverXAt(y) ? -1 : 1; },
   blocked(x, y) {
-    return x < MAP.castle.wallX + MAP.castle.wallW + 12 || x > CONFIG.world.width - 10 || y < 10 || y > CONFIG.world.height - 10 || this.inWater(x, y);
+    return x < MAPDATA.minX || x > MAPDATA.maxX || y < 10 || y > CONFIG.world.height - 10 || this.inWater(x, y);
   },
   // 이동 목표를 갈 수 있는 곳으로 보정
   clampTarget(x, y) {
-    x = clamp(x, MAP.castle.wallX + MAP.castle.wallW + 16, CONFIG.world.width - 14);
+    x = clamp(x, MAPDATA.minX + 4, MAPDATA.maxX - 4);
     y = clamp(y, 14, CONFIG.world.height - 14);
     if (this.inWater(x, y)) { const rx = this.riverXAt(y), s = x < rx ? -1 : 1; x = rx + s * (MAP.riverWidth / 2 + 16); }
     return { x, y };
@@ -4426,6 +4613,12 @@ const Nav = {
   },
 };
 
+// 영웅 시작·부활 자리: 두 성문이 같은 쪽이면 그 사이, 양쪽 끝이면 (x, y)에서 가까운 성문 앞
+function heroSpawnFor(x, y) {
+  const [a, b] = G.gates;
+  if (a.side === b.side) return { x: a.fx + a.dir * 66, y: (a.y + b.y) / 2 };
+  return (x == null ? a : nearestGate(x, y)).front(66);
+}
 // ---------- 영웅 ----------
 class Hero {
   constructor(type) {
@@ -4434,7 +4627,7 @@ class Hero {
     this.items = { weapon: null, armor: null, accessory: null };   // 장착 아이템 (저장된 장비가 있으면 그대로 착용)
     const saved = SavedGear.get(type); if (saved) for (const k in this.items) if (saved[k]) this.items[k] = saved[k];
     this.recalc(); this.hp = this.maxHp;
-    this.x = MAP.heroSpawn.x; this.y = MAP.heroSpawn.y; this.face = 0;
+    this.x = G.heroSpawn.x; this.y = G.heroSpawn.y; this.face = 0;
     this.guard = { x: this.x, y: this.y }; this.path = []; this.mode = 'guard';
     this.target = null; this.baseTarget = null;
     this.atkTimer = 0; this.attackAnim = 0; this.flash = 0;
@@ -4535,11 +4728,12 @@ class Hero {
     this.engaged.clear();
     if (G.aim) G.aim = null;
     FX.poof(this.x, this.y, 18);
-    showBanner(`${this.cfg.name}가 쓰러졌습니다! ${this.cfg.respawn}초 후 성문 앞에서 부활`, '#ff8a75', 2.8);
+    showBanner(`${this.cfg.name}가 쓰러졌습니다! ${this.cfg.respawn}초 후 성문 근처에서 부활`, '#ff8a75', 2.8);
   }
   respawn() {
     this.dead = false; this.hp = this.maxHp; this.mana = this.maxMana; this.lastHit = -999;
-    this.x = MAP.heroSpawn.x; this.y = MAP.heroSpawn.y; this.face = 0;
+    const sp = heroSpawnFor(this.deathX, this.deathY);                // A형: 두 성문 사이 / B형: 쓰러진 곳에서 가까운 성문 앞
+    this.x = sp.x; this.y = sp.y; this.face = 0;
     this.guard = { x: this.x, y: this.y }; this.mode = 'guard';
     FX.ring(this.x, this.y, 46, '255,240,180', 0.6); FX.spark(this.x, this.y, '#fff2b0', 10);
     showBanner(`${this.cfg.name} 부활!`, '#ffe08a', 1.8); Sound.play('respawn');
@@ -4640,10 +4834,10 @@ class Hero {
     const heal = (u, a) => { const before = u.hp; u.hp = Math.min(u.maxHp, u.hp + a); const got = Math.round(u.hp - before); if (got > 0) FX.text(u.x, u.y - 26, '+' + got, '#7dff6a', 15, 0.9); };
     heal(this, amt);
     for (const u of G.soldiers) if (!u.dead && dist(this.x, this.y, u.x, u.y) <= sk.radius) heal(u, amt);
-    const gx = MAP.castle.wallX + MAP.castle.wallW, gy = MAP.gate.y;
+    const ng = nearestGate(this.x, this.y), gx = ng.fx, gy = ng.y;
     if (!G.gate.destroyed && dist(this.x, this.y, gx, gy) <= sk.gateRange) {
       const before = G.gate.hp; G.gate.hp = Math.min(G.gate.maxHp, G.gate.hp + amt);
-      FX.text(gx + 40, gy - 60, '+' + Math.round(G.gate.hp - before), '#7dff6a', 18, 1.1); FX.ring(gx, gy, 60, '140,255,140', 0.6);
+      FX.text(gx + ng.dir * 40, gy - 60, '+' + Math.round(G.gate.hp - before), '#7dff6a', 18, 1.1); FX.ring(gx, gy, 60, '140,255,140', 0.6);
     }
     FX.ring(this.x, this.y, sk.radius, '140,255,140', 0.6); FX.ring(this.x, this.y, sk.radius * 0.5, '220,255,200', 0.45); Sound.play('heal', this.x, this.y);
     for (let i = 0; i < 18; i++) { const a = rand(0, TAU), r = rand(0, sk.radius * 0.8); FX.add({ k: 'spark', x: this.x + Math.cos(a) * r, y: this.y + Math.sin(a) * r, vx: 0, vy: -50, g: 0, life: 0.7, max: 0.7, color: '#b8ff9a', size: 7 }); }
@@ -5159,6 +5353,7 @@ const Input = {
         break;
       }
       case 'Escape': if (G.aim) G.aim = null; else if (G.sel) G.sel = null; else togglePause(); break;
+      case 'KeyG': if (G.state === 'playing' && !G.paused) { G.army.gi = (G.army.gi + 1) % G.gates.length; toast(`성문${G.army.gi + 1}에서 생산`, '#bfe0ff'); } break;
       case 'Backspace': if (G.state === 'playing' && !G.paused && G.army.queue.length) { e.preventDefault(); unqueueUnit(G.army.queue.length - 1); } break;
       case 'KeyP': togglePause(); break;
       case 'KeyF': toggleSpeed(); break;
@@ -5189,6 +5384,9 @@ function onWorldTap(w) {
   G.itemInfo = null;                                       // 아이템 정보창 닫기
   // 방향/지점 지정 스킬 조준 중이면 → 그 방향으로 스킬 사용
   if (G.aim) { const i = G.aim.skill; G.aim = null; if (h) h.cast(i, w.x, w.y); return; }
+  const gi = gateAt(w.x, w.y);
+  if (gi >= 0) { G.army.gi = gi; G.sel = G.sel && G.sel.kind === 'gate' && G.sel.ref === gi ? null : { kind: 'gate', ref: gi }; return; }   // 성문 탭 → 성문 메뉴
+  if (G.sel && G.sel.kind === 'gate') { setRally(G.sel.ref, w.x, w.y); G.sel = null; return; }   // 성문 메뉴가 열린 채 지도 탭 → 집결 지점
   if (G.sel) { G.sel = null; return; }   // 메뉴가 열려 있으면 빈 곳 탭은 메뉴 닫기만
   // 테스트 옵션: 기지 탭 → 바로 피해
   if (CONFIG.debug.tapBaseDamage > 0) {
@@ -5240,7 +5438,7 @@ function toast(text, color = '#ffe7a8') { G.toast = { text, color, until: realTi
 
 function focusHero() {
   const h = G.hero; if (!h) return;
-  if (h.dead) Camera.centerOn(MAP.heroSpawn.x + 200, MAP.heroSpawn.y); else Camera.centerOn(h.x, h.y);
+  if (h.dead) Camera.centerOn(G.heroSpawn.x + 200, G.heroSpawn.y); else Camera.centerOn(h.x, h.y);
 }
 
 // ==========================================================================
@@ -5289,10 +5487,11 @@ function drawHUD(ctx) {
 
   // --- 성문 에너지 (누르면 성문 업그레이드 메뉴) ---
   let x = pad, w = 290 * k;
-  UI.block(x, top, w, ph);
+  UI.button('gateHud', x, top, w, ph, () => { G.aim = null; G.sel = G.sel && G.sel.kind === 'gate' ? null : { kind: 'gate', ref: G.army.gi }; });
   panel(ctx, x, top, w, ph, k);
   Icon.castle(ctx, x + 27 * k, top + ph / 2 + 2 * k, 30 * k);
-  txt(ctx, '성문', x + 52 * k, top + 17 * k, 15 * k, '#f3e3bf');
+  txt(ctx, `성문 Lv.${g.level}`, x + 52 * k, top + 17 * k, 15 * k, '#f3e3bf');
+  if (g.next && G.gold >= g.next.cost) { ctx.globalAlpha = 0.4 + Math.sin(realTime * 5) * 0.3; rr(ctx, x - 2 * k, top - 2 * k, w + 4 * k, ph + 4 * k, 12 * k); ctx.strokeStyle = '#8dff7a'; ctx.lineWidth = 2 * k; ctx.stroke(); ctx.globalAlpha = 1; }
   const sx = x + w - 12 * k, sy = top + 17 * k;
   if (g.destroyed) txt(ctx, '붕괴', sx, sy, 14 * k, '#ff6a55', 'right');
   else if (g.underAttack) {
@@ -5311,18 +5510,24 @@ function drawHUD(ctx) {
   const flash = realTime < G.goldFlashUntil && Math.sin(realTime * 30) > 0;
   txt(ctx, Math.floor(G.gold) + '', x + 48 * k, top + ph / 2 + 1 * k, 25 * k, flash ? '#ff6a55' : '#ffe08a', 'left', { weight: 900, stroke: 'rgba(0,0,0,0.5)' });
 
-  // --- 적 기지 요약 ---
-  x += w + pad; w = Math.max(236, 20 + G.bases.length * 74) * k;
+  // --- 웨이브 ---
+  x += w + pad; w = 316 * k;
   panel(ctx, x, top, w, ph, k); UI.block(x, top, w, ph);
   const active = G.bases.filter(b => b.enabled), alive = active.filter(b => b.alive).length;
-  if (G.wave) {                                                       // 보스 스테이지: 웨이브 진행
-    const W = G.wave, L = G.stage.waves.list, wv = L[W.i];
-    txt(ctx, W.phase === 'final' ? '최종 보스' : `웨이브  ${W.i + 1} / ${L.length}`, x + 12 * k, top + 17 * k, 15 * k, '#ffb09a');
-    const liveB = (W.bosses || []).filter(b => b.alive);
-    const bossTxt = liveB.length > 1 ? ` · 보스 ${liveB.length}마리` : liveB.length ? ` · 보스 ${liveB[0].cfg.name}${W.bossQ.length ? ` (+${W.bossQ.length})` : ''}` : '';
-    const st = W.phase === 'rest' ? `다음 웨이브까지 ${Math.ceil(W.t)}초` : W.phase === 'spawn' ? `몬스터 ${W.spawned} / ${wv.count}${bossTxt}`
+  if (G.wave) {                                                       // 웨이브 진행 + 바로 시작 버튼
+    const W = G.wave, total = stageWaves(), info = waveInfo(W.i), bosses = G.enemies.filter(e => e.alive && e.boss).length;
+    const rush = W.phase === 'count' && !(G.prep > 0), bw = 118 * k, tw = w - 24 * k - (rush ? bw + 8 * k : 0);
+    fitTxt(ctx, W.phase === 'final' ? '최종 보스전' : `웨이브  ${Math.min(W.i + 1, total)} / ${total}`, x + 12 * k, top + 17 * k, 15 * k, tw, '#ffb09a', 'left', { weight: 700 });
+    const st = W.phase === 'count' ? `다음 웨이브까지 ${Math.ceil(Math.max(0, W.t))}초` : W.phase === 'spawn' ? `몬스터 ${W.spawned} / ${info.count}${bosses ? ` · 보스 ${bosses}` : ''}`
+      : W.phase === 'clear' ? `남은 적 ${G.enemies.filter(e => e.alive).length}마리`
       : `${CONFIG.enemies[G.stage.final.type].name} ${G.enemies.filter(e => e.alive && e.type === G.stage.final.type).length}마리`;
-    fitTxt(ctx, st, x + 12 * k, top + 40 * k, 13.5 * k, w - 24 * k, '#f3e3bf', 'left', { weight: 700 });
+    fitTxt(ctx, st, x + 12 * k, top + 40 * k, 13.5 * k, tw, '#f3e3bf', 'left', { weight: 700 });
+    if (rush) {
+      const E = CONFIG.economy, bonus = Math.min(E.rushMax, Math.ceil(W.t) * E.rushPerSec), bx = x + w - bw - 8 * k, by = top + 7 * k, bh = ph - 14 * k;
+      const off = drawButton(ctx, bx, by, bw, bh, UI.button('rush', bx, by, bw, bh, rushWave), k, '', { radius: 10, c1: '#4f8a3a', c2: '#2e5a22', border: '#d8ffb8' });
+      txt(ctx, '바로 시작', bx + bw / 2, by + bh * 0.36 + off, 13.5 * k, '#fff8e6', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.5)' });
+      txt(ctx, `+${bonus} 골드`, bx + bw / 2, by + bh * 0.74 + off, 12 * k, '#ffe08a', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.5)' });
+    }
   } else
   txt(ctx, `적 기지  ${alive} / ${active.length}`, x + 12 * k, top + 17 * k, 15 * k, '#f3e3bf');
   let ix = x + 12 * k;
@@ -5406,7 +5611,7 @@ function drawBottomHUD(ctx) {
   bar(ctx, tx, py + (mp ? 69 : 63) * k, bw, (mp ? 8 : 11) * k, maxed ? 1 : h.xp / h.xpToNext, '#8f7bff');
   txt(ctx, maxed ? 'EXP  최대 레벨' : `EXP  ${Math.floor(h.xp)} / ${h.xpToNext}`, tx, py + 86 * k, 12 * k, '#c9c0ff', 'left', { weight: 600 });
   const cap = armyCap(), pop = armyPop();
-  txt(ctx, `인구 ${pop} / ${cap}`, tx + bw, py + 86 * k, 12 * k, G.army.full ? '#ff9a7a' : '#9fd8ff', 'right', { weight: 700 });
+  txt(ctx, `인구 ${pop} / ${cap}`, tx + bw, py + 86 * k, 12 * k, G.army.fulls.some(Boolean) ? '#ff9a7a' : '#9fd8ff', 'right', { weight: 700 });
 
   // --- 스킬 버튼 (오른쪽 아래) ---
   const n = h.cfg.skills.length, bs = (n > 3 ? 82 : 92) * k, gap = (n > 3 ? 10 : 14) * k, by = VH - pad - bs;
@@ -5507,10 +5712,21 @@ function drawArmyBar(ctx, L, R, heroTop) {
     if (!lv) Icon.lock(ctx, cx + cw / 2, cy + 30 * u * k + off, 22 * u * k);
   });
 
+  // 생산할 성문 탭 (성문마다 대기열이 따로)
+  const tq = (cw > 80 * k ? 44 : 40) * k, tabW = 66 * k, tabY = y - 6 * k - tq;
+  for (let gi = 0; gi < G.gates.length; gi++) {
+    const tx = x + gi * (tabW + 4 * k), on = A.gi === gi, n = A.queues[gi].length;
+    const off = drawButton(ctx, tx, tabY, tabW, tq, UI.button('gtab' + gi, tx, tabY, tabW, tq, () => { A.gi = gi; }), k, '',
+      on ? { radius: 9, c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' } : { radius: 9, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
+    txt(ctx, `성문${gi + 1}`, tx + tabW / 2, tabY + tq * 0.36 + off, 13 * k, on ? '#fff' : '#d8c8a4', 'center', { weight: 800 });
+    txt(ctx, A.fulls[gi] ? '인구 가득' : `대기 ${n}`, tx + tabW / 2, tabY + tq * 0.74 + off, 10.5 * k, A.fulls[gi] ? '#ffb09a' : on ? '#cfe4ff' : '#b8a888', 'center', { weight: 700 });
+  }
+  const tabsW = G.gates.length * (tabW + 4 * k) + 4 * k;
   // 생산 대기열 (누른 순서대로) — 아이콘을 누르면 취소
-  let topY = y;
+  let topY = tabY;
   if (A.queue.length) {
     const qs = (cw > 80 * k ? 34 : 30) * k, qg = 4 * k, qh = qs + 10 * k, qy = y - 6 * k - qh;
+    x += tabsW;
     const lab = 62 * k, room = Math.max(1, Math.floor((w - lab - 12 * k + qg) / (qs + qg))), shown = A.queue.length > room ? room - 1 : A.queue.length;
     const qw = Math.min(w, lab + 12 * k + (Math.min(A.queue.length, room)) * (qs + qg) - qg + 6 * k);
     rr(ctx, x, qy, qw, qh, 8 * k); ctx.fillStyle = 'rgba(30,22,14,0.82)'; ctx.fill(); ctx.strokeStyle = 'rgba(184,145,74,0.8)'; ctx.lineWidth = 1.5 * k; ctx.stroke();
@@ -5533,7 +5749,7 @@ function drawArmyBar(ctx, L, R, heroTop) {
     }
     if (shown < A.queue.length) txt(ctx, `+${A.queue.length - shown}`, x + lab + 6 * k + shown * (qs + qg) + qs / 2, qy + qh / 2 + 1, 14 * k, '#ffd36b', 'center', { weight: 900 });
     if (A.full) txt(ctx, '인구 가득 — 자리가 나면 출발', x + qw + 8 * k, qy + qh / 2, 13 * k, '#ff9a7a', 'left', { weight: 800, stroke: 'rgba(0,0,0,0.8)' });
-    topY = qy;
+    x -= tabsW; topY = Math.min(topY, qy);
   }
   G.armyTopY = topY;
   if (G.toast && realTime < G.toast.until) {                                 // 짧은 알림 (골드 부족 등)
@@ -5614,8 +5830,34 @@ function drawBossPointer(ctx) {
   ctx.restore();
 }
 
+// 성문 메뉴: 현재 → 다음 레벨 능력치 + 강화 버튼 (두 성문이 함께 오름). 열려 있는 동안 지도를 탭하면 그 성문의 집결 지점 이동
+function drawGatePanel(ctx) {
+  const s = G.sel, k = UI.k, P = G.gate, c = P.cfg, n = P.next, gi = s.ref;
+  const w = 400 * k, h = 392 * k, px = 10 * UI.kt, py = (10 + 58 + 10) * UI.kt;
+  UI.block(px, py, w, h); panel(ctx, px, py, w, h, k);
+  const cs = 40 * k, cx = px + w - cs - 6 * k, cy = py + 6 * k;
+  const pr = UI.button('selClose', cx, cy, cs, cs, () => { G.sel = null; });
+  ctx.strokeStyle = pr ? '#fff' : '#d8c8a4'; ctx.lineWidth = 3 * k; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx + 13 * k, cy + 13 * k); ctx.lineTo(cx + cs - 13 * k, cy + cs - 13 * k); ctx.moveTo(cx + cs - 13 * k, cy + 13 * k); ctx.lineTo(cx + 13 * k, cy + cs - 13 * k); ctx.stroke();
+  Icon.castle(ctx, px + 32 * k, py + 34 * k, 32 * k);
+  txt(ctx, `성문 Lv.${P.level}${n ? '' : ' (최고)'}`, px + 60 * k, py + 25 * k, 19 * k, '#ffe7b8');
+  txt(ctx, '두 성문이 함께 강화돼요', px + 60 * k, py + 49 * k, 13 * k, '#cdbb98', 'left', { weight: 600 });
+  const yes = v => v ? '있음' : '없음', rows = [
+    ['체력 (공유)', c.maxHp, n && n.maxHp], ['인구 상한', c.pop, n && n.pop], ['성벽 궁수', c.archers, n && n.archers],
+    ['투석기', c.catapults || 0, n && (n.catapults || 0)], ['목수', c.carpenters, n && n.carpenters],
+    ['끓는 기름', yes(c.oil), n && yes(n.oil)], ['마법 타워', yes(c.tower), n && yes(n.tower)],
+  ].map(r => [r[0], r[1], n && r[2] !== r[1] ? r[2] : null]);
+  drawStatRows(ctx, rows, px, py + 82 * k, w, k, 0.46, 0.74);
+  const ty = py + 82 * k + rows.length * 28 * k;
+  fitTxt(ctx, `궁수·투석기·목수·기름·타워는 성문마다 · 지도를 탭하면 성문${gi + 1} 병력의 집결 지점 이동`, px + 16 * k, ty, 12 * k, w - 32 * k, '#a8c8ff', 'left', { weight: 600 });
+  const bh = 56 * k, by = py + h - bh - 14 * k, bw = w - 32 * k;
+  if (!n) costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, '최고 레벨', null, false, () => {});
+  else costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, `성문 강화 → Lv.${P.level + 1}`, n.cost, G.gold >= n.cost, () => P.upgrade());
+}
 function drawSelectionPanel(ctx) {
-  const s = G.sel; if (!s || G.state !== 'playing' || s.kind !== 'facility') return;
+  const s = G.sel; if (!s || G.state !== 'playing') return;
+  if (s.kind === 'gate') { drawGatePanel(ctx); return; }
+  if (s.kind !== 'facility') return;
   const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, fac = true;
   const extra = CONFIG.soldiers[s.ref].ranged || CONFIG.soldiers[s.ref].support, w = 410 * k, h = (extra ? 404 : 376) * k;
   const top = (10 + 58 + 10) * UI.kt, bottom = VH - (BOTTOM_HUD_H + 20) * k;
@@ -5732,7 +5974,9 @@ function drawMinimap(ctx) {
   ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
   ctx.drawImage(miniCanvas, r.x, r.y, r.w, r.h);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.fillStyle = G.gate.destroyed ? '#555' : '#6fb7ff'; ctx.fillRect(mx(MAP.castle.wallX), my(MAP.castle.gateTop), 4 * s, (MAP.castle.gateBottom - MAP.castle.gateTop) * sy + 2);   // 성문
+  ctx.fillStyle = G.gate.destroyed ? '#555' : '#6fb7ff';
+  for (const q of G.gates) ctx.fillRect(mx(q.wx) - 2 * s, my(q.top), 4 * s, (q.bottom - q.top) * sy + 2);   // 성문
+  ctx.fillStyle = '#ffe08a'; for (const R of G.rally) ctx.fillRect(mx(R.x) - 2 * s, my(R.y) - 2 * s, 4 * s, 4 * s);   // 집결 지점
   ctx.fillStyle = '#9fd8ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1.5 * s, my(u.y) - 1.5 * s, 3 * s, 3 * s);
   for (const e of G.enemies) { ctx.fillStyle = e.post ? '#a02a20' : '#ff4a3a'; ctx.fillRect(mx(e.x) - 1.2 * s, my(e.y) - 1.2 * s, 2.4 * s, 2.4 * s); }
   ctx.fillStyle = '#bfe6ff'; for (const u of G.soldiers) ctx.fillRect(mx(u.x) - 1 * s, my(u.y) - 1 * s, 2 * s, 2 * s);
@@ -5935,12 +6179,12 @@ function drawResult(ctx, k) {
   const last = G.stageIdx >= CONFIG.stages.length - 1, hasNext = won && !last, hardNow = won && G.diffKey === 'normal' && G.stageIdx + 1 === REG_STAGES;
   txt(ctx, won ? (last ? '왕국을 지켰습니다!' : '스테이지 클리어!') : '패배...', cx, y + 82 * k, (won ? 58 : 70) * k, won ? '#ffd36b' : '#ff6a55', 'center', { stroke: '#2a1405', strokeW: 10 * k, weight: 900 });
   const nx = hasNext ? CONFIG.stages[G.stageIdx + 1] : null;
-  fitTxt(ctx, won ? (hasNext ? `${nx.boss ? '보스 스테이지' : '다음 스테이지'} 「${nx.name}」${josa(nx.name, '이', '가').slice(-1)} 열렸습니다!${hardNow ? ' · 어려움 난이도도 열렸습니다' : ''}` : G.stage.boss ? `${CONFIG.enemies[G.stage.final.type].name}을 쓰러뜨리고 왕국을 지켰습니다!` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, pw - 60 * k, '#f3e3bf', 'center', { weight: 700 });
-  txt(ctx, `${G.stage.boss ? '보스 스테이지' : `${G.stageIdx + 1}스테이지`} ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
+  fitTxt(ctx, won ? (hasNext ? `${nx.boss ? '최종보스전' : '다음 스테이지'} 「${nx.name}」${josa(nx.name, '이', '가').slice(-1)} 열렸습니다!${hardNow ? ' · 어려움 난이도도 열렸습니다' : ''}` : G.stage.boss ? `${CONFIG.enemies[G.stage.final.type].name}을 쓰러뜨리고 1막을 끝냈습니다!${hardNow ? ' 어려움 난이도가 열렸습니다' : ''}` : '모든 스테이지의 적을 물리쳤습니다!') : '성문이 무너졌습니다...', cx, y + 146 * k, 22 * k, pw - 60 * k, '#f3e3bf', 'center', { weight: 700 });
+  txt(ctx, `${G.stage.boss ? '최종보스전' : `${G.stageIdx + 1}스테이지`} ${G.stage.name} · ${CONFIG.heroes[G.heroType].name} · 난이도 ${G.diff.name}`, cx, y + 176 * k, 15 * k, '#bfae8a', 'center', { weight: 600 });
   divider(ctx, cx, y + 196 * k, pw - 140 * k, k);
   const st = G.stats, items = Object.values(G.hero.items).filter(Boolean);
   const rows = [                                                   // 통계 2열
-    ['플레이 시간', fmtTime(G.time)], ['처치한 적', st.kills], ['처치한 보스', st.bossKills], G.wave ? ['막아낸 웨이브', Math.min(G.wave.i + (G.wave.phase === 'final' ? 1 : 0), G.stage.waves.list.length) + ' / ' + G.stage.waves.list.length] : ['파괴한 기지', G.bases.filter(b => b.enabled && !b.alive).length + ' / ' + G.bases.filter(b => b.enabled).length],
+    ['플레이 시간', fmtTime(G.time)], ['처치한 적', st.kills], ['처치한 보스', st.bossKills], G.wave ? ['막아낸 웨이브', ((G.wave.phase === 'final' || G.wave.phase === 'clear') ? stageWaves() : G.wave.i) + ' / ' + stageWaves()] : ['파괴한 기지', G.bases.filter(b => b.enabled && !b.alive).length + ' / ' + G.bases.filter(b => b.enabled).length],
     ['영웅 레벨', 'Lv.' + G.hero.level], ['영웅이 쓰러진 횟수', st.heroDeaths], ['훈련한 병사', st.trained], ['번 골드', st.goldEarned],
   ];
   rows.forEach(([a, b], i) => {
@@ -5980,15 +6224,12 @@ function openSelect() { G.state = 'select'; G.paused = false; G.sel = null; G.ai
 // 스테이지 진행: 난이도마다 따로 기록 (깬 스테이지 수만큼 다음 스테이지가 열림)
 // 어려움은 보통 난이도의 모든 스테이지를 깨야 열리고, 1스테이지부터 시작
 const cleared = (() => {
-  const c = { easy: 0, normal: 0, hard: 0 };
-  try {
-    const v = JSON.parse(localStorage.getItem('kg.progress') || 'null');
-    if (v) Object.assign(c, v); else c.normal = +localStorage.getItem('kg.cleared') || 0;     // 예전 기록은 보통 난이도로
-  } catch (_) {}
+  const c = { normal: 0, hard: 0 };                         // 1막 웨이브 방식 기록 (예전 기록은 쓰지 않음)
+  try { const v = JSON.parse(localStorage.getItem('kg.progress2') || 'null'); if (v) for (const k in c) c[k] = v[k] || 0; } catch (_) {}
   for (const k in c) c[k] = clamp(c[k] | 0, 0, CONFIG.stages.length);
   return c;
 })();
-const REG_STAGES = CONFIG.stages.filter(st => !st.boss).length;     // 일반 스테이지 수 (어려움은 보통의 일반 스테이지를 모두 깨면 열림)
+const REG_STAGES = CONFIG.stages.length;      // 어려움은 보통 1막(최종보스전 포함)을 모두 깨면 열림
 function diffUnlocked(key) { return key !== 'hard' || cleared.normal >= REG_STAGES; }
 if (!diffUnlocked(selectedDiff)) selectedDiff = 'normal';
 let selectedStage = (() => { try { const v = +localStorage.getItem('kg.stage') || 0; return clamp(v, 0, Math.min(cleared[selectedDiff], CONFIG.stages.length - 1)); } catch (_) { return 0; } })();
@@ -5996,7 +6237,7 @@ let selectMsg = null;
 function stageUnlocked(i) { return i <= cleared[selectedDiff]; }
 function markCleared(i) {
   const d = G.diffKey;
-  if (i + 1 > cleared[d]) { cleared[d] = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.progress', JSON.stringify(cleared)); } catch (_) {} }
+  if (i + 1 > cleared[d]) { cleared[d] = Math.min(CONFIG.stages.length, i + 1); try { localStorage.setItem('kg.progress2', JSON.stringify(cleared)); } catch (_) {} }
 }
 // 진행 기록 초기화: 깬 스테이지(모든 난이도) · 저장된 장비 · 고른 영웅/스테이지/난이도. 소리·효과 설정은 그대로
 // 실수 방지: 3초 안에 한 번 더 눌러야 지워짐
@@ -6010,7 +6251,7 @@ function resetProgress() {
   resetArmUntil = 0;
   for (const k in cleared) cleared[k] = 0;
   SavedGear.mem = {};
-  try { for (const k of ['kg.progress', 'kg.cleared', 'kg.gear', 'kg.stage', 'kg.hero', 'kg.diff']) localStorage.removeItem(k); } catch (_) {}
+  try { for (const k of ['kg.progress', 'kg.progress2', 'kg.cleared', 'kg.gear', 'kg.stage', 'kg.hero', 'kg.diff']) localStorage.removeItem(k); } catch (_) {}
   selectedStage = 0; selectedDiff = 'normal'; selectedHero = 'knight';
   newGame('select', selectedHero, selectedDiff, 0);
   selectMsg = { text: '모든 기록을 지웠어요. 1스테이지부터 다시 시작합니다', until: realTime + 2.5 }; Sound.play('coin');
@@ -6066,7 +6307,7 @@ function drawSelect(ctx, k) {
     const pr = UI.button('stage_' + i, sx - 3 * k, sy - 3 * k, sw + 6 * k, sh + 6 * k, () => pickStage(i));
     const off = drawButton(ctx, sx, sy, sw, sh, pr, k, '', on ? (sg.boss ? { radius: 12, c1: '#d0503a', c2: '#8a2a18', border: '#ffd0b0' } : { radius: 12, c1: '#d99a3a', c2: '#9a6020', border: '#fff1c0' })
       : open ? (sg.boss ? { radius: 12, c1: '#7a2e22', c2: '#4a1a12', border: '#d08a6a' } : { radius: 12, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' }) : { radius: 12, c1: '#3a342c', c2: '#26221c', border: '#5a5040' });
-    fitTxt(ctx, sg.boss ? `보스 · ${sg.name}` : `${i + 1}. ${sg.name}`, sx + 10 * k, sy + 16 * k + off, 15 * k, sw - 40 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
+    fitTxt(ctx, sg.boss ? `최종보스전 · ${sg.name}` : `${i + 1}. ${sg.name}`, sx + 10 * k, sy + 16 * k + off, 15 * k, sw - 40 * k, open ? '#fff8e6' : '#9a8a70', 'left', { weight: 800, stroke: on ? 'rgba(60,30,5,0.8)' : null });
     fitTxt(ctx, open ? sg.desc : sg.boss ? '10스테이지를 깨면 열림' : '앞 스테이지를 깨면 열림', sx + 10 * k, sy + 33 * k + off, 11 * k, sw - 40 * k, open ? '#f0e0c0' : '#8a7a60', 'left', { weight: 600 });
     const qx = sx + sw - 17 * k, qy = sy + sh / 2 + off;
     if (!open) Icon.lock(ctx, qx, qy, 16 * k);
@@ -6093,11 +6334,11 @@ function drawSelect(ctx, k) {
 }
 
 const HELP = [
-  ['빈 곳 탭', '영웅 이동 (적·기지는 자동 공격)'], ['적 기지 탭', '영웅이 달려가 기지 공격'],
-  ['아래 병력 칸', '누를 때마다 1명씩 생산 대기열에 추가 (무료) · 대기열 아이콘을 누르면 취소'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
-  ['인구 (최대 50)', '보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4 · 5레벨 자동 스킬 · 10레벨 패시브'], ['병력', '성문에서 나와 길을 따라 적 기지로 진군'],
+  ['빈 곳 탭', '영웅 이동 (적은 자동 공격)'], ['성문 탭', '성문 강화 메뉴 · 메뉴가 열린 채 지도를 탭하면 그 성문 병력의 집결 지점 이동'],
+  ['아래 병력 칸', '성문1·2 탭으로 생산할 성문을 고르고, 누를 때마다 1명씩 대기열에 추가 (무료)'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
+  ['인구 (성문 Lv)', '30 → 80 · 보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4'], ['병력', '나온 성문의 집결 지점을 지키며 근처 적과 싸움 · 원거리 공격엔 다가가 반격'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭 · 기사 스태미너 · 궁사 화살통 · 마법사 마나 소모'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
-  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · Shift+1~5 강화 · Backspace 마지막 취소 · Space 일시정지 · F 배속'],
+  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · G 성문 바꾸기 · Shift+1~5 강화 · Backspace 취소 · Space 일시정지 · F 배속'],
 ];
 function drawPause(ctx, k) {
   const pw = 760 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
@@ -6142,44 +6383,47 @@ let MAPDATA = null;
 let realTime = 0, viewScale = 1, pixelRatio = 1, bgCanvas = null, bgRes = 0, miniCanvas = null, bgLow = null;
 const BG_LOW_RES = 0.75;    // 축소 화면용 저해상도 배경 배율
 
-function buildMapData(baseKeys) {
+function buildMapData() {
   const W = CONFIG.world.width, H = CONFIG.world.height, rng = mulberry32(MAP.seed + 99);
-  const keys = baseKeys || Object.keys(MAP.bases), used = new Set(['main']);
-  for (const k of keys) for (const n of MAP.bases[k].path) used.add(n);
   const seg = {};
-  for (const k in MAP.segments) if (used.has(k)) seg[k] = catmullRom(MAP.segments[k], 5);   // 이 스테이지 기지의 길만
-  const routes = {};
-  for (const k of keys) {
+  for (const k in MAP.segments) seg[k] = catmullRom(MAP.segments[k], 5);
+  // 경로: 입구 → 성문 (구간을 이어 붙임, '-이름'은 거꾸로)
+  const routes = MAP.paths.map(([ent, gate, names]) => {
     const pts = [];
-    for (const name of MAP.bases[k].path) { const sp = seg[name]; for (let i = pts.length ? 1 : 0; i < sp.length; i++) pts.push(sp[i]); }
-    routes[k] = new Route(pts);
-  }
-  const river = catmullRom(MAP.river, 8);
-
-  // 다리: 본길과 강이 만나는 곳
-  let best = Infinity, bi = 0, bj = 0;
-  for (let i = 0; i < seg.main.length; i++) for (let j = 0; j < river.length; j++) {
-    const d = (seg.main[i].x - river[j].x) ** 2 + (seg.main[i].y - river[j].y) ** 2;
-    if (d < best) { best = d; bi = i; bj = j; }
-  }
-  const tan = (P, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)]; return Math.atan2(b.y - a.y, b.x - a.x); };
+    for (const nm of names) {
+      const rev = nm[0] === '-', sp = seg[rev ? nm.slice(1) : nm], arr = rev ? sp.slice().reverse() : sp;
+      for (let i = pts.length ? 1 : 0; i < arr.length; i++) pts.push(arr[i]);
+    }
+    const R = new Route(pts); R.ent = ent; R.gate = gate; return R;
+  });
+  const river = MAP.river ? catmullRom(MAP.river, 8) : null;
   let bridge = null;
-  if (best < 30 * 30) {
-    const pa = tan(seg.main, bi), ra = tan(river, bj), s = Math.max(0.45, Math.abs(Math.sin(pa - ra)));
-    bridge = { x: seg.main[bi].x, y: seg.main[bi].y, angle: pa, len: (MAP.riverWidth + 22) / s + 18, wid: MAP.pathWidth + 12 };
+  if (river && seg.main) {                                   // 다리: 본길과 강이 만나는 곳 (강이 있는 지도만)
+    let best = Infinity, bi = 0, bj = 0;
+    for (let i = 0; i < seg.main.length; i++) for (let j = 0; j < river.length; j++) {
+      const d = (seg.main[i].x - river[j].x) ** 2 + (seg.main[i].y - river[j].y) ** 2;
+      if (d < best) { best = d; bi = i; bj = j; }
+    }
+    const tan = (P, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)]; return Math.atan2(b.y - a.y, b.x - a.x); };
+    if (best < 30 * 30) {
+      const pa = tan(seg.main, bi), ra = tan(river, bj), s = Math.max(0.45, Math.abs(Math.sin(pa - ra)));
+      bridge = { x: seg.main[bi].x, y: seg.main[bi].y, angle: pa, len: (MAP.riverWidth + 22) / s + 18, wid: MAP.pathWidth + 12 };
+    }
   }
-
+  const hasL = MAP.gates.some(g => g.side === 'L'), hasR = MAP.gates.some(g => g.side === 'R'), cw = MAP.castle.wallX + MAP.castle.wallW;
+  const minX = hasL ? cw + 12 : 10, maxX = hasR ? W - cw - 12 : W - 10;     // 걸어 다닐 수 있는 가로 범위 (성 안 제외)
+  const gateFronts = MAP.gates.map(g => ({ x: g.side === 'L' ? cw : W - cw, y: g.y }));
   // 나무/장식 배치 (길·강·성·기지·건설 자리를 피해서)
   const pathPts = [];
   for (const k in seg) for (let i = 0; i < seg[k].length; i += 2) pathPts.push(seg[k][i]);
   const blocked = (x, y, r, pathGap = 8) => {
-    if (x < 215 || y < -20 || y > H + 20 || x > W + 20) return true;
+    if (x < minX + 30 || x > maxX - 30 || y < -20 || y > H + 20) return true;
     const pr = MAP.pathWidth / 2 + r + pathGap;
     for (const p of pathPts) if ((p.x - x) ** 2 + (p.y - y) ** 2 < pr * pr) return true;
-    const rv = MAP.riverWidth / 2 + r + 8;
-    for (const p of river) if ((p.x - x) ** 2 + (p.y - y) ** 2 < rv * rv) return true;
-    for (const k of keys) { const b = MAP.bases[k], br = b.hitRadius + 30 + r; if ((b.x - x) ** 2 + (b.y - y) ** 2 < br * br) return true; }
-    if (x < 330 && Math.abs(y - MAP.gate.y) < 120) return true;     // 성문 앞 광장 (병사가 모이는 곳)
+    if (river) { const rv = MAP.riverWidth / 2 + r + 8; for (const p of river) if ((p.x - x) ** 2 + (p.y - y) ** 2 < rv * rv) return true; }
+    for (const k in MAP.ents) { const e = MAP.ents[k]; if (e.cave && (e.x - x) ** 2 + (e.y - y) ** 2 < (110 + r) ** 2) return true; }   // 굴 주변
+    for (const f of gateFronts) if (Math.abs(x - f.x) < 200 && Math.abs(y - f.y) < 140) return true;     // 성문 앞 광장 (병사가 모이는 곳)
+    for (const w of MAP.walls) if (distToSeg(x, y, w[0][0], w[0][1], w[1][0], w[1][1]) < r + 40) return true;   // 성벽 자리
     return false;
   };
   const trees = [];
@@ -6206,16 +6450,23 @@ function buildMapData(baseKeys) {
     if (blocked(x, y, r, 2) || crowded(x, y, r + 10)) continue;
     decor.push({ k: rng() < 0.45 ? 'rock' : 'bush', x, y, r }); i++;
   }
-  return { seg, routes, river, riverOff: [offsetPoly(river, -13), offsetPoly(river, 12)], bridge, trees, decor };
+  return { seg, routes, river, riverOff: river ? [offsetPoly(river, -13), offsetPoly(river, 12)] : null, bridge, trees, decor, minX, maxX };
+}
+function distToSeg(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((px - ax) * dx + (py - ay) * dy) / L2, 0, 1);
+  return Math.hypot(px - ax - dx * t, py - ay - dy * t);
 }
 
 function createState() {
   return {
     state: 'title', paused: false, speedIdx: 0, time: 0, threat: 1, threatTime: 1, nextId: 1,
-    gate: null, hero: null, aim: null, bases: [], enemies: [], projectiles: [], fx: [],
+    gate: null, gates: [], rally: [], heroSpawn: null, hero: null, aim: null, bases: [], portals: [], wave: null, enemies: [], projectiles: [], fx: [],
     gold: 0, goldFlashUntil: 0,     // 시작 골드는 newGame에서 난이도에 따라
     soldiers: [],       // 아군 병사 (최대 병력은 성문 레벨에 따라)
-    army: { queue: [], prog: 0, full: false, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산 대기열 / 시설 레벨 (0 = 없음)
+    // 생산: 성문마다 대기열 (queues[성문]), gi = 병력 칸에서 고른 성문. queue/prog/full은 고른 성문 것
+    army: { queues: [[], []], progs: [0, 0], fulls: [false, false], gi: 0,
+            get queue() { return this.queues[this.gi]; }, get prog() { return this.progs[this.gi]; }, set prog(v) { this.progs[this.gi] = v; },
+            get full() { return this.fulls[this.gi]; }, lv: Object.fromEntries(CONFIG.army.order.map(k => [k, CONFIG.army[k].levels[0].cost ? 0 : 1])) },   // 생산 대기열 / 시설 레벨 (0 = 없음)
     marchBase: null, marchFront: {}, marchLead: {},  // 병력 진군 목표 기지 / 길마다 가장 앞선 병사 위치
     toast: null,
     zones: [], traps: [],   // 영웅 스킬 효과 (화살비·얼음 폭풍 / 덫)
@@ -6235,20 +6486,25 @@ function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = sele
   G.stageIdx = stageIdx; G.stage = CONFIG.stages[stageIdx];
   G.heroType = heroType; G.diffKey = diffKey; G.diff = CONFIG.difficulty[diffKey] || CONFIG.difficulty.normal;
   G.gold = G.diff.startGold + (G.stage.startGold || 0);
-  G.midTimer = G.stage.mid ? G.stage.mid.first : Infinity;
-  G.gate = new Gate();
+  G.midTimer = Infinity;
+  G.gate = new GatePool();                                                   // 두 성문이 함께 쓰는 체력·레벨
+  G.gates = MAP.gates.map((d, i) => new Gate(i, d));
+  for (const q of G.gates) q.applyLevel();
+  G.rally = G.gates.map(q => q.front(150));                                  // 기본 집결 지점: 성문 앞
+  G.heroSpawn = heroSpawnFor();
   G.hero = new Hero(heroType);
-  G.bases = G.stage.bases.map(k => new EnemyBase(k));
-  G.portals = (G.stage.roads || []).map(k => new Portal(k));                // 보스 스테이지: 몬스터가 들어오는 길 입구
-  G.wave = G.stage.waves ? { i: 0, phase: 'rest', t: G.stage.waves.first, spawned: 0, groupT: 0, pending: [], bossQ: [], boss: null, bossDelay: 0, road: 0 } : null;
+  G.bases = [];
+  G.portals = MAPDATA.routes.map((_, i) => new Portal(i));                   // 몬스터가 들어오는 길 (입구 → 성문)
+  G.wave = { i: 0, phase: 'count', t: CONFIG.waveRules.first0, spawned: 0, groupT: 0, pending: [], road: 0, pr: {}, midDone: false, sqT: 0, midT: 0 };
+  G.threat = 1;
   G.state = state;
 }
 function startGame(heroType, stageIdx = selectedStage) {
   selectedStage = stageIdx; try { localStorage.setItem('kg.stage', stageIdx); } catch (_) {}
   newGame('playing', CONFIG.heroes[heroType] ? heroType : selectedHero, selectedDiff, stageIdx);
   Camera.centerOn(MAP.startView.x, MAP.startView.y);
-  showBanner(G.stage.boss ? `보스 스테이지 ${G.stage.name} — ${G.stage.waves.list.length}웨이브를 막고 ${CONFIG.enemies[G.stage.final.type].name}을 쓰러뜨리세요!`
-                          : `${stageIdx + 1}스테이지 ${G.stage.name} — 적 기지 ${G.bases.length}곳을 모두 파괴하세요!`, G.stage.boss ? '#ff9a7a' : '#ffe08a', 3.4);
+  showBanner(G.stage.boss ? `최종보스전 — ${stageWaves()}웨이브 뒤 ${CONFIG.enemies[G.stage.final.type].name} 등장!`
+                          : `${stageIdx + 1}스테이지 ${G.stage.name} — ${stageWaves()}웨이브를 막아내세요!`, G.stage.boss ? '#ff9a7a' : '#ffe08a', 3.4);
   G.prep = CONFIG.prepTime;                                    // 준비 시간: 적·시간이 멈추고 병력 대기열만 만듦
 }
 function nextStage() {
@@ -6258,8 +6514,8 @@ function nextStage() {
 // 지도 바꾸기 (스테이지마다 다른 지도): 배경·미니맵을 다시 그림
 let loadedMap = null;
 function loadStage(i) {
-  const st = CONFIG.stages[i], keys = st.roads || st.bases, key = st.map + ':' + keys.join(','); if (loadedMap === key) return;
-  loadedMap = key; MAP = MAPS[st.map]; MAPDATA = buildMapData(keys); bgCanvas = null;
+  const st = CONFIG.stages[i], key = st.map; if (loadedMap === key) return;
+  loadedMap = key; MAP = MAPS[st.map]; MAPDATA = buildMapData(); bgCanvas = null;
   if (Camera.inited) { resize(); Camera.centerOn(MAP.startView.x, MAP.startView.y); }
 }
 function togglePause() { if (G.state === 'playing') G.paused = !G.paused; }
@@ -6273,16 +6529,10 @@ function update(dt) {
     return;
   }
   G.time += dt;
-  const esc = CONFIG.escalation, lost = G.bases.filter(b => b.enabled && !b.alive).length;
-  const timeTh = 1 + Math.floor(G.time / esc.interval), th = timeTh + lost * (esc.baseLostBonus || 0);
-  if (th !== G.threat) {
-    if (timeTh !== G.threatTime) { showBanner(`적이 강해집니다!  위협 Lv.${th}`, '#ff9a4a', 2.4); Sound.play('threat'); }
-    G.threat = th; G.threatTime = timeTh;
-  }
   G.gate.update(dt);
   G.hero.update(dt);
   updateArmy(dt);
-  updateMarch();
+  updateRally();
   for (let i = 0; i < G.soldiers.length; i++) if (!G.soldiers[i].dead) G.soldiers[i].update(dt, i);
   compact(G.soldiers, u => !u.dead);
   for (const b of G.bases) b.update(dt);
@@ -6296,7 +6546,7 @@ function update(dt) {
     const e = new Enemy(q.type, q.base, rand(-8, 8), G.threat); e.revived = true;
     e.maxHp = Math.round(e.maxHp); e.hp = Math.round(e.maxHp * q.hpRatio); e.x = q.x; e.y = q.y;
     if (q.post && q.base.alive) { e.post = q.post; e.guardCfg = q.guardCfg; e.state = 'guard'; }
-    else if (q.reachedEnd) { e.dist = e.route.length; e.slot = G.gate.claimSlot(e); if (!e.slot) e.fallback = { x: e.x, y: e.y }; e.state = 'toGate'; }
+    else if (q.reachedEnd) { e.dist = e.route.length; e.slot = e.gate.claimSlot(e); if (!e.slot) e.fallback = { x: e.x, y: e.y }; e.state = 'toGate'; }
     else { e.dist = e.route.nearestDist(e.x, e.y, q.dist); e.state = 'rejoin'; }
     G.enemies.push(e); FX.dust(e.x, e.y); FX.ring(e.x, e.y, 16, '190,140,255', 0.4);
   }
@@ -6334,7 +6584,9 @@ function renderWorld(ctx) {
   const cx0 = Camera.x - 80, cy0 = Camera.y - 120, cx1 = Camera.x + Camera.viewW() + 80, cy1 = Camera.y + Camera.viewH() + 80;
   const vis = o => o.x > cx0 && o.x < cx1 && o.y > cy0 && o.y < cy1;               // 화면 안에 있는지 (밖은 그리지 않음)
   Art.riverShimmer(ctx, realTime);
-  Art.castleDynamic(ctx, G.gate, realTime);
+  for (const k in MAP.ents) if (MAP.ents[k].cave) Art.slimeCave(ctx, MAP.ents[k], realTime);
+  Art.castleDynamic(ctx, realTime);
+  for (let gi = 0; gi < G.gates.length; gi++) Art.rallyPoint(ctx, G.rally[gi], gi, realTime);
   for (const b of G.bases) Art.base(ctx, b, G.time, realTime);
   for (const tr of G.traps) Art.trap(ctx, tr);
   for (const d of G.drops) Art.drop(ctx, d, realTime);
@@ -6349,7 +6601,7 @@ function renderWorld(ctx) {
   for (const e of G.enemies) if (e.air && vis(e)) Art.airShadow(ctx, e);
   const ground = [];
   for (const e of G.enemies) if (!e.air && vis(e)) ground.push(e);
-  for (const c of G.gate.carpenters) ground.push(c);
+  for (const q of G.gates) for (const c of q.carpenters) ground.push(c);
   for (const u of G.soldiers) if (vis(u)) ground.push(u);
   if (h) ground.push(h);
   ground.sort((a, b) => (a.dead ? a.deathY : a.y) - (b.dead ? b.deathY : b.y));
@@ -6359,7 +6611,7 @@ function renderWorld(ctx) {
     else if (o instanceof Soldier) Art.soldier(ctx, o, realTime);
     else Art.carpenter(ctx, o);
   }
-  for (const a of G.gate.archers) Art.wallArcher(ctx, a);
+  for (const q of G.gates) for (const a of q.archers) Art.wallArcher(ctx, a);
   for (const p of G.projectiles) if (vis(p)) Art.projectile(ctx, p);
   for (const e of G.enemies) if (e.air && (vis(e) || e.boss)) Art.enemy(ctx, e);
   for (const z of G.zones) Art.zoneTop(ctx, z);
