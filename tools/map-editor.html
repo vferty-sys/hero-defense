@@ -1,0 +1,610 @@
+<title>왕국 수호자 지도 그리기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 위 = 스테이지·분위기·저장 / 가운데 = 도구 줄 + 지도판 (게임과 같은 16:9) / 오른쪽(좁으면 아래) = 검사 결과·입구별 길 */
+:root {
+  --bg: #e9ece6;          /* 성벽 돌 같은 서늘한 회색 */
+  --surface: #f8f9f5;
+  --line: #cfd5cb;
+  --ink: #1c2420;
+  --muted: #5a6660;
+  --brass: #8a5d0d;       /* 놋쇠 강조 */
+  --brass-soft: #f1e3c2;
+  --forest: #2c6447;      /* 이상 없음 */
+  --forest-soft: #d9ecdf;
+  --danger: #a3382a;      /* 고칠 점 */
+  --danger-soft: #f6e0da;
+  --f-display: "Black Han Sans", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131714; --surface: #1b211d; --line: #2f3832; --ink: #e5eae4; --muted: #9aa69e;
+    --brass: #e2b04e; --brass-soft: #3a2f17; --forest: #77c79a; --forest-soft: #1f3a2b; --danger: #f08a78; --danger-soft: #3d221d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131714; --surface: #1b211d; --line: #2f3832; --ink: #e5eae4; --muted: #9aa69e;
+  --brass: #e2b04e; --brass-soft: #3a2f17; --forest: #77c79a; --forest-soft: #1f3a2b; --danger: #f08a78; --danger-soft: #3d221d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1360px; margin: 0 auto; padding-block: 18px 40px; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; justify-content: space-between; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; color: var(--brass); font-weight: 700; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(26px, 4.5vw, 36px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-size: 14px; margin: 0; letter-spacing: .02em; }
+.pick { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.pick label { font-size: 12px; color: var(--muted); display: grid; gap: 2px; }
+select, button { font: inherit; }
+select { font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 0; max-width: 100%; }
+.btn { font-size: 14px; font-weight: 700; border: 1px solid var(--ink); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--ink); color: var(--surface); }
+.btn.primary { background: var(--brass); border-color: var(--brass); color: var(--surface); }
+.btn.primary:hover { filter: brightness(1.1); background: var(--brass); }
+.btn.quiet { border-color: var(--line); font-weight: 500; }
+.btn:disabled { opacity: .45; cursor: default; }
+.status { font-size: 13px; color: var(--muted); }
+.status b { color: var(--ink); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+@media (max-width: 980px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.board { display: grid; gap: 8px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tool { font-size: 14px; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.tool[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.tools .sep { flex: 1; }
+.hint { font-size: 13px; color: var(--muted); min-height: 1.5em; }
+.canvas-box { position: relative; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #2b2a25; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.toast { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: rgba(28,22,14,.9); color: #f3e3bf; border: 1px solid #b8914a;
+  padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity .2s; max-width: calc(100% - 20px); text-align: center; }
+.toast.show { opacity: 1; }
+
+aside { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.verdict { font-weight: 700; font-size: 14px; border-radius: 8px; padding: 8px 10px; }
+.verdict.ok { background: var(--forest-soft); color: var(--forest); }
+.verdict.bad { background: var(--danger-soft); color: var(--danger); }
+ul.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+ul.list li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; }
+.dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; }
+.dot.err { background: var(--danger); } .dot.warn { background: var(--brass); } .dot.ok { background: var(--forest); }
+.ent { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; }
+.ent:hover, .ent.on { background: var(--brass-soft); }
+.ent small { color: var(--muted); display: block; }
+.steps { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.steps b { color: var(--ink); }
+.confirm { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+textarea.code { width: 100%; min-height: 90px; font-size: 11px; font-family: ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--brass); border-radius: 6px; background: var(--surface); color: var(--ink); }
+button:focus-visible, select:focus-visible, .ent:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">왕국 수호자 · 1막</div>
+      <h1>지도 그리기</h1>
+    </div>
+    <div class="pick">
+      <label for="stage">스테이지<select id="stage"></select></label>
+      <label for="theme">분위기<select id="theme"></select></label>
+      <button type="button" class="btn primary" id="save">저장</button>
+      <span class="status" id="status">불러오는 중…</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="board" aria-label="지도판">
+      <div class="tools" role="toolbar" aria-label="도구">
+        <button type="button" class="tool" data-tool="road" id="t-road">길 긋기</button>
+        <button type="button" class="tool" data-tool="cave" id="t-cave">굴 놓기</button>
+        <button type="button" class="tool" data-tool="wall" id="t-wall">성벽 자리</button>
+        <button type="button" class="tool" data-tool="move" id="t-move">점 옮기기</button>
+        <button type="button" class="tool" data-tool="erase" id="t-erase">지우기</button>
+        <span class="sep"></span>
+        <button type="button" class="btn quiet" id="undo">되돌리기</button>
+        <button type="button" class="btn quiet" id="reset">게임 지도로</button>
+        <span id="clearBox"><button type="button" class="btn quiet" id="clear">모두 지우기</button></span>
+      </div>
+      <div class="hint" id="hint"></div>
+      <div class="canvas-box"><canvas id="cv" aria-label="지도판: 길을 그리는 곳"></canvas><div class="toast" id="toast" role="status"></div></div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h2>검사</h2>
+        <div class="verdict" id="verdict"></div>
+        <ul class="list" id="problems"></ul>
+      </div>
+      <div class="card">
+        <h2>입구별 길 <span class="status">(누르면 지도에 표시)</span></h2>
+        <ul class="list" id="ents"></ul>
+      </div>
+      <div class="card">
+        <h2>그리는 법</h2>
+        <ol class="steps">
+          <li><b>길 긋기</b>: 지도 위를 끌어서 길을 그어요. 끝을 성문·입구·굴·다른 길 근처에서 떼면 자동으로 붙고, 지도 오른쪽·위·아래 가장자리에서 시작하면 입구가 생겨요.</li>
+          <li><b>굴 놓기</b>: 눌러서 굴을 놓고, 굴에서 성문 쪽으로 길을 그어요.</li>
+          <li><b>성벽 자리</b>: 길 위를 누르면 길을 가로지르는 성벽 자리가 생겨요 (최대 2곳, 4스테이지부터). 다시 누르면 없어져요.</li>
+          <li><b>점 옮기기</b>: 길의 점·굴·입구를 끌어서 모양을 다듬어요. 끊긴 끝(빨간 점)은 다른 길이나 성문에 끌어다 놓으면 붙어요. 성문은 고정이에요.</li>
+          <li>다 그렸으면 <b>저장</b>을 누르고 Claude에게 알려 주세요.</li>
+          <li>휴대폰은 가로로 돌리면 지도가 커져서 그리기 편해요. 저장 안 한 수정은 이 기기에 남아 있다가 다시 열면 이어서 나와요.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h2>지도 코드</h2>
+        <p class="status" style="margin:0">저장이 안 될 때는 복사해서 채팅에 붙여 주세요.</p>
+        <div><button type="button" class="btn quiet" id="copy">지도 코드 복사</button></div>
+        <textarea class="code" id="codeFallback" readonly hidden aria-label="지도 코드"></textarea>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- 게임 기준 값 (index.html 과 같음) ----------
+  const W = 2400, H = 1350, GATE = [186, 675], PATH_W = 64, WALL_HALF = 90;
+  const GAME = {"stages":[{"name":"첫 번째 숲길","map":"s1"},{"name":"갈림 언덕","map":"s2"},{"name":"안개 개울","map":"s3"},{"name":"세 갈래 들판","map":"s4"},{"name":"슬라임 굴","map":"s5"},{"name":"늪지 교차로","map":"s6"},{"name":"얼음 동굴","map":"s7"},{"name":"네 갈래 협곡","map":"s8"},{"name":"세 개의 굴","map":"s9"},{"name":"왕좌 앞 평원","map":"s10"},{"name":"대왕 슬라임","map":"boss1"}],"maps":{"s1":{"theme":"spring","ents":{"E":{"name":"동쪽 길","x":2420,"y":670}},"segments":{"g":[[420,675],[300,672],[186,675]],"e":[[2420,670],[2150,640],[1800,700],[1500,670]],"a":[[1500,670],[1250,560],[950,470],[650,520],[420,675]],"b":[[1500,670],[1250,780],[950,870],[650,830],[420,675]]},"walls":[]},"s2":{"theme":"dry","ents":{"NE":{"name":"북동쪽 길","x":2000,"y":-30},"SE":{"name":"남동쪽 길","x":2000,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[2000,-30],[1850,140],[1650,280],[1400,360]],"s":[[2000,1380],[1850,1210],[1650,1070],[1400,990]],"a":[[1400,360],[1100,400],[800,480],[560,590],[420,675]],"b":[[1400,990],[1100,950],[800,870],[560,760],[420,675]],"m":[[1400,360],[1320,520],[1300,675],[1320,830],[1400,990]]},"walls":[]},"s3":{"theme":"autumn","ents":{"E":{"name":"동쪽 길","x":2420,"y":670},"N":{"name":"북쪽 길","x":1500,"y":-30}},"segments":{"g":[[420,675],[300,672],[186,675]],"e":[[2420,670],[2100,700],[1800,650],[1600,670]],"a1":[[1600,670],[1350,560],[1050,500]],"a2":[[1050,500],[800,520],[580,600],[420,675]],"b":[[1600,670],[1350,790],[1000,860],[700,800],[420,675]],"n":[[1500,-30],[1400,150],[1220,340],[1050,500]]},"walls":[]},"s4":{"theme":"spring","ents":{"NE":{"name":"북동쪽 길","x":2000,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"SE":{"name":"남동쪽 길","x":2000,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[2000,-30],[1800,150],[1550,280],[1300,360]],"s":[[2000,1380],[1800,1200],[1550,1070],[1300,990]],"e":[[2420,670],[2150,700],[1850,650],[1600,670]],"eu":[[1600,670],[1450,500],[1300,360]],"ed":[[1600,670],[1450,840],[1300,990]],"a":[[1300,360],[950,400],[650,500],[420,675]],"b":[[1300,990],[950,950],[650,850],[420,675]]},"walls":[[[2000,585],[2000,765]]]},"s5":{"theme":"dark","ents":{"C":{"name":"슬라임 굴","x":1550,"y":670,"cave":true}},"segments":{"g":[[420,675],[300,672],[186,675]],"u":[[1550,670],[1400,500],[1150,400],[850,420],[620,540],[420,675]],"d":[[1550,670],[1400,840],[1150,940],[850,920],[620,810],[420,675]]},"walls":[[[850,330],[850,510]],[[850,830],[850,1010]]]},"s6":{"theme":"autumn","ents":{"N":{"name":"북쪽 길","x":1400,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"S":{"name":"남쪽 길","x":1400,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1400,-30],[1300,130],[1100,300]],"s":[[1400,1380],[1300,1220],[1100,1050]],"e":[[2420,670],[2100,640],[1800,700],[1500,670]],"eu":[[1500,670],[1300,480],[1100,300]],"ed":[[1500,670],[1300,860],[1100,1050]],"a":[[1100,300],[800,360],[580,520],[420,675]],"b":[[1100,1050],[800,990],[580,830],[420,675]]},"walls":[[[1760,600],[1760,790]]]},"s7":{"theme":"snow","ents":{"C":{"name":"얼음 굴","x":1500,"y":670,"cave":true},"T":{"name":"북쪽 길","x":1250,"y":-30},"D":{"name":"남쪽 길","x":1250,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"c":[[1500,670],[1300,610],[1050,560]],"t":[[1250,-30],[1200,200],[1120,400],[1050,560]],"j":[[1050,560],[800,560],[600,620],[420,675]],"d":[[1250,1380],[1200,1150],[1050,950],[800,830],[600,760],[420,675]]},"walls":[[[800,470],[800,650]],[[800,740],[800,920]]]},"s8":{"theme":"dry","ents":{"N":{"name":"북쪽 길","x":1100,"y":-30},"NE":{"name":"북동쪽 길","x":2200,"y":-30},"SE":{"name":"남동쪽 길","x":2200,"y":1380},"S":{"name":"남쪽 길","x":1100,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1100,-30],[1000,150],[800,320]],"ne":[[2200,-30],[1900,250],[1600,500],[1200,420],[800,320]],"s":[[1100,1380],[1000,1200],[800,1030]],"se":[[2200,1380],[1900,1100],[1600,850],[1200,930],[800,1030]],"a":[[800,320],[620,420],[500,560],[420,675]],"b":[[800,1030],[620,930],[500,790],[420,675]]},"walls":[[[640,320],[640,500]],[[640,850],[640,1030]]]},"s9":{"theme":"dark","ents":{"C":{"name":"가운데 굴","x":1600,"y":670,"cave":true},"U":{"name":"북쪽 굴","x":1350,"y":250,"cave":true},"D":{"name":"남쪽 굴","x":1350,"y":1100,"cave":true}},"segments":{"g":[[420,675],[300,672],[186,675]],"cu":[[1600,670],[1400,560],[1150,450]],"u":[[1350,250],[1260,340],[1150,450]],"j1":[[1150,450],[900,480],[650,560],[420,675]],"cd":[[1600,670],[1400,800],[1150,1000]],"d1":[[1350,1100],[1260,1060],[1150,1000]],"d2":[[1150,1000],[900,900],[650,800],[420,675]]},"walls":[[[900,390],[900,570]],[[900,810],[900,990]]]},"s10":{"theme":"volcano","ents":{"N":{"name":"북쪽 길","x":1100,"y":-30},"NE":{"name":"북동쪽 길","x":2100,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":670},"SE":{"name":"남동쪽 길","x":2100,"y":1380},"S":{"name":"남쪽 길","x":1100,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"ne":[[2100,-30],[1850,180],[1550,330],[1300,400]],"e":[[2420,670],[2100,700],[1850,650],[1700,670]],"eu":[[1700,670],[1500,500],[1300,400]],"ed":[[1700,670],[1500,840],[1300,950]],"se":[[2100,1380],[1850,1170],[1550,1020],[1300,950]],"ta":[[1300,400],[1000,400],[750,450]],"ba":[[1300,950],[1000,950],[750,900]],"n":[[1100,-30],[950,180],[750,450]],"s":[[1100,1380],[950,1170],[750,900]],"ga":[[750,450],[560,540],[420,675]],"gb":[[750,900],[560,810],[420,675]]},"walls":[[[1200,310],[1200,490]],[[1200,860],[1200,1040]]]},"boss1":{"theme":"dark","ents":{"N":{"name":"북쪽 길","x":1500,"y":-30},"E":{"name":"동쪽 길","x":2420,"y":640},"S":{"name":"남쪽 길","x":1450,"y":1380}},"segments":{"g":[[420,675],[300,672],[186,675]],"n":[[1500,-30],[1400,180],[1220,420],[1000,670]],"e":[[2420,640],[2050,700],[1700,650],[1350,700],[1000,670]],"s":[[1450,1380],[1380,1150],[1220,900],[1000,670]],"a":[[1000,670],[820,540],[600,520],[420,675]],"b":[[1000,670],[820,800],[600,830],[420,675]]},"walls":[[[680,435],[680,615]],[[680,735],[680,915]]]}}};   // 게임의 지금 지도 (index.html 의 MAPS · 스테이지 이름)
+  const THEMES = { spring: ['봄 풀밭', '#5e9238'], dry: ['메마른 들', '#7a8a3e'], autumn: ['가을', '#8a8a3a'], dark: ['어두운 숲', '#53823a'], snow: ['눈밭', '#dfe6ec'], volcano: ['화산', '#4a3e38'] };
+  const STAGE_LABEL = (s, i) => s.map === 'boss1' ? `최종보스전 · ${s.name}` : `${i + 1}스테이지 · ${s.name}`;
+  const WALL_FROM = 4;                                       // 길목 성벽은 4스테이지부터
+
+  // ---------- 상태 ----------
+  let st = null, stageKey = 'boss1', tool = 'road', undo = [], savedDocs = {}, db = null, canWrite = true, dirty = false, focusEnt = null;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const keyOf = p => Math.round(p[0]) + ',' + Math.round(p[1]);
+  const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { return null; } },
+                  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
+                  del(k) { try { localStorage.removeItem(k); } catch (_) {} } };
+
+  // ---------- 곡선 (게임과 같은 catmull-rom) ----------
+  function smooth(points, step = 5) {
+    const P = points.map(p => ({ x: p[0], y: p[1] })), out = [], ci = [], n = P.length;
+    for (let i = 0; i < n - 1; i++) {
+      ci[i] = out.length;
+      const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];
+      const steps = Math.max(2, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / step));
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps, t2 = t * t, t3 = t2 * t;
+        out.push({ x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+                   y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3) });
+      }
+    }
+    ci[n - 1] = out.length; out.push({ x: P[n - 1].x, y: P[n - 1].y });
+    return { pts: out, ci };
+  }
+  const polyLen = P => { let L = 0; for (let i = 1; i < P.length; i++) L += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y); return L; };
+  function nearestOnPoly(P, x, y) {
+    let best = { d: Infinity, i: 0, x: 0, y: 0 };
+    for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)), px = a.x + dx * t, py = a.y + dy * t, d = Math.hypot(x - px, y - py);
+      if (d < best.d) best = { d, i, x: px, y: py, tx: dx, ty: dy };
+    }
+    return best;
+  }
+  function segX(a, b, c, d) {                                // 선분 ab 와 cd 가 만나는지
+    const r = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x); if (!r) return false;
+    const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / r, u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / r;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+  }
+  const polyCrossesWall = (P, w) => { const c = { x: w[0][0], y: w[0][1] }, d = { x: w[1][0], y: w[1][1] }; for (let i = 1; i < P.length; i++) if (segX(P[i - 1], P[i], c, d)) return true; return false; };
+  function rdp(P, eps) {                                     // 손으로 그은 선 줄이기
+    if (P.length < 3) return P;
+    const a = P[0], b = P[P.length - 1]; let idx = 0, dmax = 0;
+    for (let i = 1; i < P.length - 1; i++) { const n = nearestOnPoly([{ x: a[0], y: a[1] }, { x: b[0], y: b[1] }], P[i][0], P[i][1]); if (n.d > dmax) { dmax = n.d; idx = i; } }
+    if (dmax <= eps) return [a, b];
+    return [...rdp(P.slice(0, idx + 1), eps).slice(0, -1), ...rdp(P.slice(idx), eps)];
+  }
+
+  // ---------- 길 그래프 · 경로 ----------
+  function analyze() {
+    const S = {}, adj = new Map(), deg = new Map(), add = (k, e) => { if (!adj.has(k)) adj.set(k, []); adj.get(k).push(e); };
+    for (const [n, pts] of Object.entries(st.segments)) {
+      if (pts.length < 2) continue;
+      S[n] = smooth(pts).pts;
+      const a = keyOf(pts[0]), b = keyOf(pts[pts.length - 1]), len = polyLen(S[n]);
+      add(a, { seg: n, rev: false, to: b, len }); add(b, { seg: n, rev: true, to: a, len });
+      deg.set(a, (deg.get(a) || 0) + 1); deg.set(b, (deg.get(b) || 0) + 1);
+    }
+    const gk = keyOf(GATE), entKeys = new Map(Object.entries(st.ents).map(([k, e]) => [keyOf([e.x, e.y]), k]));
+    const routes = {};
+    for (const [ek, e] of Object.entries(st.ents)) {
+      const start = keyOf([e.x, e.y]), res = []; let budget = 6000;
+      (function dfs(k, seen, path, len) {
+        if (--budget < 0) return;
+        if (k === gk) { res.push({ path: path.slice(), len }); return; }
+        if (path.length > 16) return;
+        for (const ed of adj.get(k) || []) {
+          if (seen.has(ed.to) || (entKeys.has(ed.to) && ed.to !== gk)) continue;
+          seen.add(ed.to); path.push(ed); dfs(ed.to, seen, path, len + ed.len); path.pop(); seen.delete(ed.to);
+        }
+      })(start, new Set([start]), [], 0);
+      res.sort((a, b) => a.len - b.len);
+      const keep = res.length ? res.filter(r => r.len <= res[0].len * 1.6).slice(0, 4) : [];
+      routes[ek] = keep.map(r => {
+        const poly = []; for (const ed of r.path) { const P = ed.rev ? S[ed.seg].slice().reverse() : S[ed.seg]; poly.push(...(poly.length ? P.slice(1) : P)); }
+        return { names: r.path.map(ed => (ed.rev ? '-' : '') + ed.seg), len: r.len, poly, walls: st.walls.filter(w => polyCrossesWall(poly, w)).length };
+      });
+    }
+    const dangling = [];
+    for (const [k, d] of deg) if (d === 1 && k !== gk && !entKeys.has(k)) dangling.push(k.split(',').map(Number));
+    const reachGate = (deg.get(gk) || 0) > 0;
+    let inCastle = false;
+    for (const P of Object.values(S)) for (const p of P) if (p.x < 180 && Math.hypot(p.x - GATE[0], p.y - GATE[1]) > 40) inCastle = true;
+    return { S, routes, dangling, reachGate, inCastle };
+  }
+  function problems(A) {
+    const out = [], stageNo = GAME.stages.findIndex(s => s.map === stageKey) + 1, boss = stageKey === 'boss1';
+    if (!Object.keys(st.ents).length) out.push(['err', '입구나 굴이 없어요. 지도 오른쪽·위·아래 가장자리에서 길을 시작하거나 굴을 놓아 주세요.']);
+    if (!A.reachGate) out.push(['err', '성문에 닿은 길이 없어요. 길 끝을 왼쪽 가운데 성문 근처에서 떼 주세요.']);
+    for (const [k, e] of Object.entries(st.ents)) if (!A.routes[k].length) out.push(['err', `「${e.name}」에서 성문까지 이어진 길이 없어요.`]);
+    if (A.dangling.length) out.push(['warn', `끝이 어디에도 이어지지 않은 길이 ${A.dangling.length}곳 있어요 (빨간 점).`]);
+    if (A.inCastle) out.push(['warn', '길이 성 안으로 들어갔어요. 길은 성문으로만 들어가요.']);
+    if (st.walls.length && !boss && stageNo < WALL_FROM) out.push(['warn', `${stageNo}스테이지에서는 성벽 자리를 쓰지 않아요 (4스테이지부터).`]);
+    const allPoly = Object.values(A.S);
+    for (const w of st.walls) if (!allPoly.some(P => polyCrossesWall(P, w))) { out.push(['warn', '길을 가로지르지 않는 성벽 자리가 있어요.']); break; }
+    return out;
+  }
+
+  // ---------- 그리기 ----------
+  let scale = 1, dpr = 1;
+  function fit() {
+    const r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); scale = r.width / W; draw();
+  }
+  function poly(P, w, col) { ctx.beginPath(); P.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.lineWidth = w; ctx.strokeStyle = col; ctx.stroke(); }
+  let A = null, stroke = null, dragInfo = null, snapHint = null;
+  function draw() {
+    if (!st) return;
+    A = analyze();
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const snow = st.theme === 'snow';
+    ctx.fillStyle = (THEMES[st.theme] || THEMES.spring)[1]; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = snow ? 'rgba(60,80,100,0.10)' : 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2;   // 150px 격자
+    for (let x = 150; x < W; x += 150) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 150; y < H; y += 150) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    // 성
+    ctx.fillStyle = '#776e60'; ctx.fillRect(0, 0, 130, H);
+    ctx.fillStyle = '#958f84'; ctx.fillRect(128, 0, 44, H); ctx.fillStyle = '#aaa498'; ctx.fillRect(133, 0, 26, H);
+    ctx.fillStyle = '#2b221a'; ctx.fillRect(126, 637, 50, 76);
+    for (const ty of [609, 741]) { ctx.fillStyle = '#7e786d'; ctx.beginPath(); ctx.arc(150, ty, 27, 0, 7); ctx.fill(); ctx.fillStyle = '#a7a196'; ctx.beginPath(); ctx.arc(150, ty, 19, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#a8472f'; ctx.fillRect(16, 250, 96, 148);
+    // 길
+    const segs = Object.values(A.S);
+    for (const P of segs) poly(P, PATH_W + 12, 'rgba(60,42,20,0.35)');
+    for (const P of segs) poly(P, PATH_W + 4, '#7c5a33');
+    for (const P of segs) poly(P, PATH_W, '#a47c4b');
+    for (const P of segs) poly(P, PATH_W - 18, '#b28a58');
+    // 고른 입구의 길 표시
+    if (focusEnt && A.routes[focusEnt]) A.routes[focusEnt].forEach((r, i) => poly(r.poly, 14, ['rgba(255,236,120,0.9)', 'rgba(140,220,255,0.9)', 'rgba(255,160,220,0.9)', 'rgba(170,255,150,0.9)'][i % 4]));
+    // 성벽 자리
+    for (const w of st.walls) {
+      ctx.setLineDash([22, 14]); poly([{ x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] }], 14, '#ffd84a'); ctx.setLineDash([]);
+      const mx = (w[0][0] + w[1][0]) / 2, my = (w[0][1] + w[1][1]) / 2;
+      ctx.fillStyle = '#2a5a2a'; ctx.beginPath(); ctx.arc(mx, my, 26, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 5; ctx.stroke();
+      label('성벽', mx, my + 58, 30, '#fff3c0');
+    }
+    // 입구 · 굴
+    for (const [k, e] of Object.entries(st.ents)) {
+      if (e.cave) {
+        ctx.fillStyle = '#5f5a52'; ctx.beginPath(); ctx.ellipse(e.x, e.y, 95, 62, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1b1420'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, 52, 30, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(150,90,220,0.6)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 8, 40, 12, 0, 0, 7); ctx.fill();
+        label(e.name, e.x, e.y - 82, 34, '#f3e3bf');
+      } else {
+        const cx = Math.min(W - 60, Math.max(60, e.x)), cy = Math.min(H - 60, Math.max(60, e.y));
+        const dir = e.x >= W ? Math.PI : e.y <= 0 ? Math.PI / 2 : -Math.PI / 2;   // 지도 안쪽을 가리키는 화살표
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(dir);
+        ctx.fillStyle = '#d8402e'; ctx.strokeStyle = '#fff1d8'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(-24, -32); ctx.lineTo(-10, 0); ctx.lineTo(-24, 32); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        const lx = e.x >= W ? cx - 100 : cx, ly = e.y <= 0 ? cy + 70 : e.y >= H ? cy - 64 : cy - 50;
+        label(e.name, lx, ly, 32, '#fff1d8');
+      }
+    }
+    // 성문 표시
+    ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(GATE[0], GATE[1], 30, 0, 7); ctx.stroke();
+    label('성문', GATE[0] + 70, GATE[1] - 50, 32, '#ffe9a8');
+    // 점 옮기기: 길의 점
+    if (tool === 'move') for (const pts of Object.values(st.segments)) pts.forEach((p, i) => {
+      const end = i === 0 || i === pts.length - 1;
+      ctx.fillStyle = end ? '#ffffff' : '#ffe08a'; ctx.strokeStyle = '#3a2a14'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(p[0], p[1], end ? 15 : 11, 0, 7); ctx.fill(); ctx.stroke();
+    });
+    // 이어지지 않은 끝 (맨 위에)
+    for (const p of A.dangling) { ctx.fillStyle = '#ff4030'; ctx.beginPath(); ctx.arc(p[0], p[1], 18, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke(); }
+    // 긋는 중인 선 · 붙을 곳
+    if (stroke && stroke.length > 1) { ctx.setLineDash([]); poly(stroke.map(p => ({ x: p[0], y: p[1] })), 10, 'rgba(255,255,255,0.9)'); }
+    if (snapHint) { ctx.strokeStyle = '#7fe0ff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(snapHint[0], snapHint[1], 34, 0, 7); ctx.stroke(); }
+    if (!stroke && !dragInfo) renderSide();                  // 긋거나 끄는 중에는 오른쪽 칸을 다시 그리지 않음
+  }
+  function label(t, x, y, size, col) {
+    ctx.font = `700 ${size}px "Noto Sans KR", "Apple SD Gothic Neo", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = size * 0.22; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y);
+  }
+
+  // ---------- 오른쪽 칸 ----------
+  function renderSide() {
+    const P = problems(A), errs = P.filter(p => p[0] === 'err').length;
+    const v = document.getElementById('verdict');
+    v.className = 'verdict ' + (errs ? 'bad' : 'ok');
+    v.textContent = errs ? `고칠 점 ${errs}개 · 게임에 넣으려면 고쳐 주세요` : P.length ? `게임에 넣을 수 있어요 · 확인할 점 ${P.length}개` : '게임에 넣을 수 있어요';
+    const ul = document.getElementById('problems'); ul.textContent = '';
+    if (!P.length) { const li = document.createElement('li'); li.innerHTML = '<span class="dot ok"></span><span>모든 입구가 성문까지 이어져요.</span>'; ul.append(li); }
+    for (const [lv, t] of P) { const li = document.createElement('li'); const d = document.createElement('span'); d.className = 'dot ' + lv; const s = document.createElement('span'); s.textContent = t; li.append(d, s); ul.append(li); }
+    const el = document.getElementById('ents'); el.textContent = '';
+    const keys = Object.keys(st.ents);
+    if (!keys.length) { const li = document.createElement('li'); li.innerHTML = '<span class="dot warn"></span><span>아직 입구가 없어요.</span>'; el.append(li); }
+    for (const k of keys) {
+      const e = st.ents[k], R = A.routes[k], li = document.createElement('li');
+      const d = document.createElement('span'); d.className = 'dot ' + (R.length ? 'ok' : 'err');
+      const b = document.createElement('span'); b.className = 'ent' + (focusEnt === k ? ' on' : ''); b.tabIndex = 0; b.setAttribute('role', 'button');
+      const walls = R.length ? [...new Set(R.map(r => r.walls))].join('·') : '-';
+      b.textContent = `${e.name}${e.cave ? ' (굴)' : ''}`;
+      const sm = document.createElement('small'); sm.textContent = R.length ? `성문까지 길 ${R.length}갈래 · ${Math.round(R[0].len)}px · 지나는 성벽 ${walls}곳` : '성문까지 이어지지 않음'; b.append(sm);
+      const pickEnt = () => { focusEnt = focusEnt === k ? null : k; draw(); };
+      b.addEventListener('click', pickEnt); b.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pickEnt(); } });
+      li.append(d, b); el.append(li);
+    }
+  }
+
+  // ---------- 편집 ----------
+  function snapshot() { undo.push(JSON.stringify(st)); if (undo.length > 60) undo.shift(); }
+  function changed() { dirty = true; store.set('mapdraft:' + stageKey, { st, at: Date.now() }); updateStatus(); draw(); }
+  const toastEl = document.getElementById('toast'); let toastT = 0;
+  function toast(t) { toastEl.textContent = t; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 2200); }
+  const R = (world, px) => Math.max(world, px / scale);         // 누르기 판정 반경: 화면에서 너무 작지 않게
+  const nextName = (pre, obj) => { let i = 1; while (obj[pre + i]) i++; return pre + i; };
+  function entKeyFor(x, y) {
+    const name = x >= W ? (y < 420 ? ['NE', '북동쪽 길'] : y > 930 ? ['SE', '남동쪽 길'] : ['E', '동쪽 길'])
+               : y <= 0 ? (x > 1700 ? ['NE', '북동쪽 길'] : x < 800 ? ['NW', '북서쪽 길'] : ['N', '북쪽 길'])
+               : (x > 1700 ? ['SE', '남동쪽 길'] : x < 800 ? ['SW', '남서쪽 길'] : ['S', '남쪽 길']);
+    let k = name[0], n = name[1], i = 2; while (st.ents[k]) { k = name[0] + i; n = name[1] + ' ' + i; i++; }
+    return [k, n];
+  }
+  function caveName(y) {
+    const base = y < 450 ? '북쪽 굴' : y > 900 ? '남쪽 굴' : '가운데 굴'; let n = base, i = 2;
+    while (Object.values(st.ents).some(e => e.name === n)) n = base + ' ' + i++;
+    return n;
+  }
+  // 길 끝 붙이기: 성문 > 입구·굴 > 다른 길의 끝 > 다른 길의 중간(그 길을 나눔) > 지도 가장자리(새 입구)
+  function snapEnd(p, ignoreSeg) {
+    if (Math.hypot(p[0] - GATE[0], p[1] - GATE[1]) < R(150, 30)) return { pt: GATE.slice(), kind: 'gate' };
+    for (const e of Object.values(st.ents)) if (Math.hypot(p[0] - e.x, p[1] - e.y) < R(e.cave ? 120 : 130, 30)) return { pt: [e.x, e.y], kind: 'ent' };
+    let best = null;
+    for (const [n, pts] of Object.entries(st.segments)) if (n !== ignoreSeg) for (const q of [pts[0], pts[pts.length - 1]]) {
+      const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < R(85, 28) && (!best || d < best.d)) best = { d, pt: q.slice(), kind: 'node' };
+    }
+    if (best) return best;
+    for (const [n, pts] of Object.entries(st.segments)) {
+      if (n === ignoreSeg) continue;
+      const sm = smooth(pts), np = nearestOnPoly(sm.pts, p[0], p[1]);
+      if (np.d < R(80, 26)) return { pt: [Math.round(np.x), Math.round(np.y)], kind: 'split', seg: n, at: np.i };
+    }
+    if (p[0] > W - R(90, 20)) return { pt: [W + 20, Math.round(p[1])], kind: 'edge' };
+    if (p[1] < R(90, 20)) return { pt: [Math.round(p[0]), -30], kind: 'edge' };
+    if (p[1] > H - R(90, 20)) return { pt: [Math.round(p[0]), H + 30], kind: 'edge' };
+    return { pt: [Math.round(p[0]), Math.round(p[1])], kind: 'free' };
+  }
+  function splitSeg(name, at, pt) {                          // 길 하나를 pt 에서 두 길로
+    const pts = st.segments[name], sm = smooth(pts); let ci = 0;
+    for (let i = 0; i < pts.length - 1; i++) if (sm.ci[i] < at) ci = i;   // pt 바로 앞의 조절점
+    const a = [...pts.slice(0, ci + 1), pt], b = [pt, ...pts.slice(ci + 1)];
+    const clean = arr => arr.filter((q, i) => i === 0 || i === arr.length - 1 || (Math.hypot(q[0] - arr[0][0], q[1] - arr[0][1]) > 30 && Math.hypot(q[0] - arr[arr.length - 1][0], q[1] - arr[arr.length - 1][1]) > 30));
+    delete st.segments[name];
+    st.segments[nextName('r', st.segments)] = clean(a); st.segments[nextName('r', st.segments)] = clean(b);
+  }
+  function finishStroke(raw) {
+    let L = 0; for (let i = 1; i < raw.length; i++) L += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
+    if (L < 80) { toast('조금 더 길게 그어 주세요'); return; }
+    snapshot();
+    let pts = rdp(raw, 22).map(p => [Math.round(p[0]), Math.round(p[1])]);
+    const apply = idx => {                                   // 한쪽 끝씩 차례로 붙임 (먼저 나눈 길도 다음 끝에서 다시 찾음)
+      const s = snapEnd(pts[idx]);
+      if (s.kind === 'split') splitSeg(s.seg, s.at, s.pt);
+      if (s.kind === 'edge') { const [k, n] = entKeyFor(s.pt[0], s.pt[1]); st.ents[k] = { name: n, x: s.pt[0], y: s.pt[1] }; }
+      pts[idx] = s.pt; return s;
+    };
+    const s0 = apply(0), s1 = apply(pts.length - 1);
+    pts = pts.filter((q, i) => i === 0 || i === pts.length - 1 || (Math.hypot(q[0] - pts[0][0], q[1] - pts[0][1]) > 40 && Math.hypot(q[0] - pts[pts.length - 1][0], q[1] - pts[pts.length - 1][1]) > 40));
+    if (s0.kind === 'gate' && s1.kind !== 'gate') pts.reverse();             // 성문 쪽이 끝이 되게 (보기 좋게만)
+    if (pts.length < 2 || keyOf(pts[0]) === keyOf(pts[pts.length - 1])) { undo.pop(); toast('양 끝이 같은 곳이에요'); return; }
+    st.segments[nextName('r', st.segments)] = pts;
+    const msg = { gate: '성문', ent: '입구', node: '길 끝', split: '길 중간', edge: '새 입구', free: '' };
+    const m = [s0, s1].map(s => msg[s.kind]).filter(Boolean);
+    toast(m.length ? `길을 그었어요 · ${m.join(' ↔ ')}에 붙음` : '길을 그었어요');
+    changed();
+  }
+  function hitSeg(x, y, r) { let best = null; for (const [n, pts] of Object.entries(st.segments)) { const d = nearestOnPoly(smooth(pts).pts, x, y); if (d.d < r && (!best || d.d < best.d)) best = { n, ...d }; } return best; }
+  function hitWall(x, y, r) { return st.walls.findIndex(w => nearestOnPoly([{ x: w[0][0], y: w[0][1] }, { x: w[1][0], y: w[1][1] }], x, y).d < r); }
+  function hitEnt(x, y, r) { for (const [k, e] of Object.entries(st.ents)) { const cx = Math.min(W - 60, Math.max(60, e.x)), cy = Math.min(H - 60, Math.max(60, e.y)); if (Math.hypot(x - cx, y - cy) < r) return k; } return null; }
+  function dropOrphanEdges() {                               // 길이 하나도 붙지 않은 가장자리 입구는 지움 (굴은 남김)
+    const used = new Set(); for (const pts of Object.values(st.segments)) { used.add(keyOf(pts[0])); used.add(keyOf(pts[pts.length - 1])); }
+    for (const [k, e] of Object.entries(st.ents)) if (!e.cave && !used.has(keyOf([e.x, e.y]))) delete st.ents[k];
+  }
+  function onTap(x, y) {
+    if (tool === 'cave') {
+      if (x < 320) { toast('성 바로 앞에는 굴을 놓을 수 없어요'); return; }
+      const k = hitEnt(x, y, R(100, 24)); if (k && st.ents[k].cave) { toast('여기에는 이미 굴이 있어요'); return; }
+      snapshot(); let ck = 'C', i = 2; while (st.ents[ck]) ck = 'C' + i++;
+      st.ents[ck] = { name: caveName(y), x: Math.round(x), y: Math.round(y), cave: true }; toast('굴을 놓았어요 · 굴에서 성문 쪽으로 길을 그어 주세요'); changed();
+    } else if (tool === 'wall') {
+      const wi = hitWall(x, y, R(40, 16)); if (wi >= 0) { snapshot(); st.walls.splice(wi, 1); toast('성벽 자리를 지웠어요'); changed(); return; }
+      const h = hitSeg(x, y, R(60, 20)); if (!h) { toast('길 위를 눌러 주세요'); return; }
+      if (st.walls.length >= 2) { toast('성벽 자리는 2곳까지예요'); return; }
+      if (Math.hypot(h.x - GATE[0], h.y - GATE[1]) < 280) { toast('성문과 너무 가까워요 (병사가 모이는 자리)'); return; }
+      const L = Math.hypot(h.tx, h.ty) || 1, nx = -h.ty / L, ny = h.tx / L;
+      snapshot(); st.walls.push([[Math.round(h.x - nx * WALL_HALF), Math.round(h.y - ny * WALL_HALF)], [Math.round(h.x + nx * WALL_HALF), Math.round(h.y + ny * WALL_HALF)]]);
+      toast('성벽 자리를 만들었어요'); changed();
+    } else if (tool === 'erase') {
+      const wi = hitWall(x, y, R(40, 16)); if (wi >= 0) { snapshot(); st.walls.splice(wi, 1); toast('성벽 자리를 지웠어요'); changed(); return; }
+      const ek = hitEnt(x, y, R(80, 22)); if (ek) { snapshot(); const n = st.ents[ek].name; delete st.ents[ek]; if (focusEnt === ek) focusEnt = null; toast(`「${n}」을(를) 지웠어요`); changed(); return; }
+      const h = hitSeg(x, y, R(40, 16)); if (h) { snapshot(); delete st.segments[h.n]; dropOrphanEdges(); toast('길을 지웠어요'); changed(); return; }
+      toast('지울 것을 눌러 주세요');
+    }
+  }
+  // 점 옮기기: 같은 자리의 길 끝·입구·굴을 함께
+  function pickVertex(x, y) {
+    const r = R(30, 16); let best = null;
+    for (const [n, pts] of Object.entries(st.segments)) pts.forEach((p, i) => { const d = Math.hypot(p[0] - x, p[1] - y); if (d < r && (!best || d < best.d)) best = { d, key: keyOf(p), p }; });
+    const ek = hitEnt(x, y, R(70, 20));
+    if (!best && ek) { const e = st.ents[ek]; best = { key: keyOf([e.x, e.y]), p: [e.x, e.y] }; }
+    if (!best) return null;
+    if (best.key === keyOf(GATE)) return 'gate';
+    const refs = []; for (const [n, pts] of Object.entries(st.segments)) pts.forEach((p, i) => { if (keyOf(p) === best.key) refs.push({ n, i, p, end: i === 0 || i === pts.length - 1 }); });
+    const ents = Object.values(st.ents).filter(e => keyOf([e.x, e.y]) === best.key);
+    return { refs, ents };
+  }
+  function moveVertex(d, x, y) {
+    let nx = Math.round(Math.max(200, Math.min(W - 10, x))), ny = Math.round(Math.max(10, Math.min(H - 10, y)));
+    const e = d.ents.find(q => !q.cave);
+    if (e) { if (e.x >= W) nx = W + 20; else if (e.y <= 0) ny = -30; else if (e.y >= H) ny = H + 30; }
+    for (const r of d.refs) { r.p[0] = nx; r.p[1] = ny; }
+    for (const q of d.ents) { q.x = nx; q.y = ny; }
+  }
+
+  // 끊긴 길 끝을 끌어다 놓으면 성문·입구·굴·다른 길에 붙임
+  function dropVertex(d) {
+    if (d.refs.length !== 1 || d.ents.length || !d.refs[0].end) return false;
+    const r = d.refs[0], pts = st.segments[r.n], other = r.i === 0 ? pts[pts.length - 1] : pts[0], s = snapEnd(r.p, r.n);
+    if (s.kind === 'free' || keyOf(s.pt) === keyOf(other)) return false;
+    if (s.kind === 'split') splitSeg(s.seg, s.at, s.pt);
+    if (s.kind === 'edge') { const [k, n] = entKeyFor(s.pt[0], s.pt[1]); st.ents[k] = { name: n, x: s.pt[0], y: s.pt[1] }; }
+    r.p[0] = s.pt[0]; r.p[1] = s.pt[1];
+    toast({ gate: '성문에 붙였어요', ent: '입구에 붙였어요', node: '길 끝에 붙였어요', split: '길 중간에 붙였어요', edge: '새 입구를 만들었어요' }[s.kind]);
+    return true;
+  }
+
+  // ---------- 포인터 ----------
+  const toWorld = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * W, (ev.clientY - r.top) / r.height * H]; };
+  let down = null;
+  cv.addEventListener('pointerdown', ev => {
+    if (!st) return; cv.setPointerCapture(ev.pointerId); const p = toWorld(ev); down = { p, moved: false };
+    if (tool === 'road') stroke = [p];
+    if (tool === 'move') {
+      const v = pickVertex(p[0], p[1]);
+      if (v === 'gate') { toast('성문 위치는 고정이에요'); dragInfo = null; }
+      else if (v) { snapshot(); dragInfo = v; }
+    }
+  });
+  cv.addEventListener('pointermove', ev => {
+    if (!st) return; const p = toWorld(ev);
+    if (down && Math.hypot(p[0] - down.p[0], p[1] - down.p[1]) > 6) down.moved = true;
+    if (tool === 'road' && stroke) { const l = stroke[stroke.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 8) stroke.push(p); const s = snapEnd(p); snapHint = s.kind !== 'free' ? s.pt : null; draw(); }
+    else if (tool === 'move' && dragInfo) { moveVertex(dragInfo, p[0], p[1]); draw(); }
+  });
+  const end = ev => {
+    if (!st || !down) return; const p = toWorld(ev);
+    if (tool === 'road' && stroke) { const s = stroke; stroke = null; snapHint = null; if (down.moved) finishStroke(s); else { draw(); toast('끌어서 길을 그어 주세요'); } }
+    else if (tool === 'move') { if (dragInfo) { if (down.moved) { dropVertex(dragInfo); dragInfo = null; changed(); } else { undo.pop(); dragInfo = null; } } }
+    else if (!down.moved) onTap(p[0], p[1]);
+    down = null;
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', () => { stroke = null; snapHint = null; dragInfo = null; down = null; draw(); });
+
+  // ---------- 도구 · 버튼 ----------
+  const HINTS = { road: '지도 위를 끌어서 길을 그어요. 끝을 성문·입구·굴·다른 길 근처에서 떼면 붙어요.', cave: '눌러서 굴을 놓아요 (몬스터가 나오는 곳).',
+                  wall: '길 위를 누르면 성벽 자리가 생기고, 다시 누르면 없어져요. 최대 2곳.', move: '흰 점(길 끝)·노란 점(길 모양)·굴·입구를 끌어서 옮겨요. 빨간 점(끊긴 끝)은 다른 길·성문에 끌어다 놓으면 붙어요.', erase: '지울 길·굴·입구·성벽 자리를 눌러요.' };
+  function setTool(t) { tool = t; document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t))); document.getElementById('hint').textContent = HINTS[t]; draw(); }
+  document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  document.getElementById('undo').addEventListener('click', () => { if (!undo.length) { toast('되돌릴 것이 없어요'); return; } st = JSON.parse(undo.pop()); changed(); });
+  document.getElementById('reset').addEventListener('click', () => { snapshot(); st = fromGame(stageKey); toast('게임의 지금 지도를 불러왔어요'); changed(); });
+  const clearBox = document.getElementById('clearBox');
+  function clearButton() {
+    clearBox.innerHTML = '<button type="button" class="btn quiet" id="clear">모두 지우기</button>';
+    document.getElementById('clear').addEventListener('click', () => {
+      clearBox.innerHTML = '<span class="confirm">정말 지울까요? <button type="button" class="btn" id="clearYes">지우기</button><button type="button" class="btn quiet" id="clearNo">취소</button></span>';
+      document.getElementById('clearYes').addEventListener('click', () => { snapshot(); st = { ...st, ents: {}, segments: {}, walls: [] }; focusEnt = null; clearButton(); toast('모두 지웠어요 · 되돌리기로 살릴 수 있어요'); changed(); });
+      document.getElementById('clearNo').addEventListener('click', clearButton);
+    });
+  }
+  clearButton();
+  window.addEventListener('keydown', ev => { if ((ev.ctrlKey || ev.metaKey) && ev.key === 'z') { ev.preventDefault(); document.getElementById('undo').click(); } });
+
+  // ---------- 불러오기 · 저장 ----------
+  function fromGame(k) { const m = GAME.maps[k]; return { theme: m.theme, ents: clone(m.ents), segments: clone(m.segments), walls: clone(m.walls) }; }
+  function exportDoc() {
+    const a = analyze(), stage = GAME.stages.find(s => s.map === stageKey), P = problems(a);
+    const paths = []; for (const k of Object.keys(st.ents)) for (const r of a.routes[k]) paths.push([k, 0, r.names]);
+    return { stage: stageKey, stageName: stage ? stage.name : stageKey, theme: st.theme, ents: st.ents, segments: st.segments, walls: st.walls, paths,
+             ready: !P.some(p => p[0] === 'err'), problems: P.map(p => p[1]), savedAt: new Date().toISOString() };
+  }
+  function fmtTime(iso) { try { const d = new Date(iso); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; } catch (_) { return ''; } }
+  function updateStatus() {
+    const s = document.getElementById('status'), sv = savedDocs[stageKey];
+    if (!db) s.innerHTML = dirty ? '<b>저장 안 됨</b> · 이 화면에서는 저장할 수 없어요 (지도 코드 복사 사용)' : '이 화면에서는 저장할 수 없어요 (지도 코드 복사 사용)';
+    else if (dirty) s.innerHTML = '<b>저장 안 된 수정</b>' + (sv ? ` · 마지막 저장 ${fmtTime(sv.savedAt)}` : '');
+    else s.textContent = sv ? `저장됨 · ${fmtTime(sv.savedAt)}` : '아직 저장하지 않음 (게임의 지금 지도)';
+    document.getElementById('save').disabled = !db || !canWrite;
+  }
+  function loadStage(k) {
+    stageKey = k; undo = []; focusEnt = null;
+    const sv = savedDocs[k], draft = store.get('mapdraft:' + k);
+    const svAt = sv ? Date.parse(sv.savedAt) || 0 : 0;
+    if (draft && draft.at > svAt) { st = draft.st; dirty = true; toast('저장하지 않은 수정을 이어서 열었어요'); }
+    else if (sv) { st = { theme: sv.theme, ents: clone(sv.ents || {}), segments: clone(sv.segments || {}), walls: clone(sv.walls || []) }; dirty = false; }
+    else { st = fromGame(k); dirty = false; }
+    document.getElementById('theme').value = st.theme;
+    store.set('mapeditor:stage', k); updateStatus(); draw();
+  }
+  document.getElementById('stage').addEventListener('change', ev => loadStage(ev.target.value));
+  document.getElementById('theme').addEventListener('change', ev => { snapshot(); st.theme = ev.target.value; changed(); });
+  let saving = false;
+  document.getElementById('save').addEventListener('click', async () => {
+    if (!db || saving) return; saving = true; const btn = document.getElementById('save'); btn.textContent = '저장 중…';
+    try {
+      const doc = exportDoc(); await db.collection('maps').doc(stageKey).set(doc);
+      savedDocs[stageKey] = doc; dirty = false; store.del('mapdraft:' + stageKey);
+      toast(doc.ready ? '저장했어요 · Claude에게 반영해 달라고 말해 주세요' : '저장했어요 · 고칠 점이 남아 있어요'); markSaved();
+    } catch (e) { toast(e && e.code === 'invalid_argument' ? '저장할 권한이 없어요' : '저장하지 못했어요 · 잠시 뒤 다시 눌러 주세요'); if (e && e.code === 'invalid_argument') canWrite = false; }
+    btn.textContent = '저장'; saving = false; updateStatus();
+  });
+  document.getElementById('copy').addEventListener('click', ev => {
+    const text = JSON.stringify(exportDoc()), btn = ev.currentTarget, fb = document.getElementById('codeFallback');
+    const ok = () => { btn.textContent = '복사했어요'; setTimeout(() => btn.textContent = '지도 코드 복사', 1500); };
+    const fail = () => { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); btn.textContent = '아래 글을 직접 복사하세요'; };
+    try { navigator.clipboard.writeText(text).then(ok, fail); } catch (_) { fail(); }
+  });
+  function markSaved() {
+    const sel = document.getElementById('stage');
+    [...sel.options].forEach(o => { const s = GAME.stages.find(q => q.map === o.value), i = GAME.stages.indexOf(s); o.textContent = STAGE_LABEL(s, i) + (savedDocs[o.value] ? ' ✓' : ''); });
+  }
+
+  // ---------- 시작 ----------
+  const sel = document.getElementById('stage');
+  GAME.stages.forEach((s, i) => { const o = document.createElement('option'); o.value = s.map; o.textContent = STAGE_LABEL(s, i); sel.append(o); });
+  const th = document.getElementById('theme');
+  for (const [k, v] of Object.entries(THEMES)) { const o = document.createElement('option'); o.value = k; o.textContent = v[0]; th.append(o); }
+  const first = store.get('mapeditor:stage'); stageKey = GAME.maps[first] ? first : 's1'; sel.value = stageKey;
+  setTool('road');
+  new ResizeObserver(fit).observe(cv);
+  loadStage(stageKey);
+  (async () => {                                             // 저장 기능 (없으면 지도 코드 복사로)
+    try { db = window.claude ? await window.claude.use('db') : null; } catch (_) { db = null; }
+    if (!db) { updateStatus(); return; }
+    try { const user = await window.claude.use('user'); const w = user ? await user.can('data.write') : null; if (w === false) canWrite = false; } catch (_) {}
+    let first = true;
+    const timer = setTimeout(() => { if (first) document.getElementById('status').textContent = '저장한 지도를 아직 못 불러왔어요 · 그리기는 계속할 수 있어요'; }, 10000);
+    db.collection('maps').onSnapshot(snap => {
+      savedDocs = {}; for (const d of snap.docs) if (d.exists) savedDocs[d.id] = d.data();
+      if (first && !snap.metadata.fromCache) { clearTimeout(timer); }
+      if (first) { first = false; loadStage(stageKey); }
+      markSaved(); updateStatus();
+    }, () => { clearTimeout(timer); updateStatus(); });
+  })();
+})();
+</script>
