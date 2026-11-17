@@ -92,6 +92,9 @@ li.item.done .name { text-decoration: line-through; text-decoration-color: var(-
 .prio.p2 { background: var(--code-bg); color: var(--muted); }
 .role { font-size: 12.5px; color: var(--muted); }
 .subject { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.rows { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 2px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.rows b { font-family: var(--f-body); font-weight: 700; color: var(--brass); margin-right: 6px; }
+.step a { color: var(--brass); }
 .fallback { width: 100%; min-height: 110px; font-family: var(--f-mono); font-size: 12px; border: 1px solid var(--brass); border-radius: 6px; padding: 8px; background: var(--surface); color: var(--ink); }
 .copy {
   font: inherit; font-size: 13px; font-weight: 500; border: 1px solid var(--ink); background: var(--surface); color: var(--ink);
@@ -112,7 +115,7 @@ footer { color: var(--muted); font-size: 13px; }
   <header>
     <div class="eyebrow">왕국 수호자 · 1막 개편판</div>
     <h1>그림 프롬프트 모음</h1>
-    <p class="lede">1막(슬라임 왕국) 개편에 맞춰 다시 쓴 프롬프트입니다. 몬스터는 <b>슬라임 10종과 중간보스·최종보스</b>만 먼저 넣었습니다. 영웅 3명의 동작 시트는 이미 게임에 들어가 있어서 뺐습니다. 복사 버튼을 누르면 그림체 문구까지 붙은 완성 프롬프트가 복사되고, 만든 그림은 표시된 파일 이름 그대로 저장하면 됩니다.</p>
+    <p class="lede">1막(슬라임 왕국) 개편에 맞춰 다시 쓴 프롬프트입니다. 몬스터는 <b>슬라임 10종과 중간보스·최종보스</b>만 먼저 넣었습니다. 움직이는 캐릭터(슬라임·보스·병사·성벽 궁수·목수)는 모두 영웅처럼 <b>12자세 동작 시트</b>로 만들어 걷기·공격이 부드럽게 보이게 했습니다. 영웅 3명의 시트는 이미 게임에 들어가 있어서 뺐습니다. 복사 버튼을 누르면 그림체 문구까지 붙은 완성 프롬프트가 복사되고, 만든 그림은 표시된 파일 이름 그대로 저장하면 됩니다.</p>
   </header>
 
   <div class="bar" role="region" aria-label="도구와 진행도">
@@ -127,9 +130,9 @@ footer { color: var(--muted); font-size: 13px; }
 
   <div class="guide">
     <div class="step"><b>1 · 그림체 맞추기</b><p>이미 만든 영웅 그림(<code>images/hero_knight_sheet.png</code>)을 <em>그림체 참고 이미지</em>로 함께 넣으면 영웅과 같은 느낌으로 나옵니다.</p></div>
-    <div class="step"><b>2 · 기준 슬라임 먼저</b><p><code>enemy_slime</code>(초록 슬라임)부터 만들고, 마음에 들면 그 그림을 첨부해서 나머지 슬라임을 만드세요. 몸 모양과 눈이 한 가족처럼 맞춰집니다.</p></div>
+    <div class="step"><b>2 · 기준 시트 먼저</b><p><code>enemy_slime_sheet</code>(초록 슬라임)부터 만들고, 마음에 들면 그 시트를 첨부해서 나머지 슬라임을 만드세요. 몸 모양과 눈이 한 가족처럼 맞춰집니다. 병사는 1단계 시트를 첨부해 2·3단계를 만드세요.</p></div>
     <div class="step"><b>3 · 색은 그대로</b><p>게임은 몸 색으로 슬라임 종류를 구분합니다. 프롬프트의 색(강철=회색, 독=보라, 얼음=하늘색 등)은 바꾸지 말아 주세요.</p></div>
-    <div class="step"><b>4 · 게임에 넣기</b><p>배경이 투명한 1024×1024 PNG로 저장해 GitHub 저장소 <code>hero-defense</code>의 <code>images</code> 폴더에 올리고 알려 주시면 연결하겠습니다. 일부만 올려도 됩니다.</p></div>
+    <div class="step"><b>4 · 게임에 넣기</b><p>배경이 투명한 PNG로 저장해 (동작 시트는 가로로 긴 1536×1024, 한 장 그림은 1024×1024) <a href="https://github.com/vferty-sys/hero-defense/tree/main/images">저장소의 images 폴더</a>에 올리고 알려 주시면 연결하겠습니다. 일부만 올려도 됩니다.</p></div>
   </div>
 
   <div class="tip" id="tip" aria-live="polite"></div>
@@ -147,7 +150,7 @@ footer { color: var(--muted); font-size: 13px; }
   <main id="groups" style="display:grid;gap:30px"></main>
 
   <footer>
-    <p>모든 캐릭터는 <b>오른쪽을 바라보는</b> 모습으로 만들어 주세요. 왼쪽으로 갈 때는 게임이 좌우를 뒤집고, 말랑말랑 튀는 움직임이나 걷기 같은 움직임도 게임이 붙입니다. 프롬프트는 특정 게임 이름이나 그림체를 따라 하지 않도록 이 게임만의 설명으로 썼습니다. 체크 표시는 이 브라우저에만 저장됩니다.</p>
+    <p>모든 캐릭터는 <b>오른쪽을 바라보는</b> 모습으로 만들어 주세요. 왼쪽으로 갈 때는 게임이 좌우를 뒤집습니다. 동작 시트는 4칸×3줄로, 1줄은 쉬기 2장·맞음·스킬, 2줄은 이동 4장, 3줄은 공격 4장입니다. 칸 사이에 빈 공간이 있어야 게임이 정확히 자를 수 있습니다. 프롬프트는 특정 게임 이름이나 그림체를 따라 하지 않도록 이 게임만의 설명으로 썼습니다. 체크 표시는 이 브라우저에만 저장됩니다.</p>
   </footer>
 </div>
 
@@ -155,60 +158,93 @@ footer { color: var(--muted); font-size: 13px; }
 (() => {
   // 분류별 그림체 문구 (모든 그림을 같은 느낌으로)
   const BG = 'isolated on a real transparent PNG background with an alpha channel (do not draw a checkerboard pattern)';
+  const SHEET = `2D game character sprite sheet, 12 poses of the same character arranged in a grid of 4 columns and 3 rows, every pose drawn at the same scale and the same size, full body, facing right, evenly spaced with clear empty space between poses, no overlapping, ${BG}, no text, no numbers, no grid lines, no labels, hand-painted cartoon fantasy style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view, wide landscape image`;
   const STYLES = {
-    slime: `2D fantasy game monster sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, glossy semi-translucent jelly body with a bright white highlight on top, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole body visible, eyes looking to the right, simple readable silhouette that still reads clearly when shown very small, centered and filling most of the frame, ${BG}, no ground, no shadow, no text`,
-    boss: `2D fantasy game boss monster sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, large and imposing with more detail than normal monsters, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole body visible, facing right, centered and filling most of the frame, ${BG}, no ground, no shadow, no text`,
-    char: `2D fantasy game character sprite, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, full body, facing right, centered and filling most of the frame, ${BG}, no ground, no shadow, no text`,
+    slimesheet: `${SHEET}, glossy semi-translucent jelly body with a bright white highlight, simple readable silhouette that still reads clearly when shown very small`,
+    bosssheet: `${SHEET}, a large imposing boss monster with more detail than normal monsters`,
+    sheet: SHEET,
     build:`2D fantasy game building asset, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich saturated colors, seen from a 3/4 top-down view with the camera about 45 degrees above, the whole structure visible, centered, ${BG}, no text`,
     prop: `2D fantasy game environment prop, hand-painted cartoon style, bold clean dark outlines, soft cel shading, rich colors, seen from a 3/4 top-down view, single object centered, ${BG}, no text`,
     tex:  'seamless tileable ground texture viewed straight from above, hand-painted cartoon game texture, soft painterly detail, even flat lighting, no objects, no shadows, no text, square',
     fx:   `2D fantasy game projectile sprite, hand-painted cartoon style, bold outlines, glowing, pointing right, centered, ${BG}, no text`,
     icon: `fantasy RPG inventory item icon, hand-painted cartoon style, bold clean outlines, soft shading, rich colors, single object centered, ${BG}, no text, no frame`,
   };
-  const STYLE_NAMES = { slime: '슬라임', boss: '보스', char: '캐릭터', build: '건물·시설', prop: '나무·장식', tex: '지형 질감', fx: '투사체', icon: '아이템 아이콘' };
+  // 동작 시트 줄 설명 (자주 쓰는 것)
+  const SLIME_IDLE = 'resting idle; idle slightly squashed as if breathing; flinching after being hit, squashed sideways with eyes shut';
+  const HOP = 'four frames of a bouncing hop to the right: squashing down to jump, stretching tall as it leaps, round in mid-air, flattening as it lands';
+  const SLAM = 'four frames of a body-slam attack: leaning back, lunging forward stretched out, hitting with a flattened splat, bouncing back into shape';
+  const spit = g => `four frames of spitting: puffing up, opening its mouth wide, spitting ${g} forward to the right, closing its mouth`;
+  const BOSS_HOP = 'four frames of a slow heavy bounce to the right: squashing down, rising up, round in mid-air, landing with a big splat';
+  const CRUSH = 'four frames of a crushing slam: rising up high, stretching tall, smashing down flat with a splashing shockwave, reforming into shape';
+  const IDLE = 'standing idle; idle with a slight breath; flinching backwards after being hit';
+  const WALK = 'four frames of a walking cycle';
+  const SWORD = 'four frames of a sword attack: raising the sword, swinging it forward, follow-through, returning to guard';
+  const SHOOT = 'four frames of shooting: reaching for an arrow, drawing the bowstring, full draw aiming forward, releasing the arrow';
+  const CAST = 'four frames of a magic attack: lifting the staff, gathering violet magic at the orb, thrusting the staff forward releasing a magic bolt, lowering the staff';
+  const BLESS = 'four frames of a blessing: lifting the holy symbol, golden light gathering, warm light shining forward, lowering the staff';
+  const RIDE_IDLE = 'the horse standing idle; idle with the horse shifting slightly; flinching backwards after being hit';
+  const TROT = 'four frames of the horse trotting forward';
+  const LANCE = 'four frames of a lance attack: lowering the lance, thrusting it forward, impact, pulling back';
+  const STYLE_NAMES = { slimesheet: '슬라임 동작 시트', bosssheet: '보스 동작 시트', sheet: '캐릭터 동작 시트', build: '건물·시설', prop: '나무·장식', tex: '지형 질감', fx: '투사체', icon: '아이템 아이콘' };
   const NEG = 'photo, realistic, 3d render, blurry, low quality, jpeg artifacts, text, letters, watermark, signature, frame, border, cropped, cut off, multiple characters, background scenery, ground shadow';
 
   // 그림 목록: [파일 이름, 한글 이름, 분류, 우선순위(1 먼저 / 2 다음 / 3 나중), 게임 속 역할, 프롬프트]
   const GROUPS = [
-    { title: '슬라임', note: '게임에서는 지름 30픽셀 정도로 작게 보입니다. 몸 색과 특징 하나(심지·뿔·십자 등)가 또렷해야 구분됩니다. 「슬라임」을 먼저 만들어 기준으로 삼으세요.', items: [
-      ['enemy_slime', '슬라임', 'slime', 1, '기준 그림 · 죽으면 꼬마 슬라임 2마리로 분열',
-        'a small round green slime monster, a glossy lime-green jelly blob with a slightly darker core, two big simple dark eyes and a cheeky little smile, a soft wobbly bottom edge'],
-      ['enemy_slimeling', '꼬마 슬라임', 'slime', 1, '슬라임이 갈라져 나온 작은 슬라임',
-        'a tiny baby green slime, rounder and cuter than a normal slime, the same lime-green jelly, oversized shiny dark eyes, a small jelly droplet on its head, bouncy and playful'],
-      ['enemy_iron_slime', '강철 슬라임', 'slime', 1, '물리 피해 절반 · 단단함',
-        'a steel-grey metallic slime monster, its jelly body half covered by riveted iron plates like a dented helmet shell, metallic sheen with scratches, stubborn frowning eyes, heavy and solid looking'],
-      ['enemy_acid_slime', '산성 슬라임', 'slime', 1, '죽으면 산성 웅덩이',
-        'a sickly yellow-green acid slime monster, bubbling and fizzing, acidic drops dripping down its sides and sizzling, small bubbles rising from the top, sly squinting eyes'],
-      ['enemy_fire_slime', '불꽃 슬라임', 'slime', 1, '불덩이를 던짐 · 범위 피해',
-        'an orange-red fire slime monster made of molten glowing jelly, a small flame burning on top of its head, a glowing ember core, sparks floating around it, fierce eyes'],
-      ['enemy_bomb_slime', '폭탄 슬라임', 'slime', 1, '병사·성벽·성문에 붙으면 터짐',
-        'a dark red bomb slime monster, round and tense, a black fuse sticking out of its top with a bright sparking flame at the tip, thin cracks of orange light on its body, wide panicked eyes, about to explode'],
-      ['enemy_poison_slime', '독 슬라임', 'slime', 1, '독침을 쏨 · 지속 독 피해',
-        'a purple poison slime monster with bright toxic green spots and bubbles inside its body, green venom dripping from its mouth, a faint green toxic mist, mean narrow eyes'],
-      ['enemy_giant_slime', '거대 슬라임', 'slime', 1, '분대 앞장 탱커 · 물리 피해 1/4',
-        'a big heavy dark teal-green slime monster, much larger and bulkier than a normal slime, a thick tough outer skin with old scars and a few broken arrows stuck in it, stern heavy-browed eyes, a slow unstoppable squad leader'],
-      ['enemy_ice_slime', '얼음 슬라임', 'slime', 1, '얼음 덩이를 던짐 · 맞으면 느려짐',
-        'a pale icy blue translucent slime monster with three sharp ice crystal spikes on its head, frost on its surface, cold mist drifting around it, calm cold eyes'],
-      ['enemy_heal_slime', '치유 슬라임', 'slime', 1, '주변 몬스터 체력 회복',
-        'a soft pink healer slime monster with a glowing white cross mark on its forehead, gentle sparkles of healing light around it, kind round eyes and blushing cheeks'],
+    { title: '슬라임', note: '12자세 동작 시트: 1줄 쉬기 2장·맞음·특수 동작 / 2줄 통통 튀며 이동 4장 / 3줄 공격 4장. 게임에서는 지름 30픽셀 정도로 작게 보이니 몸 색과 특징 하나(심지·뿔·십자 등)가 또렷해야 합니다. 「슬라임」 시트를 먼저 만들어 기준으로 삼으세요.', items: [
+      ['enemy_slime_sheet', '슬라임', 'slimesheet', 1, '기준 그림 · 죽으면 꼬마 슬라임 2마리로 분열',
+        'a small round green slime monster, a glossy lime-green jelly blob with a slightly darker core, two big simple dark eyes and a cheeky little smile, a soft wobbly bottom edge',
+        [`${SLIME_IDLE}; jumping up happily with a big smile`, HOP, SLAM]],
+      ['enemy_slimeling_sheet', '꼬마 슬라임', 'slimesheet', 1, '슬라임이 갈라져 나온 작은 슬라임',
+        'a tiny baby green slime, rounder and cuter than a normal slime, the same lime-green jelly, oversized shiny dark eyes, a small jelly droplet on its head, bouncy and playful',
+        [`${SLIME_IDLE}; looking around curiously`, HOP, 'four frames of a tiny headbutt: leaning back, hopping forward, bumping with its head, bouncing back']],
+      ['enemy_iron_slime_sheet', '강철 슬라임', 'slimesheet', 1, '물리 피해 절반 · 단단함',
+        'a steel-grey metallic slime monster, its jelly body half covered by riveted iron plates like a dented helmet shell, metallic sheen with scratches, stubborn frowning eyes, heavy and solid looking',
+        [`${SLIME_IDLE}; hunkering down behind its iron plates with narrowed eyes`, 'four frames of a short heavy hop to the right: squashing down, lifting a little, landing hard, settling with a wobble', 'four frames of a heavy body-slam: leaning back, lunging forward, slamming with a metallic clang and sparks, settling back']],
+      ['enemy_acid_slime_sheet', '산성 슬라임', 'slimesheet', 1, '죽으면 산성 웅덩이',
+        'a sickly yellow-green acid slime monster, bubbling and fizzing, acidic drops dripping down its sides and sizzling, small bubbles rising from the top, sly squinting eyes',
+        [`${SLIME_IDLE}; bubbling violently with acid drops spraying out`, HOP, 'four frames of a body-slam attack: leaning back, lunging forward stretched out, hitting with a splat of sizzling acid, bouncing back into shape']],
+      ['enemy_fire_slime_sheet', '불꽃 슬라임', 'slimesheet', 1, '불덩이를 던짐 · 범위 피해',
+        'an orange-red fire slime monster made of molten glowing jelly, a small flame burning on top of its head, a glowing ember core, sparks floating around it, fierce eyes',
+        [`${SLIME_IDLE}; the flame on its head flaring up big and bright`, HOP, spit('a burning glob of fire')]],
+      ['enemy_bomb_slime_sheet', '폭탄 슬라임', 'slimesheet', 1, '병사·성벽·성문에 붙으면 터짐',
+        'a dark red bomb slime monster, round and tense, a black fuse sticking out of its top with a bright sparking flame at the tip, thin cracks of orange light on its body, wide panicked eyes',
+        [`${SLIME_IDLE}; the fuse sparking wildly while it trembles in panic`, 'four frames of a fast frantic hop to the right: squashing down, leaping forward, mid-air with the fuse trailing sparks, landing', 'four frames of getting ready to explode: swelling up, glowing orange from inside, bulging with bright cracks, bursting into a small flash of fire']],
+      ['enemy_poison_slime_sheet', '독 슬라임', 'slimesheet', 1, '독침을 쏨 · 지속 독 피해',
+        'a purple poison slime monster with bright toxic green spots and bubbles inside its body, green venom dripping from its mouth, a faint green toxic mist, mean narrow eyes',
+        [`${SLIME_IDLE}; oozing green venom while toxic mist rises`, HOP, spit('a dripping glob of green poison')]],
+      ['enemy_giant_slime_sheet', '거대 슬라임', 'slimesheet', 1, '분대 앞장 탱커 · 물리 피해 1/4',
+        'a big heavy dark teal-green slime monster, much larger and bulkier than a normal slime, a thick tough outer skin with old scars and a few broken arrows stuck in it, stern heavy-browed eyes, a slow unstoppable squad leader',
+        [`${SLIME_IDLE}; bracing itself and puffing up its thick skin like a wall`, 'four frames of a slow heavy lurch to the right: gathering its mass, stretching forward, dragging its body along, settling heavily', 'four frames of a crushing body slam: rising tall, leaning over, smashing down flat, reforming into shape']],
+      ['enemy_ice_slime_sheet', '얼음 슬라임', 'slimesheet', 1, '얼음 덩이를 던짐 · 맞으면 느려짐',
+        'a pale icy blue translucent slime monster with three sharp ice crystal spikes on its head, frost on its surface, cold mist drifting around it, calm cold eyes',
+        [`${SLIME_IDLE}; its ice spikes glowing while frosty mist swirls around`, HOP, spit('a chunk of icy jelly')]],
+      ['enemy_heal_slime_sheet', '치유 슬라임', 'slimesheet', 1, '주변 몬스터 체력 회복',
+        'a soft pink healer slime monster with a glowing white cross mark on its forehead, gentle sparkles of healing light around it, kind round eyes and blushing cheeks',
+        [`${SLIME_IDLE}; glowing brightly as the white cross shines and a soft ring of healing light spreads out`, HOP, 'four frames of a gentle bump attack: leaning back, hopping forward, bumping softly, bouncing back into shape']],
     ]},
-    { title: '중간보스', note: '3웨이브마다 정예 분대를 거느리고 입구마다 나옵니다. 크게 그려지니 디테일을 많이 넣어도 좋습니다. 슬라임 보스 3종은 슬라임 그림을 함께 첨부하세요.', items: [
-      ['boss_slime_king', '슬라임 왕', 'boss', 1, '산성 웅덩이 · 내려찍기',
-        'a giant purple slime king boss, a glossy translucent violet jelly body, a small golden crown sitting on top, a short royal red cape draped behind it, little green slimes dripping off its sides, a smug wide grin'],
-      ['boss_iron_slime_king', '강철 슬라임 왕', 'boss', 1, '3스테이지부터 · 아주 단단함 · 강철 내려찍기 · 강철 슬라임 소환',
-        'a giant steel-grey metallic slime king boss covered in heavy riveted iron armor plates like a fortress shell, a golden crown, dents and scratches on the metal, glowing angry eyes, extremely heavy and slow'],
-      ['boss_poison_slime_queen', '독 슬라임 여왕', 'boss', 1, '5스테이지부터 · 독 늪 · 독 슬라임 소환',
-        'a giant purple poison slime queen boss with an elegant golden tiara, bright toxic green spots glowing inside her body, venom dripping down like the train of a gown, swirling green poison mist around her, a cruel elegant smile'],
-      ['boss_spider_queen', '거미 여왕', 'boss', 1, '거미줄 발사(묶임) · 독 웅덩이',
-        'a gigantic dark purple spider queen boss with a small golden crown, a pale glowing egg sac on her abdomen, sharp fangs dripping green venom, eight long armored legs, menacing red eyes'],
-      ['boss_wolf_king', '늑대 왕', 'boss', 1, '맹습(돌진) · 울부짖음(주변 강화)',
-        'a giant silver-white alpha wolf king boss with a thick mane, glowing red eyes, a golden crown, battle scars, bared fangs, a powerful lunging pose'],
+    { title: '중간보스', note: '3웨이브마다 정예 분대를 거느리고 입구마다 나옵니다. 크게 그려지니 디테일을 많이 넣어도 좋습니다. 1줄 마지막 칸은 보스 스킬 동작입니다. 슬라임 보스 3종은 슬라임 시트를 함께 첨부하세요.', items: [
+      ['boss_slime_king_sheet', '슬라임 왕', 'bosssheet', 1, '산성 웅덩이 · 내려찍기',
+        'a giant purple slime king boss, a glossy translucent violet jelly body, a small golden crown sitting on top, a short royal red cape draped behind it, little green slimes dripping off its sides, a smug wide grin',
+        ['resting idle; idle slightly squashed as if breathing; flinching after being hit with its crown tilted; rising tall and spitting acid upward to make an acid pool', BOSS_HOP, CRUSH]],
+      ['boss_iron_slime_king_sheet', '강철 슬라임 왕', 'bosssheet', 1, '3스테이지부터 · 아주 단단함 · 강철 내려찍기 · 강철 슬라임 소환',
+        'a giant steel-grey metallic slime king boss covered in heavy riveted iron armor plates like a fortress shell, a golden crown, dents and scratches on the metal, glowing angry eyes, extremely heavy and slow',
+        ['resting idle; idle slightly squashed as if breathing; flinching after being hit with sparks flying off its plates; hunkering down as its iron plates glow hot before a slam', 'four frames of a short heavy hop to the right: squashing down, lifting a little, landing hard with dust, settling', 'four frames of an iron slam: rising up, stretching tall, smashing down with sparks and a shockwave, settling heavily']],
+      ['boss_poison_slime_queen_sheet', '독 슬라임 여왕', 'bosssheet', 1, '5스테이지부터 · 독 늪 · 독 슬라임 소환',
+        'a giant purple poison slime queen boss with an elegant golden tiara, bright toxic green spots glowing inside her body, venom dripping down like the train of a gown, swirling green poison mist around her, a cruel elegant smile',
+        ['resting idle; idle slightly squashed as if breathing; flinching after being hit with her tiara tilted; rearing up and spewing a fountain of green poison into the air', BOSS_HOP, 'four frames of a venom lash: pulling back, lashing a long dripping jelly tendril forward, striking, pulling it back']],
+      ['boss_spider_queen_sheet', '거미 여왕', 'bosssheet', 1, '거미줄 발사(묶임) · 독 웅덩이',
+        'a gigantic dark purple spider queen boss with a small golden crown, a pale glowing egg sac on her abdomen, sharp fangs dripping green venom, eight long armored legs, menacing red eyes',
+        ['standing idle; idle with her legs shifting slightly; flinching backwards after being hit; rearing up on her back legs and shooting a thick web forward', 'four frames of a scuttling walk cycle with the eight legs alternating', 'four frames of a bite attack: raising her fangs, lunging forward, biting down, pulling back']],
+      ['boss_wolf_king_sheet', '늑대 왕', 'bosssheet', 1, '맹습(돌진) · 울부짖음(주변 강화)',
+        'a giant silver-white alpha wolf king boss with a thick mane, glowing red eyes, a golden crown, battle scars and bared fangs',
+        ['standing idle; idle with a slight breath; flinching backwards after being hit; howling at the sky with its head raised', 'four frames of a running gallop cycle', 'four frames of a pounce attack: crouching low, leaping forward, slashing with claws and biting, landing']],
     ]},
     { title: '최종보스', note: '1막 마지막 스테이지의 보스입니다. 게임에서 가장 크게 그려집니다.', items: [
-      ['boss_giant_slime_king', '대왕 슬라임', 'boss', 1, '1막 최종보스 · 산성 웅덩이 · 내려찍기 · 쓰러질 때까지 슬라임 지원군',
-        'a colossal purple slime emperor final boss, an enormous glossy translucent body with many small slimes of different colors (green, red, blue, pink, grey) floating inside it, a large golden crown with a red ruby in the middle and two blue sapphires, a royal red cape with white fur trim, a huge toothy grin, overwhelming presence'],
+      ['boss_giant_slime_king_sheet', '대왕 슬라임', 'bosssheet', 1, '1막 최종보스 · 산성 웅덩이 · 내려찍기 · 쓰러질 때까지 슬라임 지원군',
+        'a colossal purple slime emperor final boss, an enormous glossy translucent body with many small slimes of different colors (green, red, blue, pink, grey) floating inside it, a large golden crown with a red ruby in the middle and two blue sapphires, a royal red cape with white fur trim, a huge toothy grin, overwhelming presence',
+        ['resting idle; idle slightly squashed as if breathing; flinching after being hit with its crown tilted; opening its huge mouth wide and releasing a stream of small colorful slimes', 'four frames of a slow massive bounce to the right: squashing down, rising up, hanging in mid-air, landing with a huge splat', CRUSH]],
     ]},
-    { title: '성 · 방어 시설', note: '성문은 두 개(위·아래 또는 양쪽 끝)이고, 성문 업그레이드로 궁수·투석기·끓는 기름·마법 타워가 생깁니다. 길목 성벽은 4스테이지부터 길을 가로질러 짓습니다.', items: [
+    { title: '성 · 방어 시설', note: '성문은 두 개(위·아래 또는 양쪽 끝)이고, 성문 업그레이드로 궁수·투석기·끓는 기름·마법 타워가 생깁니다. 길목 성벽은 4스테이지부터 길을 가로질러 짓습니다. 움직이지 않는 그림이라 한 장으로 만듭니다.', items: [
       ['castle_gate', '성문', 'build', 2, '두 성문 모두 이 그림을 씀',
         'a sturdy wooden castle gate reinforced with iron bands and studs, set in a thick grey stone wall section with two small flanking towers'],
       ['castle_tower', '성벽 탑', 'build', 2, '성벽 장식',
@@ -227,29 +263,27 @@ footer { color: var(--muted); font-size: 13px; }
         'a short straight fortified stone wall with crenellations, iron-reinforced corners, two blue banners and a small catapult platform on top, wide and low, lying horizontally across the image'],
       ['wall_ruin', '무너진 성벽', 'build', 3, '부서진 뒤 (웨이브 사이에 재건)',
         'a collapsed short stone wall section reduced to a low pile of rubble, broken logs and dust, wide and low, lying horizontally across the image'],
-      ['unit_wall_archer', '성벽 궁수', 'char', 2, '성문·성벽 위에서 활을 쏨',
-        'a castle guard archer in a blue tabard and an iron kettle helmet, aiming a crossbow'],
-      ['unit_carpenter', '목수', 'char', 3, '성문·성벽 수리 (성문 레벨에 따라 최대 3명)',
-        'a cheerful castle carpenter with a hammer and a wooden plank, a brown apron and a cloth cap'],
       ['prop_rally_flag', '집결 깃발', 'prop', 3, '성문을 누르고 지도를 누르면 병사가 모이는 곳',
         'a small blue castle banner flag with a gold edge on a wooden pole stuck into the ground'],
     ]},
-    { title: '병사', note: '시설 레벨에 따라 겉모습이 3단계로 바뀝니다 (_1: 1~3레벨, _2: 4~6레벨, _3: 7~10레벨).', items: [
-      ['unit_footman_1', '보병 1단계', 'char', 2, '', 'a young human foot soldier recruit with a short sword and a small wooden round shield, leather cap and padded tunic'],
-      ['unit_footman_2', '보병 2단계', 'char', 3, '', 'a veteran human foot soldier with a short sword and a steel round shield, chainmail and a blue tabard, iron helmet'],
-      ['unit_footman_3', '보병 3단계', 'char', 3, '', 'an elite human foot soldier with a fine sword and a blue and gold round shield, polished plate armor with gold trim, crested helmet'],
-      ['unit_archer_1', '궁수 1단계', 'char', 2, '', 'a young human archer recruit with a simple short bow, a brown hood and a leather vest, a quiver on the back'],
-      ['unit_archer_2', '궁수 2단계', 'char', 3, '', 'a veteran human archer with a recurve bow, a green hooded cloak and studded leather armor'],
-      ['unit_archer_3', '궁수 3단계', 'char', 3, '', 'an elite human marksman with an ornate longbow, a dark green cloak with a gold clasp, fine leather armor, a glowing arrow nocked'],
-      ['unit_knight_1', '기사 1단계', 'char', 2, '', 'a mounted human knight riding a brown war horse, holding a lance and a red heater shield, simple steel armor'],
-      ['unit_knight_2', '기사 2단계', 'char', 3, '', 'a mounted human knight riding a dark war horse with a red caparison, steel plate armor, a lance and a red shield'],
-      ['unit_knight_3', '기사 3단계', 'char', 3, '', 'an elite paladin knight riding a white war horse with a golden caparison, gleaming gold-trimmed plate armor, a long lance and an ornate shield'],
-      ['unit_mage_1', '마법사 1단계', 'char', 2, '', 'a young apprentice battle mage in a simple purple robe and pointed hat, holding a wooden staff with a small violet orb'],
-      ['unit_mage_2', '마법사 2단계', 'char', 3, '', 'a battle mage in a blue embroidered robe and pointed hat, holding a staff with a glowing violet orb'],
-      ['unit_mage_3', '마법사 3단계', 'char', 3, '', 'a powerful battle mage in a deep indigo robe with golden runes, holding a staff with a large radiant orb, swirling arcane energy'],
-      ['unit_cleric_1', '성직자 1단계', 'char', 2, '', 'a gentle human priest healer in a plain white wool robe with a hood, holding a wooden staff with a small golden holy symbol'],
-      ['unit_cleric_2', '성직자 2단계', 'char', 3, '', 'a human cleric in a white robe with gold trim and a hood, holding a staff topped with a golden sun symbol, soft holy glow'],
-      ['unit_cleric_3', '성직자 3단계', 'char', 3, '', 'a high priest in radiant white and gold vestments, holding an ornate golden staff with a shining holy symbol, a warm halo of light'],
+    { title: '병사', note: '시설 레벨에 따라 겉모습이 3단계로 바뀝니다 (_1: 1~3레벨, _2: 4~6레벨, _3: 7~10레벨). 1단계 시트를 먼저 만들고, 2·3단계는 1단계 시트를 첨부해 같은 병사가 장비만 좋아진 모습으로 만드세요. 1줄 마지막 칸은 5레벨 자동 스킬 동작입니다.', items: [
+      ['unit_footman_1_sheet', '보병 1단계', 'sheet', 2, '방패 강타', 'a young human foot soldier recruit with a short sword and a small wooden round shield, leather cap and padded tunic', [`${IDLE}; raising the shield high for a shield bash`, WALK, SWORD]],
+      ['unit_footman_2_sheet', '보병 2단계', 'sheet', 3, '', 'a veteran human foot soldier with a short sword and a steel round shield, chainmail and a blue tabard, iron helmet', [`${IDLE}; raising the shield high for a shield bash`, WALK, SWORD]],
+      ['unit_footman_3_sheet', '보병 3단계', 'sheet', 3, '', 'an elite human foot soldier with a fine sword and a blue and gold round shield, polished plate armor with gold trim, crested helmet', [`${IDLE}; raising the shield high for a shield bash`, WALK, SWORD]],
+      ['unit_archer_1_sheet', '궁수 1단계', 'sheet', 2, '연속 사격', 'a young human archer recruit with a simple short bow, a brown hood and a leather vest, a quiver on the back', [`${IDLE}; aiming the bow with several arrows nocked at once`, WALK, SHOOT]],
+      ['unit_archer_2_sheet', '궁수 2단계', 'sheet', 3, '', 'a veteran human archer with a recurve bow, a green hooded cloak and studded leather armor', [`${IDLE}; aiming the bow with several arrows nocked at once`, WALK, SHOOT]],
+      ['unit_archer_3_sheet', '궁수 3단계', 'sheet', 3, '', 'an elite human marksman with an ornate longbow, a dark green cloak with a gold clasp, fine leather armor, a glowing arrow nocked', [`${IDLE}; aiming the bow with several arrows nocked at once`, WALK, SHOOT]],
+      ['unit_knight_1_sheet', '기사 1단계', 'sheet', 2, '돌격', 'a mounted human knight riding a brown war horse, holding a lance and a red heater shield, simple steel armor', [`${RIDE_IDLE}; the horse rearing up as the knight raises the lance to charge`, TROT, LANCE]],
+      ['unit_knight_2_sheet', '기사 2단계', 'sheet', 3, '', 'a mounted human knight riding a dark war horse with a red caparison, steel plate armor, a lance and a red shield', [`${RIDE_IDLE}; the horse rearing up as the knight raises the lance to charge`, TROT, LANCE]],
+      ['unit_knight_3_sheet', '기사 3단계', 'sheet', 3, '', 'an elite paladin knight riding a white war horse with a golden caparison, gleaming gold-trimmed plate armor, a long lance and an ornate shield', [`${RIDE_IDLE}; the horse rearing up as the knight raises the lance to charge`, TROT, LANCE]],
+      ['unit_mage_1_sheet', '마법사 1단계', 'sheet', 2, '화염구', 'a young apprentice battle mage in a simple purple robe and pointed hat, holding a wooden staff with a small violet orb', [`${IDLE}; raising the staff high with a big glowing fireball spell`, WALK, CAST]],
+      ['unit_mage_2_sheet', '마법사 2단계', 'sheet', 3, '', 'a battle mage in a blue embroidered robe and pointed hat, holding a staff with a glowing violet orb', [`${IDLE}; raising the staff high with a big glowing fireball spell`, WALK, CAST]],
+      ['unit_mage_3_sheet', '마법사 3단계', 'sheet', 3, '', 'a powerful battle mage in a deep indigo robe with golden runes, holding a staff with a large radiant orb, swirling arcane energy', [`${IDLE}; raising the staff high with a big glowing fireball spell`, WALK, CAST]],
+      ['unit_cleric_1_sheet', '성직자 1단계', 'sheet', 2, '치유의 기도', 'a gentle human priest healer in a plain white wool robe with a hood, holding a wooden staff with a small golden holy symbol', [`${IDLE}; raising the staff with radiant healing light all around`, WALK, BLESS]],
+      ['unit_cleric_2_sheet', '성직자 2단계', 'sheet', 3, '', 'a human cleric in a white robe with gold trim and a hood, holding a staff topped with a golden sun symbol, soft holy glow', [`${IDLE}; raising the staff with radiant healing light all around`, WALK, BLESS]],
+      ['unit_cleric_3_sheet', '성직자 3단계', 'sheet', 3, '', 'a high priest in radiant white and gold vestments, holding an ornate golden staff with a shining holy symbol, a warm halo of light', [`${IDLE}; raising the staff with radiant healing light all around`, WALK, BLESS]],
+      ['unit_wall_archer_sheet', '성벽 궁수', 'sheet', 3, '성문·성벽 위에서 쏨', 'a castle guard archer in a blue tabard and an iron kettle helmet, holding a crossbow', [`${IDLE}; aiming the crossbow high`, WALK, 'four frames of shooting the crossbow: raising it, aiming, firing the bolt with a recoil, reloading']],
+      ['unit_carpenter_sheet', '목수', 'sheet', 3, '성문·성벽 수리', 'a cheerful castle carpenter with a hammer, a brown apron and a cloth cap', [`${IDLE}; wiping his brow and smiling`, 'four frames of a walking cycle carrying a wooden plank on the shoulder', 'four frames of hammering: lifting the hammer, swinging it down, striking with a small spark, lifting it again']],
     ]},
     { title: '지형', note: '1막 맵은 6가지 분위기를 씁니다. 바닥 질감은 바둑판처럼 이어 붙여 쓰는 그림입니다. 강은 없어졌습니다.', items: [
       ['prop_slime_cave', '슬라임 동굴', 'build', 2, '5·7·9스테이지 가운데 입구 (몬스터가 나오는 굴)',
@@ -314,11 +348,11 @@ footer { color: var(--muted); font-size: 13px; }
   ];
   const PRIO = { 1: ['먼저', 'p1'], 2: ['다음', 'p2'], 3: ['나중', 'p2'] };
   const TIPS = {
-    gpt: ['<p><b>ChatGPT · Gemini</b> — 프롬프트를 그대로 붙여 넣으면 됩니다. 배경에 회색·흰색 바둑판 무늬가 그려져 나오면 진짜 투명이 아니니 "make the background truly transparent, no checkerboard"라고 한 번 더 요청하세요.</p>',
+    gpt: ['<p><b>ChatGPT · Gemini</b> — 프롬프트를 그대로 붙여 넣으면 됩니다. 동작 시트는 <b>가로로 긴 그림(1536×1024)</b>으로 요청하세요. 배경에 회색·흰색 바둑판 무늬가 그려져 나오면 진짜 투명이 아니니 "make the background truly transparent, no checkerboard"라고 한 번 더 요청하세요. 12자세가 4칸×3줄로 나오지 않으면 "exactly 4 columns and 3 rows"를 덧붙여 다시 만드세요.</p>',
           '<p>영웅 그림이나 기준 슬라임 그림을 첨부하고 맨 앞에 <code>Same art style as the attached image:</code>를 붙이면 그림체가 잘 맞습니다.</p>'],
-    mj: ['<p><b>Midjourney</b> — 투명 배경이 안 되니 흰 배경으로 만든 뒤 배경 지우기 도구로 지우세요. 정사각형(<code>--ar 1:1</code>)과 지형 질감용 <code>--tile</code>은 자동으로 붙습니다.</p>',
+    mj: ['<p><b>Midjourney</b> — 투명 배경이 안 되니 흰 배경으로 만든 뒤 배경 지우기 도구로 지우세요. 동작 시트용 <code>--ar 3:2</code>, 한 장 그림용 <code>--ar 1:1</code>, 지형 질감용 <code>--tile</code>은 자동으로 붙습니다.</p>',
          '<p>영웅 그림이나 기준 슬라임 그림의 주소를 <code>--sref 그림주소</code>로 붙이면 같은 그림체로 나옵니다.</p>'],
-    sd: ['<p><b>Stable Diffusion · Leonardo</b> — 흰 배경으로 만든 뒤 배경을 지우세요. 아래 네거티브 프롬프트를 항상 함께 넣고, 1024×1024로 생성하세요.</p>',
+    sd: ['<p><b>Stable Diffusion · Leonardo</b> — 흰 배경으로 만든 뒤 배경을 지우세요. 아래 네거티브 프롬프트를 항상 함께 넣고, 동작 시트는 1536×1024, 한 장 그림은 1024×1024로 생성하세요.</p>',
          '<p>영웅 그림이나 기준 슬라임 그림을 IP-Adapter(이미지 참고) 등에 넣으면 그림체를 맞추기 쉽습니다.</p>'],
   };
 
@@ -329,12 +363,13 @@ footer { color: var(--muted); font-size: 13px; }
   let onlyLeft = false;
   const all = GROUPS.flatMap(g => g.items);
 
+  // 동작 시트: 캐릭터 설명 + 줄마다 자세 + 그림체 문구
   function fullPrompt(it) {
-    const cat = it[2], subject = it[5];
+    const cat = it[2], subject = it[5], rows = it[6];
     let style = STYLES[cat];
     if (tool !== 'gpt') style = style.replace(BG, 'isolated on a plain white background');
-    let p = subject + ', ' + style;
-    if (tool === 'mj') p += cat === 'tex' ? ' --ar 1:1 --tile' : ' --ar 1:1 --no text, watermark, scenery';
+    let p = rows ? `${subject}. Row 1, left to right: ${rows[0]}. Row 2: ${rows[1]}. Row 3: ${rows[2]}. ${style}` : subject + ', ' + style;
+    if (tool === 'mj') p += cat === 'tex' ? ' --ar 1:1 --tile' : rows ? ' --ar 3:2 --no text, numbers, grid lines, scenery' : ' --ar 1:1 --no text, watermark, scenery';
     return p;
   }
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -348,12 +383,13 @@ footer { color: var(--muted); font-size: 13px; }
     document.getElementById('groups').innerHTML = GROUPS.map((g, gi) => {
       const n = g.items.filter(it => done.has(it[0])).length;
       const rows = g.items.filter(it => !(onlyLeft && done.has(it[0]))).map(it => {
-        const [id, name, , prio, role, subject] = it, d = done.has(id);
+        const [id, name, , prio, role, subject, rows] = it, d = done.has(id);
         return `<li class="item${d ? ' done' : ''}" data-id="${id}">
           <input type="checkbox" class="check" id="chk-${id}" ${d ? 'checked' : ''} aria-label="${esc(name)} 완료">
           <div class="body">
             <div class="top"><label class="name" for="chk-${id}">${esc(name)}</label><span class="file">${id}.png</span><span class="prio ${PRIO[prio][1]}">${PRIO[prio][0]}</span>${role ? `<span class="role">${esc(role)}</span>` : ''}</div>
             <div class="subject">${esc(subject)}</div>
+            ${rows ? `<ul class="rows">${rows.map((r, i) => `<li><b>${i + 1}줄</b>${esc(r)}</li>`).join('')}</ul>` : ''}
             <textarea class="fallback" id="fb-${id}" readonly hidden></textarea>
           </div>
           <button type="button" class="copy" data-copy="${id}">복사</button>
