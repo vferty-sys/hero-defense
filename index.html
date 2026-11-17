@@ -432,11 +432,11 @@ const CONFIG = {
   // ---------------- 1막: 스테이지 10개 + 최종보스전 (적 기지 없음 · 웨이브 방식) ----------------
   // 웨이브 수 = waveBase + 스테이지 번호 × wavePerStage (1스테이지 10 → 10스테이지 28) / 최종보스전은 waves 지정
   // 웨이브 마리 수 = first + (웨이브-1) × perWave, 최대 cap (넘치는 만큼은 체력이 오르고 정예가 섞임: overHp·overElite)
-  // 몬스터가 나오는 시간 = spawnBase + 마리 수 × spawnPer초 / 무리 크기 = groupBase + 웨이브/2 (최대 groupMax)
+  // 몬스터가 나오는 시간 = spawnBase + 마리 수 × spawnPer초 (지도를 2/3로 줄이면서 20% 늘림: 30→36, 0.15→0.18) / 무리 크기 = groupBase + 웨이브/2 (최대 groupMax)
   // 분대 크기 = squadBase + (웨이브-1)/squadEvery / 3·6·9…웨이브 중간(midAt)에 모든 입구에서 중간보스 + 정예 분대
   // 웨이브가 끝나면(몬스터가 다 나오면) countdown초 뒤 다음 웨이브 ("바로 시작"으로 앞당기면 보너스 골드)
   waveRules: { waveBase: 8, wavePerStage: 2, first: 50, perWave: 10, cap: 150, overHp: 1 / 400, overElite: 1 / 500, overEliteMax: 0.35,
-               spawnBase: 30, spawnPer: 0.15, groupBase: 4, groupMax: 12, groupGap: 0.3, squadBase: 5, squadEvery: 3, midEvery: 3, midAt: 0.5,
+               spawnBase: 36, spawnPer: 0.18, groupBase: 4, groupMax: 12, groupGap: 0.3, squadBase: 5, squadEvery: 3, midEvery: 3, midAt: 0.5,
                countdown: 10, first0: 10,
                // 중간보스 후보 (minStage 스테이지부터 나옴)
                midBosses: [{ type: 'slimeKing', weight: 3 }, { type: 'ironSlimeKing', weight: 2, minStage: 3 }, { type: 'poisonSlimeQueen', weight: 2, minStage: 5 },
