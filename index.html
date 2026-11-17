@@ -60,8 +60,8 @@ const CONFIG = {
   speeds: [1, 2],                        // 배속 버튼 단계
   prepTime: 5,                           // 스테이지 시작 후 준비 시간(초): 적·시간이 멈추고 병력 대기열만 만들 수 있음
 
-  // ---------------- 성문 (2개 · 체력 공유 · 하나라도 무너지면 패배) ----------------
-  // 업그레이드하면 두 성문이 함께 오름 (즉시 적용). 궁수·투석기·목수·끓는 기름·마법 타워는 성문마다 붙음
+  // ---------------- 성문 (1개 · 무너지면 패배) ----------------
+  // 업그레이드하면 즉시 적용. 궁수·투석기·목수·끓는 기름·마법 타워가 성문에 붙음
   gate: {
     repairDelay: 5,               // 마지막 피격 후 이 시간(초) 동안 공격이 없으면 수리 시작
     carpenterSpeed: 55,           // 목수 이동 속도(px/초)
@@ -71,7 +71,7 @@ const CONFIG = {
     catapult: { damage: 45, radius: 75, interval: 4.5, range: 480, minRange: 110 },   // 투석기: 멀리 있는 지상 적 무리에 돌 (범위 피해)
     magicTower: { damage: 40, splash: 80, interval: 2.6, range: 420 },                // 마법 타워: 광역 마법탄 (공중도 맞힘)
     rallyRange: 700,              // 집결 지점은 성문에서 이 거리 안에만 찍을 수 있음
-    // cost = 이 레벨로 올리는 비용 / maxHp = 두 성문이 함께 쓰는 체력 / pop = 인구 상한 / 나머지는 성문 하나당
+    // cost = 이 레벨로 올리는 비용 / maxHp = 성문 체력 / pop = 인구 상한 / 나머지는 성문에 붙는 방어 시설 수
     levels: [
       { cost: 0,    maxHp: 3000, pop: 30, archers: 2, catapults: 0, carpenters: 1 },
       { cost: 800,  maxHp: 4000, pop: 40, archers: 3, catapults: 0, carpenters: 1 },
@@ -450,19 +450,19 @@ const CONFIG = {
     { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 16웨이브 · 성벽 · 산성 슬라임',
       mix: [{ type: 'slime', weight: 8 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'spider', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['bombSlime', 'acidSlime'], support: ['slime'] }, squadWeight: 3 },
-    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '양쪽 성문 · 18웨이브 · 독 슬라임',
+    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '가운데 굴 · 18웨이브 · 독 슬라임',
       mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['poisonSlime'], support: ['acidSlime'] }, squadWeight: 3 },
     { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 20웨이브 · 불꽃 슬라임',
       mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime', 'bombSlime'] }, squadWeight: 4 },
-    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '양쪽 성문 · 22웨이브 · 거대 슬라임',
+    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '굴 + 입구 2곳 · 22웨이브 · 거대 슬라임',
       mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
       squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
     { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 24웨이브 · 얼음 슬라임',
       mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 2 }],
       squad: { tank: ['giantSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['bombSlime'] }, squadWeight: 5 },
-    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '양쪽 성문 · 26웨이브 · 치유 슬라임',
+    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '굴 3곳 · 26웨이브 · 치유 슬라임',
       mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'spider', weight: 2 }, { type: 'harpy', weight: 1 }],
       squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime'] }, squadWeight: 5 },
     { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 28웨이브 · 모든 슬라임',
@@ -550,20 +550,19 @@ const CASTLE_LAYOUT = {
   riverWidth: 62,
   castle: { wallX: 128, wallW: 44 },   // 왼쪽 성벽 (오른쪽 성은 좌우 대칭)
   gateHalf: 38,                        // 성문 높이의 절반
-  keep: { x: 16, y: 601, w: 96, h: 148 },
+  keep: { x: 16, y: 250, w: 96, h: 148 },    // 성 본채 (성문 위쪽)
   houses: [[18, 60, 80, 54], [30, 252, 70, 62], [14, 399, 88, 50], [24, 505, 76, 50], [30, 790, 70, 56],
            [24, 894, 78, 58], [40, 1050, 62, 52], [16, 1180, 86, 60], [22, 1280, 80, 50]],
 };
-// 성문 배치: A형 = 왼쪽 성벽 위·아래 / B형 = 지도 양쪽 끝에 하나씩
-const GATES_A = [{ side: 'L', y: 380 }, { side: 'L', y: 970 }];
-const GATES_B = [{ side: 'L', y: 675 }, { side: 'R', y: 675 }];
-// 지도: gates = 성문 / ents = 몬스터 입구 { 이름, 좌표, cave(굴) } / segments = 길 구간 (곡선으로 이어짐)
-// paths = [입구, 성문 번호, [구간 이름들]] (구간 이름 앞에 '-'를 붙이면 거꾸로) / walls = 길목 성벽 자리 [[x1, y1], [x2, y2]]
-// seed = 나무·장식 배치 난수 / theme = 분위기 / 숲은 길을 피해 자동 배치
+// 성문: 왼쪽 성벽 가운데 하나. 모든 길이 성문 앞(G)에서 만남
+const GATES = [{ side: 'L', y: 675 }];
+const G_IN = [[420, 675], [300, 672], [186, 675]];        // 성문 앞 마지막 길 (모든 길이 J=(420,675)에서 합쳐져 성문으로)
+// 지도: ents = 몬스터 입구 { 이름, 좌표, cave(굴) } / segments = 길 구간 (곡선으로 이어짐)
+// paths = [입구, 성문 번호(0), [구간 이름들]] (구간 이름 앞에 '-'를 붙이면 거꾸로) / walls = 길목 성벽 자리 [[x1, y1], [x2, y2]]
+// 길목 성벽은 몬스터 하나가 성벽을 하나만 지나도록 갈래길에 둠 / seed = 나무·장식 배치 난수 / theme = 분위기 / 숲은 길을 피해 자동 배치
 function mkMap(o) {
-  const B = o.gates[1].side === 'R';
-  return { ...CASTLE_LAYOUT, keep: B ? { x: 16, y: 250, w: 96, h: 148 } : CASTLE_LAYOUT.keep, river: null, scatterTrees: 110, walls: [],
-           startView: { x: B ? 1200 : 820, y: 675 }, forests: autoForests(o.seed), ...o };
+  return { ...CASTLE_LAYOUT, gates: GATES, river: null, scatterTrees: 110, walls: [], startView: { x: 820, y: 675 }, forests: autoForests(o.seed),
+           ...o, segments: { g: G_IN, ...o.segments } };
 }
 function autoForests(seed) {
   const r = mulberry32(seed + 7), out = [];
@@ -571,85 +570,85 @@ function autoForests(seed) {
   return out;
 }
 const MAPS = {
-  s1: mkMap({ seed: 1101, theme: 'spring', gates: GATES_A,
+  s1: mkMap({ seed: 1101, theme: 'spring',                       // 동쪽 길 하나가 숲을 사이에 두고 두 갈래로 나뉘었다 성문 앞에서 다시 만남
     ents: { E: { name: '동쪽 길', x: 2420, y: 670 } },
     segments: { e: [[2420, 670], [2150, 640], [1800, 700], [1500, 670]],
-                a: [[1500, 670], [1250, 560], [950, 430], [600, 395], [186, 380]],
-                b: [[1500, 670], [1250, 780], [950, 910], [600, 955], [186, 970]] },
-    paths: [['E', 0, ['e', 'a']], ['E', 1, ['e', 'b']]] }),
-  s2: mkMap({ seed: 1202, theme: 'dry', gates: GATES_A,
+                a: [[1500, 670], [1250, 560], [950, 470], [650, 520], [420, 675]],
+                b: [[1500, 670], [1250, 780], [950, 870], [650, 830], [420, 675]] },
+    paths: [['E', 0, ['e', 'a', 'g']], ['E', 0, ['e', 'b', 'g']]] }),
+  s2: mkMap({ seed: 1202, theme: 'dry',
     ents: { NE: { name: '북동쪽 길', x: 2000, y: -30 }, SE: { name: '남동쪽 길', x: 2000, y: 1380 } },
-    segments: { n: [[2000, -30], [1850, 120], [1650, 240], [1500, 300]],
-                s: [[2000, 1380], [1850, 1230], [1650, 1110], [1500, 1050]],
-                a: [[1500, 300], [1100, 330], [700, 350], [186, 380]],
-                b: [[1500, 1050], [1100, 1020], [700, 1000], [186, 970]],
-                m: [[1500, 300], [1330, 480], [1300, 675], [1330, 870], [1500, 1050]] },
-    paths: [['NE', 0, ['n', 'a']], ['NE', 1, ['n', 'm', 'b']], ['SE', 1, ['s', 'b']], ['SE', 0, ['s', '-m', 'a']]] }),
-  s3: mkMap({ seed: 1303, theme: 'autumn', gates: GATES_A,
+    segments: { n: [[2000, -30], [1850, 140], [1650, 280], [1400, 360]],
+                s: [[2000, 1380], [1850, 1210], [1650, 1070], [1400, 990]],
+                a: [[1400, 360], [1100, 400], [800, 480], [560, 590], [420, 675]],
+                b: [[1400, 990], [1100, 950], [800, 870], [560, 760], [420, 675]],
+                m: [[1400, 360], [1320, 520], [1300, 675], [1320, 830], [1400, 990]] },
+    paths: [['NE', 0, ['n', 'a', 'g']], ['NE', 0, ['n', 'm', 'b', 'g']], ['SE', 0, ['s', 'b', 'g']], ['SE', 0, ['s', '-m', 'a', 'g']]] }),
+  s3: mkMap({ seed: 1303, theme: 'autumn',
     ents: { E: { name: '동쪽 길', x: 2420, y: 670 }, N: { name: '북쪽 길', x: 1500, y: -30 } },
     segments: { e: [[2420, 670], [2100, 700], [1800, 650], [1600, 670]],
-                a1: [[1600, 670], [1350, 540], [1000, 440]],
-                a2: [[1000, 440], [600, 400], [186, 380]],
-                b: [[1600, 670], [1350, 800], [1000, 920], [600, 960], [186, 970]],
-                n: [[1500, -30], [1400, 150], [1200, 320], [1000, 440]] },
-    paths: [['E', 0, ['e', 'a1', 'a2']], ['E', 1, ['e', 'b']], ['N', 0, ['n', 'a2']]] }),
-  s4: mkMap({ seed: 1404, theme: 'spring', gates: GATES_A,
+                a1: [[1600, 670], [1350, 560], [1050, 500]],
+                a2: [[1050, 500], [800, 520], [580, 600], [420, 675]],
+                b: [[1600, 670], [1350, 790], [1000, 860], [700, 800], [420, 675]],
+                n: [[1500, -30], [1400, 150], [1220, 340], [1050, 500]] },
+    paths: [['E', 0, ['e', 'a1', 'a2', 'g']], ['E', 0, ['e', 'b', 'g']], ['N', 0, ['n', 'a2', 'g']]] }),
+  s4: mkMap({ seed: 1404, theme: 'spring',
     ents: { NE: { name: '북동쪽 길', x: 2000, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 }, SE: { name: '남동쪽 길', x: 2000, y: 1380 } },
-    segments: { n: [[2000, -30], [1800, 150], [1550, 280], [1300, 340]],
-                s: [[2000, 1380], [1800, 1200], [1550, 1070], [1300, 1000]],
+    segments: { n: [[2000, -30], [1800, 150], [1550, 280], [1300, 360]],
+                s: [[2000, 1380], [1800, 1200], [1550, 1070], [1300, 990]],
                 e: [[2420, 670], [2150, 700], [1850, 650], [1600, 670]],
-                eu: [[1600, 670], [1450, 500], [1300, 340]],
-                ed: [[1600, 670], [1450, 840], [1300, 1000]],
-                a: [[1300, 340], [900, 360], [500, 390], [186, 380]],
-                b: [[1300, 1000], [900, 990], [500, 960], [186, 970]] },
-    paths: [['NE', 0, ['n', 'a']], ['SE', 1, ['s', 'b']], ['E', 0, ['e', 'eu', 'a']], ['E', 1, ['e', 'ed', 'b']]],
+                eu: [[1600, 670], [1450, 500], [1300, 360]],
+                ed: [[1600, 670], [1450, 840], [1300, 990]],
+                a: [[1300, 360], [950, 400], [650, 500], [420, 675]],
+                b: [[1300, 990], [950, 950], [650, 850], [420, 675]] },
+    paths: [['NE', 0, ['n', 'a', 'g']], ['SE', 0, ['s', 'b', 'g']], ['E', 0, ['e', 'eu', 'a', 'g']], ['E', 0, ['e', 'ed', 'b', 'g']]],
     walls: [[[2000, 585], [2000, 765]]] }),
-  s5: mkMap({ seed: 1505, theme: 'dark', gates: GATES_B,
-    ents: { C: { name: '슬라임 굴', x: 1200, y: 670, cave: true } },
-    segments: { l: [[1200, 670], [1000, 560], [800, 520], [600, 620], [400, 720], [186, 675]],
-                r: [[1200, 670], [1400, 780], [1600, 830], [1800, 730], [2000, 620], [2214, 675]] },
-    paths: [['C', 0, ['l']], ['C', 1, ['r']]],
-    walls: [[[660, 500], [660, 690]], [[1740, 670], [1740, 860]]] }),
-  s6: mkMap({ seed: 1606, theme: 'autumn', gates: GATES_A,
+  s5: mkMap({ seed: 1505, theme: 'dark',                         // 지도 가운데 굴에서 나온 슬라임이 위·아래 두 길로 성문에 옴
+    ents: { C: { name: '슬라임 굴', x: 1550, y: 670, cave: true } },
+    segments: { u: [[1550, 670], [1400, 500], [1150, 400], [850, 420], [620, 540], [420, 675]],
+                d: [[1550, 670], [1400, 840], [1150, 940], [850, 920], [620, 810], [420, 675]] },
+    paths: [['C', 0, ['u', 'g']], ['C', 0, ['d', 'g']]],
+    walls: [[[850, 330], [850, 510]], [[850, 830], [850, 1010]]] }),
+  s6: mkMap({ seed: 1606, theme: 'autumn',
     ents: { N: { name: '북쪽 길', x: 1400, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 }, S: { name: '남쪽 길', x: 1400, y: 1380 } },
     segments: { n: [[1400, -30], [1300, 130], [1100, 300]],
                 s: [[1400, 1380], [1300, 1220], [1100, 1050]],
                 e: [[2420, 670], [2100, 640], [1800, 700], [1500, 670]],
                 eu: [[1500, 670], [1300, 480], [1100, 300]],
                 ed: [[1500, 670], [1300, 860], [1100, 1050]],
-                a: [[1100, 300], [700, 340], [186, 380]],
-                b: [[1100, 1050], [700, 1010], [186, 970]] },
-    paths: [['N', 0, ['n', 'a']], ['S', 1, ['s', 'b']], ['E', 0, ['e', 'eu', 'a']], ['E', 1, ['e', 'ed', 'b']]],
+                a: [[1100, 300], [800, 360], [580, 520], [420, 675]],
+                b: [[1100, 1050], [800, 990], [580, 830], [420, 675]] },
+    paths: [['N', 0, ['n', 'a', 'g']], ['S', 0, ['s', 'b', 'g']], ['E', 0, ['e', 'eu', 'a', 'g']], ['E', 0, ['e', 'ed', 'b', 'g']]],
     walls: [[[1760, 600], [1760, 790]]] }),
-  s7: mkMap({ seed: 1707, theme: 'snow', gates: GATES_B,
-    ents: { C: { name: '얼음 굴', x: 1200, y: 670, cave: true }, T: { name: '북쪽 길', x: 1200, y: -30 }, D: { name: '남쪽 길', x: 1200, y: 1380 } },
-    segments: { l: [[1200, 670], [1000, 600], [800, 560], [600, 640], [400, 710], [186, 675]],
-                r: [[1200, 670], [1400, 740], [1600, 800], [1800, 720], [2000, 640], [2214, 675]],
-                t: [[1200, -30], [1160, 200], [1190, 450], [1200, 670]],
-                d: [[1200, 1380], [1240, 1150], [1210, 900], [1200, 670]] },
-    paths: [['C', 0, ['l']], ['C', 1, ['r']], ['T', 0, ['t', 'l']], ['T', 1, ['t', 'r']], ['D', 0, ['d', 'l']], ['D', 1, ['d', 'r']]],
-    walls: [[[600, 545], [600, 735]], [[1800, 625], [1800, 815]]] }),
-  s8: mkMap({ seed: 1808, theme: 'dry', gates: GATES_A,
+  s7: mkMap({ seed: 1707, theme: 'snow',                         // 굴·북쪽 길은 위 갈래로 합쳐지고, 남쪽 길은 아래 갈래로
+    ents: { C: { name: '얼음 굴', x: 1500, y: 670, cave: true }, T: { name: '북쪽 길', x: 1250, y: -30 }, D: { name: '남쪽 길', x: 1250, y: 1380 } },
+    segments: { c: [[1500, 670], [1300, 610], [1050, 560]],
+                t: [[1250, -30], [1200, 200], [1120, 400], [1050, 560]],
+                j: [[1050, 560], [800, 560], [600, 620], [420, 675]],
+                d: [[1250, 1380], [1200, 1150], [1050, 950], [800, 830], [600, 760], [420, 675]] },
+    paths: [['C', 0, ['c', 'j', 'g']], ['T', 0, ['t', 'j', 'g']], ['D', 0, ['d', 'g']]],
+    walls: [[[800, 470], [800, 650]], [[800, 740], [800, 920]]] }),
+  s8: mkMap({ seed: 1808, theme: 'dry',
     ents: { N: { name: '북쪽 길', x: 1100, y: -30 }, NE: { name: '북동쪽 길', x: 2200, y: -30 }, SE: { name: '남동쪽 길', x: 2200, y: 1380 }, S: { name: '남쪽 길', x: 1100, y: 1380 } },
     segments: { n: [[1100, -30], [1000, 150], [800, 320]],
                 ne: [[2200, -30], [1900, 250], [1600, 500], [1200, 420], [800, 320]],
                 s: [[1100, 1380], [1000, 1200], [800, 1030]],
                 se: [[2200, 1380], [1900, 1100], [1600, 850], [1200, 930], [800, 1030]],
-                a: [[800, 320], [500, 360], [186, 380]],
-                b: [[800, 1030], [500, 990], [186, 970]] },
-    paths: [['N', 0, ['n', 'a']], ['NE', 0, ['ne', 'a']], ['S', 1, ['s', 'b']], ['SE', 1, ['se', 'b']]],
-    walls: [[[560, 262], [560, 442]], [[560, 905], [560, 1085]]] }),
-  s9: mkMap({ seed: 1909, theme: 'dark', gates: GATES_B,
-    ents: { C: { name: '가운데 굴', x: 1200, y: 670, cave: true }, U: { name: '북쪽 굴', x: 1200, y: 220, cave: true }, D: { name: '남쪽 굴', x: 1200, y: 1130, cave: true } },
-    segments: { cl: [[1200, 670], [950, 600], [700, 640], [450, 700], [186, 675]],
-                cr: [[1200, 670], [1450, 740], [1700, 700], [1950, 650], [2214, 675]],
-                ul: [[1200, 220], [900, 330], [600, 480], [400, 620], [186, 675]],
-                ur: [[1200, 220], [1500, 330], [1800, 480], [2000, 620], [2214, 675]],
-                dl: [[1200, 1130], [900, 1020], [600, 870], [400, 730], [186, 675]],
-                dr: [[1200, 1130], [1500, 1020], [1800, 870], [2000, 730], [2214, 675]] },
-    paths: [['C', 0, ['cl']], ['C', 1, ['cr']], ['U', 0, ['ul']], ['U', 1, ['ur']], ['D', 0, ['dl']], ['D', 1, ['dr']]],
-    walls: [[[300, 560], [300, 790]], [[2100, 560], [2100, 790]]] }),
-  s10: mkMap({ seed: 2010, theme: 'volcano', gates: GATES_A,
+                a: [[800, 320], [620, 420], [500, 560], [420, 675]],
+                b: [[800, 1030], [620, 930], [500, 790], [420, 675]] },
+    paths: [['N', 0, ['n', 'a', 'g']], ['NE', 0, ['ne', 'a', 'g']], ['S', 0, ['s', 'b', 'g']], ['SE', 0, ['se', 'b', 'g']]],
+    walls: [[[640, 320], [640, 500]], [[640, 850], [640, 1030]]] }),
+  s9: mkMap({ seed: 1909, theme: 'dark',                         // 굴 세 개: 가운데 굴은 위·아래 갈래 모두로
+    ents: { C: { name: '가운데 굴', x: 1600, y: 670, cave: true }, U: { name: '북쪽 굴', x: 1350, y: 250, cave: true }, D: { name: '남쪽 굴', x: 1350, y: 1100, cave: true } },
+    segments: { cu: [[1600, 670], [1400, 560], [1150, 450]],
+                u: [[1350, 250], [1260, 340], [1150, 450]],
+                j1: [[1150, 450], [900, 480], [650, 560], [420, 675]],
+                cd: [[1600, 670], [1400, 800], [1150, 1000]],
+                d1: [[1350, 1100], [1260, 1060], [1150, 1000]],
+                d2: [[1150, 1000], [900, 900], [650, 800], [420, 675]] },
+    paths: [['C', 0, ['cu', 'j1', 'g']], ['C', 0, ['cd', 'd2', 'g']], ['U', 0, ['u', 'j1', 'g']], ['D', 0, ['d1', 'd2', 'g']]],
+    walls: [[[900, 390], [900, 570]], [[900, 810], [900, 990]]] }),
+  s10: mkMap({ seed: 2010, theme: 'volcano',
     ents: { N: { name: '북쪽 길', x: 1100, y: -30 }, NE: { name: '북동쪽 길', x: 2100, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 670 },
             SE: { name: '남동쪽 길', x: 2100, y: 1380 }, S: { name: '남쪽 길', x: 1100, y: 1380 } },
     segments: { ne: [[2100, -30], [1850, 180], [1550, 330], [1300, 400]],
@@ -657,24 +656,24 @@ const MAPS = {
                 eu: [[1700, 670], [1500, 500], [1300, 400]],
                 ed: [[1700, 670], [1500, 840], [1300, 950]],
                 se: [[2100, 1380], [1850, 1170], [1550, 1020], [1300, 950]],
-                ta: [[1300, 400], [1000, 380], [700, 360]],
-                ba: [[1300, 950], [1000, 970], [700, 990]],
-                n: [[1100, -30], [950, 150], [700, 360]],
-                s: [[1100, 1380], [950, 1200], [700, 990]],
-                ga: [[700, 360], [450, 370], [186, 380]],
-                gb: [[700, 990], [450, 980], [186, 970]] },
-    paths: [['NE', 0, ['ne', 'ta', 'ga']], ['E', 0, ['e', 'eu', 'ta', 'ga']], ['E', 1, ['e', 'ed', 'ba', 'gb']], ['SE', 1, ['se', 'ba', 'gb']],
-            ['N', 0, ['n', 'ga']], ['S', 1, ['s', 'gb']]],
-    walls: [[[1200, 300], [1200, 480]], [[1200, 870], [1200, 1050]]] }),
-  boss1: mkMap({ seed: 4409, theme: 'dark', gates: GATES_A,
+                ta: [[1300, 400], [1000, 400], [750, 450]],
+                ba: [[1300, 950], [1000, 950], [750, 900]],
+                n: [[1100, -30], [950, 180], [750, 450]],
+                s: [[1100, 1380], [950, 1170], [750, 900]],
+                ga: [[750, 450], [560, 540], [420, 675]],
+                gb: [[750, 900], [560, 810], [420, 675]] },
+    paths: [['NE', 0, ['ne', 'ta', 'ga', 'g']], ['E', 0, ['e', 'eu', 'ta', 'ga', 'g']], ['E', 0, ['e', 'ed', 'ba', 'gb', 'g']], ['SE', 0, ['se', 'ba', 'gb', 'g']],
+            ['N', 0, ['n', 'ga', 'g']], ['S', 0, ['s', 'gb', 'g']]],
+    walls: [[[1200, 310], [1200, 490]], [[1200, 860], [1200, 1040]]] }),
+  boss1: mkMap({ seed: 4409, theme: 'dark',                      // 세 길이 가운데에서 만난 뒤 두 갈래로 나뉘었다 성문 앞에서 다시 만남
     ents: { N: { name: '북쪽 길', x: 1500, y: -30 }, E: { name: '동쪽 길', x: 2420, y: 640 }, S: { name: '남쪽 길', x: 1450, y: 1380 } },
     segments: { n: [[1500, -30], [1400, 180], [1220, 420], [1000, 670]],
                 e: [[2420, 640], [2050, 700], [1700, 650], [1350, 700], [1000, 670]],
                 s: [[1450, 1380], [1380, 1150], [1220, 900], [1000, 670]],
-                a: [[1000, 670], [800, 560], [500, 430], [186, 380]],
-                b: [[1000, 670], [800, 780], [500, 920], [186, 970]] },
-    paths: [['N', 0, ['n', 'a']], ['N', 1, ['n', 'b']], ['E', 0, ['e', 'a']], ['E', 1, ['e', 'b']], ['S', 0, ['s', 'a']], ['S', 1, ['s', 'b']]],
-    walls: [[[440, 330], [440, 520]], [[440, 830], [440, 1020]]] }),
+                a: [[1000, 670], [820, 540], [600, 520], [420, 675]],
+                b: [[1000, 670], [820, 800], [600, 830], [420, 675]] },
+    paths: [['N', 0, ['n', 'a', 'g']], ['N', 0, ['n', 'b', 'g']], ['E', 0, ['e', 'a', 'g']], ['E', 0, ['e', 'b', 'g']], ['S', 0, ['s', 'a', 'g']], ['S', 0, ['s', 'b', 'g']]],
+    walls: [[[680, 435], [680, 615]], [[680, 735], [680, 915]]] }),
 };
 let MAP = MAPS.s1;               // 지금 지도 (스테이지를 고르면 바뀜)
 
@@ -1352,7 +1351,7 @@ const Art = {
     ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 30); ctx.stroke();
     const w = Math.sin(rt * 5 + gi) * 2;
     ctx.fillStyle = sel ? '#ffd36b' : '#3f6fc0'; ctx.beginPath(); ctx.moveTo(p.x, p.y - 30); ctx.lineTo(p.x + 18, p.y - 25 + w); ctx.lineTo(p.x, p.y - 19); ctx.closePath(); ctx.fill();
-    txt(ctx, String(gi + 1), p.x + 7, p.y - 24.5 + w * 0.5, 9, '#fff', 'center', { weight: 900 });
+    if (G.gates.length > 1) txt(ctx, String(gi + 1), p.x + 7, p.y - 24.5 + w * 0.5, 9, '#fff', 'center', { weight: 900 });
   },
   catapult(ctx, k) {                                                       // 투석기: 나무 틀 + 던지는 팔
     ctx.save(); ctx.translate(k.x, k.y);
@@ -2989,7 +2988,7 @@ const Music = {
 // ==========================================================================
 
 // ---------- 성문 ----------
-// 두 성문이 함께 쓰는 체력·레벨 (G.gate). 업그레이드하면 두 성문이 같이 오름
+// 성문 체력·레벨 (G.gate). 성문이 여럿인 지도라면 체력·레벨을 함께 씀
 class GatePool {
   constructor() {
     this.level = 1; this.maxHp = 0; this.hp = 0; this.lastHit = -999; this.destroyed = false;
@@ -3379,7 +3378,7 @@ class FireFlask {
 }
 
 // ---------- 병력 생산: 병력 칸을 누른 순서대로 대기열에 쌓이고, 성문에서 1명씩 나옴 (무료) ----------
-function armyCap() { return G.gate.cfg.pop; }                    // 인구 상한: 성문 레벨에 따라 (두 성문이 함께 씀)
+function armyCap() { return G.gate.cfg.pop; }                    // 인구 상한: 성문 레벨에 따라
 function popOf(kind) { return CONFIG.army[kind].pop || 1; }
 function armyPop() { let n = 0; for (const u of G.soldiers) n += popOf(u.kind); return n; }   // 지금 쓰는 인구
 function unitStats(kind) { const L = G.army.lv[kind]; return L ? CONFIG.army[kind].levels[L - 1] : null; }
@@ -3418,7 +3417,7 @@ function setRally(gi, x, y) {
   const q = G.gates[gi], f = q.front(0), R = CONFIG.gate.rallyRange, d = dist(f.x, f.y, x, y);
   if (d > R) { x = f.x + (x - f.x) / d * R; y = f.y + (y - f.y) / d * R; }
   const pt = Nav.clampTarget(x, y); G.rally[gi] = pt;
-  FX.ring(pt.x, pt.y, 30, '140,190,255', 0.5); toast(`성문${gi + 1} 병력의 집결 지점을 옮겼어요`, '#bfe0ff');
+  FX.ring(pt.x, pt.y, 30, '140,190,255', 0.5); toast(`${gateName(gi)} 병력의 집결 지점을 옮겼어요`, '#bfe0ff');
 }
 // 집결 지점 둘레의 자리: 근접은 앞줄(적 쪽), 원거리·성직자는 뒷줄. 줄마다 6명, 넘치면 한 줄 뒤로
 function updateRally() {
@@ -4867,12 +4866,11 @@ const Nav = {
   },
 };
 
-// 영웅 시작·부활 자리: 두 성문이 같은 쪽이면 그 사이, 양쪽 끝이면 (x, y)에서 가까운 성문 앞
+// 영웅 시작·부활 자리: 성문 앞 (성문이 여럿이면 (x, y)에서 가까운 성문)
 function heroSpawnFor(x, y) {
-  const [a, b] = G.gates;
-  if (a.side === b.side) return { x: a.fx + a.dir * 66, y: (a.y + b.y) / 2 };
-  return (x == null ? a : nearestGate(x, y)).front(66);
+  return (x == null ? G.gates[0] : nearestGate(x, y)).front(66);
 }
+function gateName(gi) { return G.gates.length > 1 ? `성문${gi + 1}` : '성문'; }
 // ---------- 영웅 ----------
 class Hero {
   constructor(type) {
@@ -4994,7 +4992,7 @@ class Hero {
   }
   respawn() {
     this.dead = false; this.hp = this.maxHp; this.mana = this.maxMana; this.lastHit = -999;
-    const sp = heroSpawnFor(this.deathX, this.deathY);                // A형: 두 성문 사이 / B형: 쓰러진 곳에서 가까운 성문 앞
+    const sp = heroSpawnFor(this.deathX, this.deathY);                // 성문 앞
     this.x = sp.x; this.y = sp.y; this.face = 0;
     this.guard = { x: this.x, y: this.y }; this.mode = 'guard';
     FX.ring(this.x, this.y, 46, '255,240,180', 0.6); FX.spark(this.x, this.y, '#fff2b0', 10);
@@ -5625,7 +5623,7 @@ const Input = {
         break;
       }
       case 'Escape': if (G.aim) G.aim = null; else if (G.sel) G.sel = null; else togglePause(); break;
-      case 'KeyG': if (G.state === 'playing' && !G.paused) { G.army.gi = (G.army.gi + 1) % G.gates.length; toast(`성문${G.army.gi + 1}에서 생산`, '#bfe0ff'); } break;
+      case 'KeyG': if (G.state === 'playing' && !G.paused && G.gates.length > 1) { G.army.gi = (G.army.gi + 1) % G.gates.length; toast(`${gateName(G.army.gi)}에서 생산`, '#bfe0ff'); } break;
       case 'Backspace': if (G.state === 'playing' && !G.paused && G.army.queue.length) { e.preventDefault(); unqueueUnit(G.army.queue.length - 1); } break;
       case 'KeyP': togglePause(); break;
       case 'KeyF': toggleSpeed(); break;
@@ -5986,16 +5984,16 @@ function drawArmyBar(ctx, L, R, heroTop) {
     if (!lv) Icon.lock(ctx, cx + cw / 2, cy + 30 * u * k + off, 22 * u * k);
   });
 
-  // 생산할 성문 탭 (성문마다 대기열이 따로)
-  const tq = (cw > 80 * k ? 44 : 40) * k, tabW = 66 * k, tabY = y - 6 * k - tq;
-  for (let gi = 0; gi < G.gates.length; gi++) {
+  // 생산할 성문 탭 (성문이 여럿일 때만: 성문마다 대기열이 따로)
+  const multi = G.gates.length > 1, tq = (cw > 80 * k ? 44 : 40) * k, tabW = 66 * k, tabY = multi ? y - 6 * k - tq : y;
+  for (let gi = 0; multi && gi < G.gates.length; gi++) {
     const tx = x + gi * (tabW + 4 * k), on = A.gi === gi, n = A.queues[gi].length;
     const off = drawButton(ctx, tx, tabY, tabW, tq, UI.button('gtab' + gi, tx, tabY, tabW, tq, () => { A.gi = gi; }), k, '',
       on ? { radius: 9, c1: '#3a6aa8', c2: '#24467a', border: '#c0dcff' } : { radius: 9, c1: '#5a4a38', c2: '#3a2e22', border: '#8a7050' });
     txt(ctx, `성문${gi + 1}`, tx + tabW / 2, tabY + tq * 0.36 + off, 13 * k, on ? '#fff' : '#d8c8a4', 'center', { weight: 800 });
     txt(ctx, A.fulls[gi] ? '인구 가득' : `대기 ${n}`, tx + tabW / 2, tabY + tq * 0.74 + off, 10.5 * k, A.fulls[gi] ? '#ffb09a' : on ? '#cfe4ff' : '#b8a888', 'center', { weight: 700 });
   }
-  const tabsW = G.gates.length * (tabW + 4 * k) + 4 * k;
+  const tabsW = multi ? G.gates.length * (tabW + 4 * k) + 4 * k : 0;
   // 생산 대기열 (누른 순서대로) — 아이콘을 누르면 취소
   let topY = tabY;
   if (A.queue.length) {
@@ -6006,7 +6004,7 @@ function drawArmyBar(ctx, L, R, heroTop) {
     rr(ctx, x, qy, qw, qh, 8 * k); ctx.fillStyle = 'rgba(30,22,14,0.82)'; ctx.fill(); ctx.strokeStyle = 'rgba(184,145,74,0.8)'; ctx.lineWidth = 1.5 * k; ctx.stroke();
     UI.block(x, qy, qw, qh);
     txt(ctx, `대기 ${A.queue.length}`, x + 8 * k, qy + qh / 2 - 6 * k, 12.5 * k, '#ffd36b', 'left', { weight: 800 });
-    txt(ctx, '눌러 취소', x + 8 * k, qy + qh / 2 + 9 * k, 10.5 * k, '#b8a888', 'left', { weight: 600 });
+    txt(ctx, A.full ? '인구 가득' : '눌러 취소', x + 8 * k, qy + qh / 2 + 9 * k, 10.5 * k, A.full ? '#ffb09a' : '#b8a888', 'left', { weight: 600 });
     for (let i = 0; i < shown; i++) {
       const kind = A.queue[i], ix = x + lab + 6 * k + i * (qs + qg), iy = qy + 5 * k;
       const pr = UI.button('q_' + i, ix, iy, qs, qs, () => unqueueUnit(i)), off = pr ? 2 * k : 0;
@@ -6104,7 +6102,7 @@ function drawBossPointer(ctx) {
   ctx.restore();
 }
 
-// 성문 메뉴: 현재 → 다음 레벨 능력치 + 강화 버튼 (두 성문이 함께 오름). 열려 있는 동안 지도를 탭하면 그 성문의 집결 지점 이동
+// 성문 메뉴: 현재 → 다음 레벨 능력치 + 강화 버튼. 열려 있는 동안 지도를 탭하면 집결 지점 이동
 function drawGatePanel(ctx) {
   const s = G.sel, k = UI.k, P = G.gate, c = P.cfg, n = P.next, gi = s.ref;
   const w = 400 * k, h = 392 * k, px = 10 * UI.kt, py = (10 + 58 + 10) * UI.kt;
@@ -6115,15 +6113,15 @@ function drawGatePanel(ctx) {
   ctx.beginPath(); ctx.moveTo(cx + 13 * k, cy + 13 * k); ctx.lineTo(cx + cs - 13 * k, cy + cs - 13 * k); ctx.moveTo(cx + cs - 13 * k, cy + 13 * k); ctx.lineTo(cx + 13 * k, cy + cs - 13 * k); ctx.stroke();
   Icon.castle(ctx, px + 32 * k, py + 34 * k, 32 * k);
   txt(ctx, `성문 Lv.${P.level}${n ? '' : ' (최고)'}`, px + 60 * k, py + 25 * k, 19 * k, '#ffe7b8');
-  txt(ctx, '두 성문이 함께 강화돼요', px + 60 * k, py + 49 * k, 13 * k, '#cdbb98', 'left', { weight: 600 });
+  txt(ctx, '강화하면 바로 적용돼요', px + 60 * k, py + 49 * k, 13 * k, '#cdbb98', 'left', { weight: 600 });
   const yes = v => v ? '있음' : '없음', rows = [
-    ['체력 (공유)', c.maxHp, n && n.maxHp], ['인구 상한', c.pop, n && n.pop], ['성벽 궁수', c.archers, n && n.archers],
+    ['체력', c.maxHp, n && n.maxHp], ['인구 상한', c.pop, n && n.pop], ['성벽 궁수', c.archers, n && n.archers],
     ['투석기', c.catapults || 0, n && (n.catapults || 0)], ['목수', c.carpenters, n && n.carpenters],
     ['끓는 기름', yes(c.oil), n && yes(n.oil)], ['마법 타워', yes(c.tower), n && yes(n.tower)],
   ].map(r => [r[0], r[1], n && r[2] !== r[1] ? r[2] : null]);
   drawStatRows(ctx, rows, px, py + 82 * k, w, k, 0.46, 0.74);
   const ty = py + 82 * k + rows.length * 28 * k;
-  fitTxt(ctx, `궁수·투석기·목수·기름·타워는 성문마다 · 지도를 탭하면 성문${gi + 1} 병력의 집결 지점 이동`, px + 16 * k, ty, 12 * k, w - 32 * k, '#a8c8ff', 'left', { weight: 600 });
+  fitTxt(ctx, `이 메뉴가 열린 동안 지도를 탭하면 ${gateName(gi)} 병력의 집결 지점 이동`, px + 16 * k, ty, 12 * k, w - 32 * k, '#a8c8ff', 'left', { weight: 600 });
   const bh = 56 * k, by = py + h - bh - 14 * k, bw = w - 32 * k;
   if (!n) costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, '최고 레벨', null, false, () => {});
   else costButton(ctx, 'gateUp', px + 16 * k, by, bw, bh, k, `성문 강화 → Lv.${P.level + 1}`, n.cost, G.gold >= n.cost, () => P.upgrade());
@@ -6648,7 +6646,7 @@ function drawSelect(ctx, k) {
 
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적은 자동 공격)'], ['성문 탭', '성문 강화 메뉴 · 메뉴가 열린 채 지도를 탭하면 그 성문 병력의 집결 지점 이동'],
-  ['아래 병력 칸', '성문1·2 탭으로 생산할 성문을 고르고, 누를 때마다 1명씩 대기열에 추가 (무료)'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
+  ['아래 병력 칸', '누를 때마다 1명씩 대기열에 추가, 성문에서 한 명씩 차례로 나옴 (무료)'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
   ['인구 (성문 Lv)', '30 → 80 · 보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4'], ['병력', '나온 성문의 집결 지점을 지키며 근처 적과 싸움 · 원거리 공격엔 다가가 반격'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭 · 기사 스태미너 · 궁사 화살통 · 마법사 마나 소모'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
   ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · G 성문 바꾸기 · Shift+1~5 강화 · Backspace 취소 · Space 일시정지 · F 배속'],
@@ -6817,7 +6815,7 @@ function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = sele
   G.heroType = heroType; G.diffKey = diffKey; G.diff = CONFIG.difficulty[diffKey] || CONFIG.difficulty.normal;
   G.gold = G.diff.startGold + (G.stage.startGold || 0);
   G.midTimer = Infinity;
-  G.gate = new GatePool();                                                   // 두 성문이 함께 쓰는 체력·레벨
+  G.gate = new GatePool();                                                   // 성문 체력·레벨
   G.gates = MAP.gates.map((d, i) => new Gate(i, d));
   for (const q of G.gates) q.applyLevel();
   G.rally = G.gates.map(q => q.front(150));                                  // 기본 집결 지점: 성문 앞
