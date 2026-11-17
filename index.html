@@ -90,7 +90,7 @@ const CONFIG = {
   // ---------------- 길목 성벽 (각 막 fromStage스테이지부터, 지도마다 정해진 자리 1~2곳) ----------------
   // 몬스터(지상)는 성벽을 부숴야 지나감 · 공중 몬스터는 넘어감 · 영웅과 병사는 그냥 지나감
   // 목수 1명이 repairDelay초 동안 공격이 없으면 초당 repair씩 수리 / 무너지면 웨이브 사이에 들인 비용의 rebuildRatio로 같은 레벨 재건
-  walls: { fromStage: 4, repair: 6, repairDelay: 5, rebuildRatio: 0.5,
+  walls: { fromStage: 4, startLevel: 1, repair: 6, repairDelay: 5, rebuildRatio: 0.5,   // startLevel: 스테이지 시작 때 이미 지어져 있는 레벨 (무료, 재건 비용은 지은 것과 같이 계산)
            levels: [ { cost: 400, hp: 1500, archers: 1 }, { cost: 600, hp: 2500, archers: 2 }, { cost: 900, hp: 4000, archers: 2, catapults: 1 } ] },
 
   // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
@@ -3208,14 +3208,19 @@ class WallSpot {
     }
     const n = this.next; if (!n) return;
     if (G.gold < n.cost) { notEnoughGold(); return; }
-    G.gold -= n.cost; this.invested += n.cost; const prev = this.maxHp; this.level++;
+    G.gold -= n.cost; this.levelUp();
+    FX.ring(this.x, this.y, 70, '255,215,90', 0.5); FX.spark(this.x, this.y - 20, '#ffe08a', 10); Sound.play(this.level === 1 ? 'build' : 'upgrade');
+    toast(this.level === 1 ? '길목 성벽을 지었어요' : `길목 성벽 Lv.${this.level}`, '#ffe08a');
+  }
+  // 한 레벨 올림 (비용은 부르는 쪽에서). 스테이지 시작 때 무료로 지어 둘 때도 씀
+  levelUp() {
+    const n = this.next; if (!n) return;
+    this.invested += n.cost; const prev = this.maxHp; this.level++;
     this.maxHp = this.cfg.hp; this.hp = this.level === 1 ? this.maxHp : Math.min(this.maxHp, this.hp + (this.maxHp - prev));
     const bx = this.back.x, by = this.back.y, ax = this.along.x, ay = this.along.y;
     const spots = [[0.3, 24], [-0.3, 24]];                       // 성벽 바로 뒤 궁수 자리 (성벽 길이의 비율, 뒤로 거리)
     while (this.archers.length < this.cfg.archers) { const [f, bk] = spots[this.archers.length]; this.archers.push(new WallArcher(this.x + ax * this.len * f + bx * bk, this.y + ay * this.len * f + by * bk)); }
     while (this.catapults.length < (this.cfg.catapults || 0)) this.catapults.push(new Catapult(this.x + bx * 70, this.y + by * 70, { side: bx < 0 ? 'R' : 'L' }));
-    FX.ring(this.x, this.y, 70, '255,215,90', 0.5); FX.spark(this.x, this.y - 20, '#ffe08a', 10); Sound.play(this.level === 1 ? 'build' : 'upgrade');
-    toast(this.level === 1 ? '길목 성벽을 지었어요' : `길목 성벽 Lv.${this.level}`, '#ffe08a');
   }
   takeDamage(amount) {
     if (!this.built) return;
@@ -6865,6 +6870,7 @@ function newGame(state, heroType = 'knight', diffKey = 'normal', stageIdx = sele
   G.rally = G.gates.map(q => q.front(150));                                  // 기본 집결 지점: 성문 앞
   G.stageIdx = G.stageIdx || 0;
   G.walls = (G.stageIdx + 1 >= CONFIG.walls.fromStage ? MAP.walls : []).map((w, i) => new WallSpot(i, w));   // 길목 성벽 자리 (4스테이지부터)
+  for (const w of G.walls) while (w.level < (CONFIG.walls.startLevel || 0)) w.levelUp();                        // 처음부터 지어져 있음 (무료)
   G.heroSpawn = heroSpawnFor();
   G.hero = new Hero(heroType);
   G.bases = [];
