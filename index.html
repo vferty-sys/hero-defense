@@ -205,10 +205,12 @@ const CONFIG = {
   // ---------------- 영웅 ----------------
   heroes: {
     knight: {
-      name: '기사', role: '탱커', desc: '아주 단단하지만 느린 탱커. 적을 4명까지 붙잡고 휩쓸어 벱니다. 기술은 스태미너 (쉬면 빨리 참).',
+      name: '기사', role: '탱커', desc: '단단한 탱커. 원거리 피해 -40% · 주변 병사 방어 +10% · 휩쓸기 흡혈. 기술은 스태미너.',
       hp: 900, armor: 0.45,           // armor: 받는 피해 감소 비율 (0.45 = 45% 감소)
       speed: 88, radius: 16,
-      attack: { damage: 26, interval: 1.0, range: 24, cleave: { radius: 45, ratio: 0.5 } },   // range: 몸 가장자리 사이 거리 (근접) / cleave: 주변 적에게 50% 휩쓸기 피해
+      attack: { damage: 34, interval: 0.85, range: 24, cleave: { radius: 45, ratio: 0.5, lifesteal: 0.15 } },   // range: 몸 가장자리 사이 거리 (근접) / cleave: 주변 적에게 50% 휩쓸기 피해, 그 피해의 15% 회복
+      // 패시브 「수호의 방패」: 받는 원거리 피해 -40%, 주변(auraRadius) 병사 방어력 +10%
+      passive: { name: '수호의 방패', rangedReduce: 0.4, auraRadius: 150, auraArmor: 0.1 },
       canHitAir: false,               // 근접이라 공중 유닛(박쥐)은 공격 불가
       baseDamageMul: 2.0,             // 적 기지 공격 배율 (기지 공격력 높음)
       aggroRange: 120,                // 서 있는 자리에서 이 거리 안의 적을 찾아가 싸움
@@ -226,11 +228,11 @@ const CONFIG = {
         { id: 'shieldBash', name: '방패 강타',   key: 'Q', target: 'none', cooldown: 4, cost: 25,
           damage: 60, perLevel: 8, stun: 1.5, range: 62, arc: 110 },
         { id: 'warcry',     name: '도발의 함성', key: 'W', target: 'none', cooldown: 8, cost: 35,
-          radius: 170, duration: 3, damageReduction: 0.5 },
+          radius: 170, duration: 5, damageReduction: 0.6, pull: 70 },   // 주변 적을 끌어당겨 도발 (pull = 끌어당기는 거리)
         { id: 'charge',     name: '돌진',       key: 'E', target: 'direction', cooldown: 6, cost: 30,
           distance: 250, speed: 760, damage: 70, perLevel: 8, width: 40, knockback: 70 },
         // minLevel: 이 레벨이 되어야 쓸 수 있는 궁극기
-        { id: 'judgment',   name: '심판의 일격', key: 'R', target: 'none', cooldown: 20, cost: 60, minLevel: 15,
+        { id: 'judgment',   name: '심판의 일격', key: 'R', target: 'none', cooldown: 20, cost: 60, minLevel: 10,
           radius: 220, damage: 280, stun: 2.5, heal: 0.3, baseDamage: 500 },     // 주변 적 큰 피해 + 기절, 자신 체력 30% 회복
       ],
     },
@@ -251,12 +253,12 @@ const CONFIG = {
           range: 330, radius: 95, duration: 3, dps: 45, perLevel: 6, scaleKey: 'dps' },
         { id: 'trap',      name: '덫 설치',  key: 'E', target: 'point', cooldown: 4.5, cost: 1,
           range: 280, radius: 28, root: 2, dps: 18, perLevel: 3, scaleKey: 'dps', maxTraps: 3, life: 40 },
-        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 17.5, cost: 5, minLevel: 15,
+        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 17.5, cost: 5, minLevel: 10,
           range: 430, count: 18, damage: 95 },                                      // 사거리 안의 적들에게 화살 18발
       ],
     },
     mage: {
-      name: '마법사', role: '마법', desc: '몸은 가장 약하지만 마법 스킬 피해 +25%. 마나로 광역 마법, 화염구는 적 기지에도 피해!',
+      name: '마법사', role: '마법', desc: '몸은 가장 약하지만 마법 스킬 피해 +25%. 마나로 강력한 광역 마법을 씁니다.',
       hp: 270, armor: 0, speed: 90, radius: 13,
       resource: { name: '마나', short: 'MP', max: 240, perLevel: 15, regen: 1, regenIdle: 5, color: '#4a8cff' },   // 항상 초당 1 + 쉬는 중 초당 5
       attack: { damage: 20, interval: 1.0, range: 185, ranged: true, magic: true, projectileSpeed: 520 },
@@ -272,7 +274,7 @@ const CONFIG = {
           radius: 210, amount: 150, perLevel: 15, scaleKey: 'amount', gateRange: 360 },
         { id: 'blizzard', name: '얼음 폭풍',  key: 'E', target: 'point', cooldown: 16, cost: 70,
           range: 330, radius: 145, duration: 4, slow: 0.5, dps: 31, perLevel: 5, scaleKey: 'dps' },
-        { id: 'meteor',   name: '메테오',     key: 'R', target: 'point', cooldown: 40, cost: 100, minLevel: 15,
+        { id: 'meteor',   name: '메테오',     key: 'R', target: 'point', cooldown: 40, cost: 100, minLevel: 10,
           range: 420, radius: 170, damage: 540, baseDamage: 750, delay: 1.2 },    // 하늘에서 거대한 운석 (적 기지에도 큰 피해)
       ],
     },
@@ -475,29 +477,60 @@ const CONFIG = {
 
   // ---------------- 아이템 ----------------
   items: {
-    rarities: [   // mul: 능력치 배율 / weight: 등장 비중 / sell: 버릴 때 받는 골드 / 전설은 스킬 강화 효과(perk) 추가
-      { id: 'common',    name: '일반', prefix: '평범한', color: '#e6e6e6', mul: 1.0, weight: 60, sell: 40 },
-      { id: 'rare',      name: '희귀', prefix: '빛나는', color: '#5aa8ff', mul: 1.8, weight: 30, sell: 90 },
-      { id: 'legendary', name: '전설', prefix: '전설의', color: '#ff9a2a', mul: 2.6, weight: 10, sell: 200 },
+    // 등급: mul = 능력치 배율 (좋아지는 능력치만) / weight = 등장 비중 / sell = 판매 골드 / 전설은 슬롯별 스킬 강화(perk) 추가
+    rarities: [
+      { id: 'normal',    name: '노멀', color: '#e6e6e6', mul: 1.0, weight: 50, sell: 30 },
+      { id: 'advanced',  name: '고급', color: '#7dd860', mul: 1.4, weight: 28, sell: 60 },
+      { id: 'rare',      name: '희귀', color: '#5aa8ff', mul: 1.8, weight: 14, sell: 110 },
+      { id: 'heroic',    name: '영웅', color: '#c27aff', mul: 2.3, weight: 6,  sell: 180 },
+      { id: 'legendary', name: '전설', color: '#ff9a2a', mul: 3.0, weight: 2,  sell: 300 },
     ],
+    // 세트 효과: 무기·갑옷·장신구 세 칸이 모두 같은 등급이면 (hpPct 체력 / dmgPct 공격력 / cdr 스킬 쿨타임 / ultCdr 궁극기 쿨타임)
+    sets: {
+      advanced:  { hpPct: 0.10, desc: '체력 +10%' },
+      rare:      { hpPct: 0.10, dmgPct: 0.10, desc: '체력·공격력 +10%' },
+      heroic:    { hpPct: 0.15, dmgPct: 0.15, cdr: 0.10, desc: '체력·공격력 +15% · 스킬 쿨타임 -10%' },
+      legendary: { hpPct: 0.25, dmgPct: 0.25, ultCdr: 0.30, desc: '체력·공격력 +25% · 궁극기 쿨타임 -30%' },
+    },
     dropChance: { midBoss: 0.3, finalBoss: 1, base: 0 },   // 드랍 확률: 중간보스 30% / 최종보스 100%
-    finalBossLegendaryWeight: 45,             // 최종보스는 전설이 더 잘 나옴
-    // 선택한 직업 전용 아이템만 드랍. stats는 '일반' 기준 (등급 배율 적용)
+    finalBossWeights: { heroic: 30, legendary: 20 },        // 최종보스는 영웅·전설이 잘 나옴
+    // 직업별 · 칸별 3종류 (stats는 '노멀' 기준). perks = 그 칸의 전설 아이템이 주는 스킬 강화
     heroes: {
       knight: {
-        weapon:    { name: '성검',          stats: { damage: 8 },                      perk: 'bashPlus',     perkDesc: '방패 강타 범위·기절 시간 1.5배' },
-        armor:     { name: '미스릴 갑옷',    stats: { hp: 120, armor: 0.04 },           perk: 'warcryPlus',   perkDesc: '도발의 함성 피해 감소 50% → 75%' },
-        accessory: { name: '왕의 반지',      stats: { cdr: 0.08 },                      perk: 'chargePlus',   perkDesc: '돌진 피해 2배 · 거리 1.4배' },
+        perks: { weapon: ['bashPlus', '방패 강타 범위·기절 시간 1.5배'], armor: ['warcryPlus', '도발의 함성 피해 감소 60% → 75%'], accessory: ['chargePlus', '돌진 피해 2배 · 거리 1.4배'] },
+        weapon:    [{ name: '장검', desc: '균형', stats: { damage: 8, attackSpeed: 0.05 } },
+                    { name: '대검', desc: '공격력↑ 공격 속도↓', stats: { damage: 15, attackSpeed: -0.12 } },
+                    { name: '철퇴', desc: '맞히면 기절 확률', stats: { damage: 7, stun: 0.12 } }],
+        armor:     [{ name: '판금 갑옷', desc: '단단함', stats: { hp: 140, armor: 0.03 } },
+                    { name: '사슬 갑옷', desc: '가벼움', stats: { hp: 90, armor: 0.02, speed: 6 } },
+                    { name: '기사단 망토', desc: '스킬', stats: { hp: 70, cdr: 0.05 } }],
+        accessory: [{ name: '왕의 반지', desc: '스킬', stats: { cdr: 0.08 } },
+                    { name: '힘의 목걸이', desc: '공격', stats: { damage: 5 } },
+                    { name: '거인의 허리띠', desc: '체력', stats: { hp: 110 } }],
       },
       archer: {
-        weapon:    { name: '엘프의 장궁',    stats: { range: 25, damage: 3 },           perk: 'multiPlus',    perkDesc: '연발 사격 5발 → 8발' },
-        armor:     { name: '바람의 망토',    stats: { speed: 12, attackSpeed: 0.08 },   perk: 'rainPlus',     perkDesc: '화살비 범위 1.4배' },
-        accessory: { name: '매의 눈 반지',   stats: { crit: 0.10 },                     perk: 'trapPlus',     perkDesc: '덫 최대 5개 · 속박 3초' },
+        perks: { weapon: ['multiPlus', '연발 사격 5발 → 8발'], armor: ['rainPlus', '화살비 범위 1.4배'], accessory: ['trapPlus', '덫 최대 5개 · 속박 3초'] },
+        weapon:    [{ name: '장궁', desc: '사거리↑', stats: { range: 30, damage: 3 } },
+                    { name: '단궁', desc: '공격 속도↑', stats: { attackSpeed: 0.12, damage: 2 } },
+                    { name: '석궁', desc: '한 방·치명타↑', stats: { damage: 7, crit: 0.06, attackSpeed: -0.08 } }],
+        armor:     [{ name: '가죽 갑옷', desc: '단단함', stats: { hp: 70, armor: 0.03 } },
+                    { name: '바람의 망토', desc: '빠름', stats: { speed: 12, attackSpeed: 0.06 } },
+                    { name: '사냥꾼 조끼', desc: '치명타', stats: { hp: 50, crit: 0.05 } }],
+        accessory: [{ name: '매의 눈 반지', desc: '치명타', stats: { crit: 0.10 } },
+                    { name: '속사 장갑', desc: '공격 속도', stats: { attackSpeed: 0.08 } },
+                    { name: '바람 깃털', desc: '이동·사거리', stats: { speed: 10, range: 12 } }],
       },
       mage: {
-        weapon:    { name: '대마법사의 지팡이', stats: { damage: 8, spellPower: 0.12 },  perk: 'fireballPlus', perkDesc: '화염구가 2번 폭발' },
-        armor:     { name: '별빛 로브',      stats: { mana: 60, hp: 50 },               perk: 'blizzardPlus', perkDesc: '얼음 폭풍 지속 시간 1.5배' },
-        accessory: { name: '마나 수정',      stats: { manaRegen: 3 },                   perk: 'healPlus',     perkDesc: '치유의 빛 회복량 2배' },
+        perks: { weapon: ['fireballPlus', '화염구가 2번 폭발'], armor: ['blizzardPlus', '얼음 폭풍 지속 시간 1.5배'], accessory: ['healPlus', '치유의 빛 회복량 2배'] },
+        weapon:    [{ name: '지팡이', desc: '마법 피해↑', stats: { damage: 5, spellPower: 0.12 } },
+                    { name: '마법봉', desc: '마나 회복·쿨타임', stats: { manaRegen: 2, cdr: 0.06 } },
+                    { name: '오브', desc: '최대 마나', stats: { mana: 60, spellPower: 0.06 } }],
+        armor:     [{ name: '별빛 로브', desc: '마나', stats: { mana: 60, hp: 50 } },
+                    { name: '현자의 로브', desc: '마나 회복', stats: { manaRegen: 1.5, hp: 40 } },
+                    { name: '수호 로브', desc: '단단함', stats: { hp: 90, armor: 0.03 } }],
+        accessory: [{ name: '마나 수정', desc: '마나 회복', stats: { manaRegen: 3 } },
+                    { name: '지혜의 반지', desc: '쿨타임', stats: { cdr: 0.08 } },
+                    { name: '불꽃 목걸이', desc: '마법 피해', stats: { spellPower: 0.10 } }],
       },
     },
   },
@@ -2552,7 +2585,7 @@ const Icon = {
   },
   // 아이템 아이콘: 직업·슬롯별 모양, 등급별 색 (일반 은색 / 희귀 파랑 / 전설 주황)
   item(ctx, item, heroType, x, y, s) {
-    const u = s / 20, col = { common: '#cfd3d8', rare: '#6ab4ff', legendary: '#ffaa3a' }[item.rarity], dark = 'rgba(0,0,0,0.45)';
+    const u = s / 20, col = { normal: '#cfd3d8', advanced: '#8ee070', rare: '#6ab4ff', heroic: '#cf8aff', legendary: '#ffaa3a' }[item.rarity] || '#cfd3d8', dark = 'rgba(0,0,0,0.45)';
     ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     if (item.slot === 'weapon') {
       if (heroType === 'archer') {
@@ -3446,7 +3479,8 @@ class Soldier {
       for (const u of G.soldiers) if (u !== this && !u.dead && !u.target && !u.cfg.support && dist(u.x, u.y, this.x, this.y) < 140) { u.provoked = src; u.provokedT = G.time; }
     }
     const p = this.passive, stal = p && p.hpRatio && this.hp <= this.maxHp * p.hpRatio ? p.armor : 0;   // 보병 불굴
-    this.hp -= amount * (1 - Math.min(0.85, this.armor + supGuard(this) + stal)); this.lastHit = G.time; this.flash = 0.1;
+    const h = G.hero, HP = h && !h.dead && h.cfg.passive, aura = HP && HP.auraArmor && dist(h.x, h.y, this.x, this.y) <= HP.auraRadius ? HP.auraArmor : 0;   // 기사 「수호의 방패」 주변 병사 방어력
+    this.hp -= amount * (1 - Math.min(0.85, this.armor + supGuard(this) + stal + aura)); this.lastHit = G.time; this.flash = 0.1;
     if (this.hp <= 0) this.die();
   }
   releaseAll() { for (const e of [...this.engaged]) e.release(); this.engaged.clear(); }
@@ -3905,37 +3939,39 @@ function spawnEscorts(base, boss, n, fin) {
 }
 
 // ---------- 아이템 ----------
-const STAT_LABEL = { damage: '공격력', hp: '체력', armor: '방어력', cdr: '스킬 쿨타임', range: '사거리', speed: '이동 속도', attackSpeed: '공격 속도', crit: '치명타 확률', spellPower: '마법 피해', mana: '최대 마나', manaRegen: '마나 회복' };
-const PCT_STATS = new Set(['armor', 'cdr', 'attackSpeed', 'crit', 'spellPower']);
+const STAT_LABEL = { damage: '공격력', hp: '체력', armor: '방어력', cdr: '스킬 쿨타임', range: '사거리', speed: '이동 속도', attackSpeed: '공격 속도', crit: '치명타 확률', spellPower: '마법 피해', mana: '최대 마나', manaRegen: '마나 회복', stun: '기절 확률' };
+const PCT_STATS = new Set(['armor', 'cdr', 'attackSpeed', 'crit', 'spellPower', 'stun']);
 function fmtStat(k, v) {
-  if (PCT_STATS.has(k)) return `${STAT_LABEL[k]} ${k === 'cdr' ? '-' : '+'}${Math.round(v * 100)}%`;
-  return `${STAT_LABEL[k]} +${Math.round(v * 10) / 10}${k === 'manaRegen' ? '/초' : ''}`;
+  const sign = k === 'cdr' ? (v >= 0 ? '-' : '+') : v >= 0 ? '+' : '-', a = Math.abs(v);
+  if (PCT_STATS.has(k)) return `${STAT_LABEL[k]} ${sign}${Math.round(a * 100)}%`;
+  return `${STAT_LABEL[k]} ${sign}${Math.round(a * 10) / 10}${k === 'manaRegen' ? '/초' : ''}`;
 }
 function rarityOf(item) { return CONFIG.items.rarities.find(r => r.id === item.rarity); }
+// 아이템: 칸(무기·갑옷·장신구) · 종류(칸마다 3가지) · 등급(5단계)을 무작위로. 좋아지는 능력치만 등급 배율
 function makeItem(heroType, final) {
   const I = CONFIG.items, slots = ['weapon', 'armor', 'accessory'], slot = slots[Math.floor(Math.random() * 3)];
-  const rs = I.rarities.map(r => ({ ...r, weight: r.id === 'legendary' && final ? I.finalBossLegendaryWeight : r.weight }));
-  const r = weightedPick(rs), base = I.heroes[heroType][slot], stats = {};
-  for (const k in base.stats) stats[k] = PCT_STATS.has(k) ? Math.round(base.stats[k] * r.mul * 100) / 100 : Math.round(base.stats[k] * r.mul);
-  return { slot, rarity: r.id, name: `${r.prefix} ${base.name}`, baseName: base.name, stats,
-           perk: r.id === 'legendary' ? base.perk : null, perkDesc: r.id === 'legendary' ? base.perkDesc : null,
-           rank: I.rarities.indexOf(I.rarities.find(q => q.id === r.id)) };
+  const rs = I.rarities.map(r => ({ ...r, weight: final && I.finalBossWeights[r.id] != null ? I.finalBossWeights[r.id] : r.weight }));
+  const r = weightedPick(rs), H = I.heroes[heroType], kinds = H[slot], ti = Math.floor(Math.random() * kinds.length), base = kinds[ti], stats = {};
+  for (const k in base.stats) { const v = base.stats[k], m = v > 0 ? r.mul : 1; stats[k] = PCT_STATS.has(k) ? Math.round(v * m * 100) / 100 : Math.round(v * m * 10) / 10; }
+  const perk = r.id === 'legendary' ? H.perks[slot] : null;
+  return { slot, type: ti, rarity: r.id, name: `${r.name} ${base.name}`, baseName: base.name, desc: base.desc, stats,
+           perk: perk ? perk[0] : null, perkDesc: perk ? perk[1] : null, rank: I.rarities.indexOf(r) };
 }
 function dropItem(x, y, final) {
   const p = Nav.clampTarget(x, y), it = makeItem(G.heroType, final);
   G.drops.push(new Drop(p.x, p.y, it));
   FX.ring(p.x, p.y, 40, '255,230,150', 0.6);
-  FX.text(p.x, p.y - 50, `${rarityOf(it).name} 아이템!`, rarityOf(it).color, 18, 1.6); Sound.play(it.rarity === 'legendary' ? 'dropLegend' : 'drop');
+  FX.text(p.x, p.y - 50, `${rarityOf(it).name} 아이템!`, rarityOf(it).color, 18, 1.6); Sound.play(rankOf(it) >= 3 ? 'dropLegend' : 'drop');
 }
 // 영웅 장비 보관: 직업별로 저장 → 다음 스테이지 · 다시 하기에서도 그대로 착용 (브라우저에 저장)
 const SavedGear = {
   mem: null,
   all() {
-    if (!this.mem) { try { this.mem = JSON.parse(localStorage.getItem('kg.gear') || '{}') || {}; } catch (_) { this.mem = {}; } }
+    if (!this.mem) { try { this.mem = JSON.parse(localStorage.getItem('kg.gear2') || '{}') || {}; } catch (_) { this.mem = {}; } }   // 5등급 아이템 (예전 장비는 쓰지 않음)
     return this.mem;
   },
   get(type) { return this.all()[type] || null; },
-  save(type, items) { this.all()[type] = { ...items }; try { localStorage.setItem('kg.gear', JSON.stringify(this.mem)); } catch (_) {} },
+  save(type, items) { this.all()[type] = { ...items }; try { localStorage.setItem('kg.gear2', JSON.stringify(this.mem)); } catch (_) {} },
 };
 // 떨어진 아이템: 영웅이 가지러 가지 않아도 잠깐 반짝인 뒤 바로 획득 (교체 창이 떠 있으면 닫힌 뒤 차례로)
 class Drop {
@@ -3961,7 +3997,7 @@ function pickupDrop(d) {
   }
   G.itemPrompt = { drop: d, item: it, cur };     // 같은 슬롯 · 같거나 높은 등급 → 교체할지 선택 (그동안 게임 일시정지)
 }
-function rankOf(item) { return CONFIG.items.rarities.findIndex(r => r.id === item.rarity); }   // 일반 0 · 희귀 1 · 전설 2
+function rankOf(item) { return CONFIG.items.rarities.findIndex(r => r.id === item.rarity); }   // 노멀 0 · 고급 1 · 희귀 2 · 영웅 3 · 전설 4
 function resolveItemPrompt(take) {
   const P = G.itemPrompt; if (!P) return;
   const h = G.hero, sold = take ? P.cur : P.item, gold = rarityOf(sold).sell;
@@ -4826,9 +4862,10 @@ class Hero {
   }
   // 능력치 = 기본 + 레벨 성장 + 장착 아이템
   recalc() {
-    const c = this.cfg, l = this.level - 1, B = this.bonus();
-    this.maxHp = Math.round(c.hp + c.perLevel.hp * l + (B.hp || 0));
-    this.damage = c.attack.damage + c.perLevel.damage * l + (B.damage || 0);
+    const c = this.cfg, l = this.level - 1, B = this.bonus(), S = this.setBonus = this.itemSet();
+    const SB = S || {};
+    this.maxHp = Math.round((c.hp + c.perLevel.hp * l + (B.hp || 0)) * (1 + (SB.hpPct || 0)));
+    this.damage = (c.attack.damage + c.perLevel.damage * l + (B.damage || 0)) * (1 + (SB.dmgPct || 0));
     this.armor = Math.min(0.75, c.armor + c.perLevel.armor * l + (B.armor || 0));
     const R = c.resource;                                      // 기술 자원 (마나 · 스태미너 · 화살통) — 변수 이름은 mana로 통일
     this.maxMana = R ? Math.round(R.max + (R.perLevel || 0) * l + (B.mana || 0)) : 0;
@@ -4836,8 +4873,14 @@ class Hero {
     this.range = c.attack.range + (B.range || 0);
     this.atkInterval = c.attack.interval * (1 - Math.min(0.5, B.attackSpeed || 0));
     this.speed = c.speed + (B.speed || 0);
-    this.crit = B.crit || 0; this.cdr = Math.min(0.5, B.cdr || 0);
+    this.crit = B.crit || 0; this.cdr = Math.min(0.5, (B.cdr || 0) + (SB.cdr || 0)); this.ultCdr = SB.ultCdr || 0; this.stunChance = Math.min(0.35, B.stun || 0);
     this.manaRegenBonus = B.manaRegen || 0; this.spellPower = B.spellPower || 0;
+  }
+  // 세트 효과: 세 칸이 모두 같은 등급이면 그 등급의 세트 효과
+  itemSet() {
+    const its = Object.values(this.items); if (its.some(i => !i)) return null;
+    const r = its[0].rarity; if (!its.every(i => i.rarity === r)) return null;
+    const st = CONFIG.items.sets[r]; return st ? { ...st, rarity: r } : null;
   }
   bonus() {
     const B = {};
@@ -4897,6 +4940,7 @@ class Hero {
   takeDamage(amount, src) {
     if (this.dead) return;
     if (src instanceof Enemy && src.alive) { this.provoked = src; this.provokedT = G.time; }   // 나를 공격한 적 기억 (지키는 중이면 반격)
+    const PS = this.cfg.passive; if (PS && PS.rangedReduce && src instanceof Enemy && src.ranged) amount *= 1 - PS.rangedReduce;   // 수호의 방패: 원거리 피해 감소
     let d = amount * (1 - Math.min(0.85, this.armor + supGuard(this)));
     if (this.buffs.warcry > 0) d *= 1 - this.buffs.warcryRed;
     this.hp -= d; this.lastHit = G.time; this.flash = 0.1;
@@ -4938,7 +4982,7 @@ class Hero {
       judgment: () => this.castJudgment(sk), arrowStorm: () => this.castArrowStorm(sk), meteor: () => this.castMeteor(sk, tx, ty),
     }[sk.id];
     if (!fn || fn() === false) return false;                      // false = 쓸 수 없음 (쿨타임·마나 소모 안 함)
-    this.cooldowns[i] = sk.cooldown * (1 - this.cdr);            // 왕의 반지: 쿨타임 감소
+    this.cooldowns[i] = sk.cooldown * (1 - this.cdr) * (sk.minLevel ? 1 - (this.ultCdr || 0) : 1);   // 쿨타임 감소 (전설 세트: 궁극기 쿨타임 추가 감소)
     this.castAnim = 0.45;
     this.mana -= sk.cost || 0;
     return true;
@@ -5055,7 +5099,11 @@ class Hero {
   castWarcry(sk) {
     this.buffs.warcry = sk.duration; this.buffs.warcryRed = this.hasPerk('warcryPlus') ? 0.75 : sk.damageReduction;
     let n = 0;
-    for (const e of G.enemies) if (e.alive && !e.air && dist(this.x, this.y, e.x, e.y) <= sk.radius) { e.taunted(this, sk.duration); n++; }
+    for (const e of G.enemies) if (e.alive && !e.air && dist(this.x, this.y, e.x, e.y) <= sk.radius) {
+      e.taunted(this, sk.duration); n++;
+      const d = dist(this.x, this.y, e.x, e.y);                  // 끌어당기기 (보스는 밀쳐지지 않음)
+      if (sk.pull && d > 30) { const pl = Math.min(sk.pull, d - 30); e.knockback((this.x - e.x) / d * pl / 0.22, (this.y - e.y) / d * pl / 0.22, 0); }
+    }
     FX.ring(this.x, this.y, sk.radius, '255,120,70', 0.55); FX.ring(this.x, this.y, sk.radius * 0.6, '255,200,120', 0.4);
     FX.text(this.x, this.y - 40, n ? `도발! (${n})` : '도발!', '#ff9a6a', 20, 1.1); Sound.play('warcry', this.x, this.y);
   }
@@ -5219,9 +5267,15 @@ class Hero {
       FX.spark(hx, hy, '#ffe08a', 4); FX.text(hx, hy - 16, '-' + d, '#ffd36b', 16, 0.7);
     } else {
       t.takeDamage(DMG * (crit ? 2 : 1), this, false, crit); FX.spark(t.x, t.y, '#ffffff', 3); Sound.play('sword', t.x, t.y);
+      if (this.stunChance && t.alive && Math.random() < this.stunChance) { t.stun = Math.max(t.stun, 0.8); FX.text(t.x, t.y - 30, '기절!', '#ffe08a', 13, 0.6); }   // 철퇴: 기절 확률
+      let cl = 0;
       if (A.cleave) for (const e of G.enemies) {                   // 휩쓸기: 앞쪽 가까운 적들에게도 피해
         if (e === t || !e.alive || (e.air && !e.low)) continue;
-        if (dist(e.x, e.y, t.x, t.y) <= A.cleave.radius + e.radius) e.takeDamage(DMG * A.cleave.ratio, this);
+        if (dist(e.x, e.y, t.x, t.y) <= A.cleave.radius + e.radius) { e.takeDamage(DMG * A.cleave.ratio, this); cl += DMG * A.cleave.ratio; }
+      }
+      if (A.cleave && A.cleave.lifesteal && cl > 0) {              // 기사: 휩쓸기 흡혈
+        const hl = cl * A.cleave.lifesteal; this.hp = Math.min(this.maxHp, this.hp + hl);
+        if (Math.random() < 0.3) FX.text(this.x + 14, this.y - 38, '+' + Math.round(hl), '#7dff6a', 12, 0.6);
       }
       FX.arc(t.x - Math.cos(this.face) * 6, t.y - Math.sin(this.face) * 6, this.face, A.cleave ? 30 : 16, A.cleave ? 2.2 : 1.4, '255,255,255', 0.14);   // 베기 효과
     }
@@ -6236,7 +6290,7 @@ const SLOTS = [['weapon', '무기'], ['armor', '갑옷'], ['accessory', '장신�
 function itemCard(ctx, item, x, y, w, k, heroType) {
   const r = rarityOf(item);
   txt(ctx, item.name, x, y, 16 * k, r.color, 'left', { weight: 800 });
-  txt(ctx, `${r.name} · ${SLOTS.find(q => q[0] === item.slot)[1]}`, x, y + 20 * k, 12 * k, '#bfae8a', 'left', { weight: 600 });
+  txt(ctx, `${r.name} · ${SLOTS.find(q => q[0] === item.slot)[1]}${item.desc ? ' · ' + item.desc : ''}`, x, y + 20 * k, 12 * k, '#bfae8a', 'left', { weight: 600 });
   let yy = y + 44 * k;
   for (const kk in item.stats) { txt(ctx, fmtStat(kk, item.stats[kk]), x, yy, 14 * k, '#f3e3bf', 'left', { weight: 600 }); yy += 20 * k; }
   if (item.perkDesc) {
@@ -6248,7 +6302,8 @@ function drawItemSlots(ctx) {
   const h = G.hero; if (!h || G.state !== 'playing') return;
   const k = UI.k, VW = CONFIG.view.width, VH = CONFIG.view.height, ss = 58 * k, gap = 8 * k, total = ss * 3 + gap * 2;
   const mm = minimapRect(), top = (MINIMAP.open ? mm.y + mm.h : mm.y + 52 * mm.s) + 16 * k, bottom = VH - (10 + 92 + 14) * k;
-  let y0 = Math.max(top, (VH - total) / 2); if (y0 + total > bottom) y0 = Math.max(top, bottom - total);
+  const extra = h.setBonus ? 52 * k : 0;                           // 세트 효과 글자 자리
+  let y0 = Math.max(top, (VH - total) / 2); if (y0 + total + extra > bottom) y0 = Math.max(top, bottom - total - extra);
   const x = VW - 10 * UI.kt - ss;
   SLOTS.forEach(([slot, label], i) => {
     const y = y0 + i * (ss + gap), it = h.items[slot], on = G.itemInfo === slot;
@@ -6256,22 +6311,35 @@ function drawItemSlots(ctx) {
     rr(ctx, x, y + (pr ? 2 * k : 0), ss, ss, 10 * k); ctx.fillStyle = on ? 'rgba(70,52,30,0.95)' : 'rgba(30,22,14,0.85)'; ctx.fill();
     ctx.lineWidth = (it ? 2.5 : 1.5) * k; ctx.strokeStyle = it ? rarityOf(it).color : '#6a5a44'; ctx.stroke();
     if (it) {
-      if (it.rarity === 'legendary') { ctx.fillStyle = hexA('#ffaa3a', 0.18 + Math.sin(realTime * 4) * 0.08); rr(ctx, x, y, ss, ss, 10 * k); ctx.fill(); }
+      if (rankOf(it) >= 3) { ctx.fillStyle = hexA(rarityOf(it).color, 0.18 + Math.sin(realTime * 4) * 0.08); rr(ctx, x, y, ss, ss, 10 * k); ctx.fill(); }   // 영웅·전설은 빛남
       Icon.item(ctx, it, G.heroType, x + ss / 2, y + ss / 2, 36 * k);
     } else {
-      ctx.globalAlpha = 0.25; Icon.item(ctx, { slot, rarity: 'common' }, G.heroType, x + ss / 2, y + ss / 2 - 5 * k, 26 * k); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.25; Icon.item(ctx, { slot, rarity: 'normal' }, G.heroType, x + ss / 2, y + ss / 2 - 5 * k, 26 * k); ctx.globalAlpha = 1;
       txt(ctx, label, x + ss / 2, y + ss - 11 * k, 11 * k, '#8a7a5a', 'center', { weight: 600 });
     }
   });
+  if (h.setBonus && !(G.itemInfo && y0 + total + extra > bottom)) {   // 세트 효과 (세 칸 모두 같은 등급): 칸 아래, 자리가 없으면 장신구 칸 왼쪽
+    const r = CONFIG.items.rarities.find(q => q.id === h.setBonus.rarity), below = y0 + total + extra <= bottom;
+    const sx = below ? x + ss : x - 10 * k, sy = below ? y0 + total + 14 * k : y0 + 2 * (ss + gap) + 12 * k;
+    txt(ctx, `${r.name} 세트`, sx, sy, 14 * k, r.color, 'right', { weight: 900, stroke: 'rgba(0,0,0,0.85)', strokeW: 4 * k });
+    for (const [j, ln] of h.setBonus.desc.split(' · ').entries()) txt(ctx, ln, sx, sy + (17 + j * 16) * k, 12 * k, '#f3e3bf', 'right', { weight: 700, stroke: 'rgba(0,0,0,0.85)', strokeW: 4 * k });
+  }
   if (G.itemInfo) {                                                // 아이템 정보창 (칸 왼쪽)
     const i = SLOTS.findIndex(q => q[0] === G.itemInfo), it = h.items[G.itemInfo], w = 290 * k;
-    const ph = it ? (90 + Object.keys(it.stats).length * 20 + (it.perkDesc ? 40 : 0)) * k : 84 * k;
-    const px = x - w - 10 * k, py = clamp(y0 + i * (ss + gap) - 6 * k, top, VH - ph - 10 * k);
+    const setL = it && h.setBonus ? 42 : 0;                       // 세트 효과 두 줄
+    const ph = it ? (76 + Object.keys(it.stats).length * 20 + (it.perkDesc ? 24 : 0) + setL) * k : 84 * k;
+    const px = x - w - 10 * k, py = Math.max(10 * k, Math.min(y0 + i * (ss + gap) - 6 * k, bottom - ph));   // 스킬 버튼을 가리지 않게
     UI.block(px, py, w, ph); panel(ctx, px, py, w, ph, k);
-    if (it) itemCard(ctx, it, px + 16 * k, py + 22 * k, w - 32 * k, k, G.heroType);
-    else {
+    if (it) {
+      itemCard(ctx, it, px + 16 * k, py + 22 * k, w - 32 * k, k, G.heroType);
+      if (setL) {
+        const r = CONFIG.items.rarities.find(q => q.id === h.setBonus.rarity);
+        txt(ctx, `◆ ${r.name} 세트 효과`, px + 16 * k, py + ph - 38 * k, 12.5 * k, r.color, 'left', { weight: 800 });
+        txt(ctx, h.setBonus.desc, px + 16 * k, py + ph - 19 * k, 12 * k, '#f3e3bf', 'left', { weight: 600 });
+      }
+    } else {
       txt(ctx, `${SLOTS[i][1]} 칸이 비어 있어요`, px + 16 * k, py + 26 * k, 15 * k, '#f3e3bf', 'left', { weight: 700 });
-      txt(ctx, '보스를 처치하거나 적 기지를 부수면', px + 16 * k, py + 50 * k, 12.5 * k, '#cdbb98', 'left', { weight: 500 });
+      txt(ctx, '중간보스·최종보스를 처치하면', px + 16 * k, py + 50 * k, 12.5 * k, '#cdbb98', 'left', { weight: 500 });
       txt(ctx, `${CONFIG.heroes[G.heroType].name} 전용 아이템이 떨어져요`, px + 16 * k, py + 68 * k, 12.5 * k, '#cdbb98', 'left', { weight: 500 });
     }
   }
@@ -6461,7 +6529,7 @@ function resetProgress() {
   resetArmUntil = 0;
   for (const k in cleared) cleared[k] = 0;
   SavedGear.mem = {};
-  try { for (const k of ['kg.progress', 'kg.progress2', 'kg.cleared', 'kg.gear', 'kg.stage', 'kg.hero', 'kg.diff']) localStorage.removeItem(k); } catch (_) {}
+  try { for (const k of ['kg.progress', 'kg.progress2', 'kg.cleared', 'kg.gear', 'kg.gear2', 'kg.stage', 'kg.hero', 'kg.diff']) localStorage.removeItem(k); } catch (_) {}
   selectedStage = 0; selectedDiff = 'normal'; selectedHero = 'knight';
   newGame('select', selectedHero, selectedDiff, 0);
   selectMsg = { text: '모든 기록을 지웠어요. 1스테이지부터 다시 시작합니다', until: realTime + 2.5 }; Sound.play('coin');
