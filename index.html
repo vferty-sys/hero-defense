@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#14110d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="왕국 수호자">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>왕국 수호자</title>
 <style>
   html, body {
@@ -7054,6 +7059,11 @@ window.GAME = {
   start: startGame, useSkill, tap: (x, y) => onWorldTap({ x, y }),
   simulate(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n && G.state === 'playing'; i++) update(STEP); },
 };
+
+// 앱 설치·오프라인 실행 (sw.js): 웹 주소로 직접 열었을 때만. 파일로 열거나 다른 페이지 안(미리보기 등)에서는 건너뜀
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.self === window.top) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>
