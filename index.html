@@ -287,8 +287,8 @@ const CONFIG = {
     },
   },
   heroLevels: {
-    max: 15,
-    xpToNext: [80, 130, 190, 260, 340, 430, 530, 640, 760, 900, 1050, 1220, 1400, 1600],   // Lv1→2, Lv2→3, ... Lv14→15 필요 경험치
+    max: 10,                          // 최고 레벨 (10레벨에 궁극기 R)
+    xpToNext: [80, 130, 190, 260, 340, 430, 530, 640, 760],   // Lv1→2, Lv2→3, ... Lv9→10 필요 경험치
     sharedXp: 0.35,                   // 영웅이 아닌 성벽 궁수 등이 처치해도 이 비율만큼 경험치 획득
     regenPerLevel: 0.05,              // 레벨마다 체력 회복·기술 자원(마나·스태미너·화살) 회복 속도 +5%
   },
@@ -5103,7 +5103,7 @@ class Hero {
     G.projectiles.push(new Fireball(this.x, this.y - 10, tx, ty, this.hasPerk('fireballPlus') ? { ...sk, explosions: 2 } : sk, this.skillValue(sk, 'damage'), this));
     this.face = Math.atan2(ty - this.y, tx - this.x); this.attackAnim = 0.3; Sound.play('fireCast', this.x, this.y);
   }
-  // ----- 15레벨 궁극기 -----
+  // ----- 10레벨(최고 레벨) 궁극기 -----
   castJudgment(sk) {                                           // 기사: 심판의 일격 (주변 적 큰 피해 + 기절, 체력 회복, 기지 피해)
     const R = sk.radius;
     for (const e of G.enemies) {
