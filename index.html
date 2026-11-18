@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>왕국 수호자</title>
 <style>
+  :root { --sa-t: env(safe-area-inset-top, 0px); --sa-r: env(safe-area-inset-right, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: #14110d; overflow: hidden;
@@ -56,7 +57,8 @@
 // ==========================================================================
 const CONFIG = {
   view: {
-    width: 1600, height: 900,     // 가상 해상도(16:9). 실제 화면에 맞춰 비율 유지하며 자동 확대/축소
+    width: 1600, height: 900,     // 가상 해상도. 높이 900은 고정, 너비는 실제 화면 비율에 맞춰 minWidth~maxWidth 안에서 바뀜 (휴대폰처럼 가로가 긴 화면도 꽉 참)
+    minWidth: 1200, maxWidth: 2300,
     smallScreenScale: 0.55,       // 화면 배율이 이보다 작으면(휴대폰 등) 지도를 확대해서 보여줌
     smallScreenZoom: 1.35,
     maxZoom: 1.6,                 // 확대 한계 (휠 / 두 손가락). 축소 한계는 지도 전체가 보이는 배율
@@ -5949,12 +5951,35 @@ function drawBottomHUD(ctx) {
   }
   const ms = 54 * k, mx = mxR - ms, my = VH - pad - ms;            // 음소거 버튼
   const muteShown = mx > px + pw + gap;
-  drawArmyBar(ctx, px + pw + gap, (muteShown ? mx : mxR) - gap, py);
+  if (UI.compact) {                                                // 작은 화면: 병력 버튼 (누르면 병력 칸이 펼쳐짐)
+    const tw = drawArmyToggle(ctx, px + pw + gap, VH - pad, k);
+    if (armyDrawerOpen()) drawArmyBar(ctx, px + pw + gap + tw + gap, (muteShown ? mx : mxR) - gap, py);
+    else { G.armyBarRect = null; G.armyRects = {}; }
+  } else { G.armyToggleRect = null; drawArmyBar(ctx, px + pw + gap, (muteShown ? mx : mxR) - gap, py); }
   if (muteShown) {
     const off = drawButton(ctx, mx, my, ms, ms, UI.button('mute', mx, my, ms, ms, () => { SETTINGS.muted = !SETTINGS.muted; saveSettings(); Sound.unlock(); Sound.applyVolumes(); }), k, '',
       { radius: 27, c1: SETTINGS.muted ? '#6a5040' : '#4a6aa8', c2: SETTINGS.muted ? '#3a2a20' : '#2a3f6e', border: SETTINGS.muted ? '#c8a080' : '#c9d8ff' });
     Icon.speaker(ctx, mx + ms / 2, my + ms / 2 + off, 28 * k, !SETTINGS.muted);
   }
+}
+
+// ---------- 작은 화면의 병력 버튼: 병력 칸을 펼치고 접음. 준비 시간에는 저절로 펼쳐짐 ----------
+function armyDrawerOpen() { return !UI.compact || G.armyOpen || (G.prep > 0 && !G.armyClosedInPrep); }
+function toggleArmyDrawer() {
+  if (armyDrawerOpen()) { G.armyOpen = false; if (G.prep > 0) G.armyClosedInPrep = true; if (G.sel && G.sel.kind === 'facility') G.sel = null; }
+  else G.armyOpen = true;
+}
+// (x, 아래끝 y) 에 버튼을 그리고 너비를 돌려줌. 대기 수 · 생산 막대 · 인구 가득 표시
+function drawArmyToggle(ctx, x, bottom, k) {
+  const A = G.army, open = armyDrawerOpen(), w = 128 * k, h = 76 * k, y = bottom - h, head = A.queue[0];
+  G.armyToggleRect = { x, y, w, h };
+  const off = drawButton(ctx, x, y, w, h, UI.button('armyToggle', x, y, w, h, toggleArmyDrawer), k, '',
+    open ? { radius: 14, c1: '#7a5a2a', c2: '#4a3418', border: '#ffe08a' } : { radius: 14, c1: '#5a4630', c2: '#3a2c1c', border: '#a8874e' });
+  Icon.unit(ctx, head || 'footman', Math.max(1, A.lv[head || 'footman'] || 1), x + 32 * k, y + h / 2 - 2 * k + off, 40 * k);
+  txt(ctx, `병력 ${open ? '▼' : '▲'}`, x + 58 * k, y + 24 * k + off, 17 * k, '#f3e3bf', 'left', { weight: 900, stroke: 'rgba(0,0,0,0.6)' });
+  txt(ctx, A.full ? '인구 가득' : A.queue.length ? `대기 ${A.queue.length}` : '생산하기', x + 58 * k, y + 47 * k + off, 13 * k, A.full ? '#ffb09a' : A.queue.length ? '#ffd36b' : '#cdbb98', 'left', { weight: 800 });
+  if (head) { const st = unitStats(head); bar(ctx, x + 10 * k, y + h - 14 * k + off, w - 20 * k, 5 * k, clamp(A.prog / st.spawnTime, 0, 1), A.full ? '#a05a4a' : '#6fb7ff'); }
+  return w;
 }
 
 // ---------- 아래 병력 칸: 위쪽(그림)을 누르면 생산 대기열에 1명 추가 / 아래쪽 강화 띠를 누르면 훈련 시설 메뉴 ----------
@@ -6211,6 +6236,7 @@ function drawSelectionPanel(ctx) {
     const r = G.armyRects && G.armyRects[s.ref], bar = G.armyBarRect; if (!r) return;
     px = r.x + r.w / 2 - w / 2; py = (G.armyTopY != null ? Math.min(bar.y, G.armyTopY) : bar.y) - 10 * k - h;
     if (py < top) { px = bar.x + bar.w + 10 * k; py = Math.max(top, bar.y + bar.h - h); }
+    if (G.armyToggleRect) px = Math.max(px, G.armyToggleRect.x + G.armyToggleRect.w + 10 * k);   // 작은 화면: 병력 버튼을 가리지 않게
   }
   px = clamp(px, 10, VW - 10 - w); py = clamp(py, top, Math.max(top, (fac ? VH : bottom) - h));
   UI.block(px, py, w, h);
@@ -6511,17 +6537,17 @@ function drawOverlay(ctx) {
 function drawTitle(ctx, k) {
   const pw = 800 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
   txt(ctx, '왕국 수호자', cx, y + 74 * k, 60 * k, '#ffd36b', 'center', { stroke: '#3a2208', strokeW: 9 * k, weight: 900 });
-  txt(ctx, '성문을 지키고, 적의 기지를 무너뜨려라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
+  txt(ctx, '성문을 지키고, 몰려오는 슬라임 웨이브를 모두 막아내라!', cx, y + 130 * k, 22 * k, '#f3e3bf', 'center', { weight: 600 });
   divider(ctx, cx, y + 158 * k, pw - 120 * k, k);
   const lines = [
     ['게임 방법', '#ffcf6a'],
-    ['· 스테이지 10개 (앞 스테이지를 깨면 다음이 열려요 · 보통을 모두 깨면 어려움이 열려요)'],
-    ['· 빈 곳 탭: 영웅 이동 · 적 기지 탭: 공격 (수비병이 지키고, 공격받으면 더 불러와요)'],
-    ['· 아래 병력 칸: 성문에서 나올 병사 선택 (인구 25) · 같은 칸을 다시 누르면 시설 건설·강화'],
-    ['· 보스는 스킬을 씁니다. 바닥에 빨간 범위가 보이면 피하세요! (쓰러뜨리면 가끔 아이템)'],
-    ['· 화면 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 오른쪽 위 미니맵을 눌러 바로 이동'],
-    ['· 소리: 첫 터치 후 재생 · 크기는 일시정지 메뉴, 음소거는 아래 스피커 버튼'],
-    ['· 시간이 지날수록 적이 강해집니다. 성문이 무너지기 전에 적 기지를 모두 파괴하세요!'],
+    ['· 1막: 스테이지 10개 + 최종보스전 (깨면 다음 스테이지가 열려요)'],
+    ['· 빈 곳 탭: 영웅 이동 · 웨이브를 모두 막으면 승리, 성문이 무너지면 패배'],
+    ['· 병력 칸: 누를 때마다 병사 1명 생산 · ▲ 띠: 훈련 시설 강화'],
+    ['· 성문 탭: 성문 강화 · 메뉴가 열린 채 지도를 탭하면 집결 지점 이동'],
+    ['· 3웨이브마다 중간보스! 바닥의 빨간 범위를 피하세요 (쓰러뜨리면 아이템)'],
+    ['· 드래그로 이동 · 휠/두 손가락으로 확대·축소 · 소리는 첫 터치 후 재생'],
+    ['· 「바로 시작」으로 다음 웨이브를 당기면 보너스 골드!'],
   ];
   let ly = y + 192 * k;
   for (const [s, col] of lines) {
@@ -6696,9 +6722,9 @@ function drawSelect(ctx, k) {
 const HELP = [
   ['빈 곳 탭', '영웅 이동 (적은 자동 공격)'], ['성문 탭', '성문 강화 메뉴 · 메뉴가 열린 채 지도를 탭하면 그 성문 병력의 집결 지점 이동'],
   ['아래 병력 칸', '누를 때마다 1명씩 대기열에 추가, 성문에서 한 명씩 차례로 나옴 (무료)'], ['병력 칸 아래 ▲ 띠', '훈련 시설 강화 메뉴 (골드)'],
-  ['인구 (성문 Lv)', '30 → 80 · 보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4'], ['병력', '나온 성문의 집결 지점을 지키며 근처 적과 싸움 · 원거리 공격엔 다가가 반격'],
+  ['인구 (성문 Lv)', '30 → 80 · 보병·궁수 1 · 성직자 2 · 마법사 3 · 기사 4'], ['병력', '집결 지점을 지키며 근처 적과 싸움 · 원거리 공격엔 다가가 반격 (휴대폰은 「병력」 버튼으로 병력 칸 펼치기)'],
   ['스킬 버튼', '즉시 사용 / 위치·방향 스킬은 지도 탭 · 기사 스태미너 · 궁사 화살통 · 마법사 마나 소모'], ['드래그 · 두 손가락', '화면 이동 · 확대/축소'],
-  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · G 성문 바꾸기 · Shift+1~5 강화 · Backspace 취소 · Space 일시정지 · F 배속'],
+  ['미니맵 / ◎ 버튼', '그 위치로 / 영웅에게 화면 이동'], ['키보드 (보조)', 'Q W E R 스킬 · 1~5 생산 · Shift+1~5 강화 · Backspace 취소 · Space 일시정지 · F 배속'],
 ];
 function drawPause(ctx, k) {
   const pw = 760 * k, ph = 630 * k, { x, y } = bigPanel(ctx, pw, ph, k), cx = x + pw / 2;
@@ -7035,8 +7061,11 @@ function render() {
 }
 
 function resize() {
+  // 노치·홈 표시줄 같은 안전 영역을 뺀 크기. 높이 900 기준으로 가상 화면 너비를 화면 비율에 맞춤 (양옆 검은 띠 없음)
+  const cs = getComputedStyle(document.documentElement), inset = n => parseFloat(cs.getPropertyValue(n)) || 0;
+  const vw = Math.max(1, window.innerWidth - inset('--sa-l') - inset('--sa-r')), vh = Math.max(1, window.innerHeight - inset('--sa-t') - inset('--sa-b'));
+  CONFIG.view.width = Math.round(clamp(CONFIG.view.height * vw / vh, CONFIG.view.minWidth, CONFIG.view.maxWidth));
   const VW = CONFIG.view.width, VH = CONFIG.view.height;
-  const vw = window.innerWidth, vh = window.innerHeight;
   viewScale = Math.min(vw / VW, vh / VH);
   const cssW = Math.max(1, Math.floor(VW * viewScale)), cssH = Math.max(1, Math.floor(VH * viewScale));
   canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
@@ -7044,6 +7073,7 @@ function resize() {
   canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
   pixelRatio = canvas.width / VW;
   UI.k = clamp(0.78 / viewScale, 1, 1.8);           // 버튼이 최소 약 45 CSS px 이 되도록
+  UI.compact = UI.k >= 1.3;                           // 휴대폰처럼 작은 화면: 병력 칸을 접어 두는 버튼으로
   UI.kt = Math.min(UI.k, (VW - 4) / TOP_HUD_W);
   Camera.topPad = (10 + 58 + 6) * UI.kt;
   Camera.botPad = (BOTTOM_HUD_H + 20) * UI.k;
