@@ -93,7 +93,7 @@ const CONFIG = {
   // 몬스터(지상)는 성벽을 부숴야 지나감 · 공중 몬스터는 넘어감 · 영웅과 병사는 그냥 지나감
   // 목수 1명이 repairDelay초 동안 공격이 없으면 초당 repair씩 수리 / 무너지면 웨이브 사이에 들인 비용의 rebuildRatio로 같은 레벨 재건
   walls: { fromStage: 4, startLevel: 1, repair: 6, repairDelay: 5, rebuildRatio: 0.5,   // startLevel: 스테이지 시작 때 이미 지어져 있는 레벨 (무료, 재건 비용은 지은 것과 같이 계산)
-           levels: [ { cost: 400, hp: 1500, archers: 1 }, { cost: 600, hp: 2500, archers: 2 }, { cost: 900, hp: 4000, archers: 2, catapults: 1 } ] },
+           levels: [ { cost: 400, hp: 1500, archers: 4 }, { cost: 600, hp: 2500, archers: 4 }, { cost: 900, hp: 4000, archers: 4, catapults: 1 } ] },
 
   // ---------------- 난이도 (영웅 선택 화면에서 고름) ----------------
   // enemyHp / enemyDmg: 적·보스 체력·공격력 배율 / startGold: 시작 골드 (나중에 '지옥' 난이도 추가 예정)
@@ -120,58 +120,59 @@ const CONFIG = {
     skillLevel: 5,                // 이 레벨부터 자동 스킬 (skill)
     passiveLevel: 10,             // 이 레벨(최고)이 되면 패시브 (passive)
     order: ['footman', 'archer', 'knight', 'mage', 'cleric'],
+    // 레벨별 공격력(damage)은 원래 상승률에서 레벨마다 5%p씩 낮춘 값 (예: 보병 +40% → +35%)
     footman: { facility: '병영', pop: 1, desc: '검과 방패 · 근접 균형형 · 생산이 빠름',
       skill: { id: 'bash', name: '방패 강타', cooldown: 12, radius: 46, damageMul: 2.5, stun: 1.2, desc: '12초마다 주변 적을 방패로 쳐서 기절' },
       passive: { id: 'stalwart', name: '불굴', hpRatio: 0.5, armor: 0.25, desc: '체력이 50% 이하이면 방어력 +25%' },
       levels: [ { cost: 0, spawnTime: 3.5, hp: 130, damage: 10, armor: 0.20 },
-                { cost: 120, spawnTime: 3.0, hp: 175, damage: 14, armor: 0.25 },
-                { cost: 200, spawnTime: 2.6, hp: 230, damage: 19, armor: 0.30 },
-                { cost: 320, spawnTime: 2.3, hp: 290, damage: 25, armor: 0.34 },
-                { cost: 450, spawnTime: 2.0, hp: 360, damage: 32, armor: 0.38 },
-                { cost: 380, spawnTime: 1.9, hp: 403, damage: 36, armor: 0.40 },
-                { cost: 420, spawnTime: 1.8, hp: 452, damage: 40, armor: 0.42 },
-                { cost: 460, spawnTime: 1.7, hp: 506, damage: 45, armor: 0.44 },
-                { cost: 500, spawnTime: 1.6, hp: 566, damage: 50, armor: 0.46 },
-                { cost: 550, spawnTime: 1.5, hp: 634, damage: 56, armor: 0.48 } ] },
+                { cost: 120, spawnTime: 3.0, hp: 175, damage: 13, armor: 0.25 },
+                { cost: 200, spawnTime: 2.6, hp: 230, damage: 18, armor: 0.30 },
+                { cost: 320, spawnTime: 2.3, hp: 290, damage: 22, armor: 0.34 },
+                { cost: 450, spawnTime: 2.0, hp: 360, damage: 27, armor: 0.38 },
+                { cost: 380, spawnTime: 1.9, hp: 403, damage: 30, armor: 0.40 },
+                { cost: 420, spawnTime: 1.8, hp: 452, damage: 31, armor: 0.42 },
+                { cost: 460, spawnTime: 1.7, hp: 506, damage: 34, armor: 0.44 },
+                { cost: 500, spawnTime: 1.6, hp: 566, damage: 36, armor: 0.46 },
+                { cost: 550, spawnTime: 1.5, hp: 634, damage: 38, armor: 0.48 } ] },
     archer:  { facility: '궁술장', pop: 1, desc: '원거리 · 공중 공격 가능 · 보병 뒤에서 사격 · 강화하면 사거리 증가',
       skill: { id: 'volley', name: '연속 사격', cooldown: 10, arrows: 2, damageMul: 1.2, desc: '10초마다 화살 2발을 가까운 적에게' },
       passive: { id: 'rapid', name: '속사', attackSpeed: 0.3, desc: '공격 속도 +30%' },
       levels: [ { cost: 0, spawnTime: 5.0, hp: 75, damage: 11, armor: 0.05, range: 170 },
-                { cost: 140, spawnTime: 4.6, hp: 95, damage: 16, armor: 0.08, range: 173 },
-                { cost: 210, spawnTime: 4.2, hp: 120, damage: 22, armor: 0.10, range: 177 },
-                { cost: 330, spawnTime: 3.8, hp: 150, damage: 29, armor: 0.12, range: 180 },
-                { cost: 460, spawnTime: 3.4, hp: 185, damage: 37, armor: 0.14, range: 183 },
-                { cost: 390, spawnTime: 3.2, hp: 207, damage: 41, armor: 0.15, range: 187 },
-                { cost: 430, spawnTime: 3.0, hp: 232, damage: 46, armor: 0.16, range: 190 },
-                { cost: 470, spawnTime: 2.9, hp: 260, damage: 52, armor: 0.17, range: 193 },
-                { cost: 510, spawnTime: 2.8, hp: 291, damage: 58, armor: 0.18, range: 197 },
-                { cost: 560, spawnTime: 2.7, hp: 326, damage: 65, armor: 0.19, range: 200 } ] },
+                { cost: 140, spawnTime: 4.6, hp: 95, damage: 15, armor: 0.08, range: 173 },
+                { cost: 210, spawnTime: 4.2, hp: 120, damage: 20, armor: 0.10, range: 177 },
+                { cost: 330, spawnTime: 3.8, hp: 150, damage: 26, armor: 0.12, range: 180 },
+                { cost: 460, spawnTime: 3.4, hp: 185, damage: 32, armor: 0.14, range: 183 },
+                { cost: 390, spawnTime: 3.2, hp: 207, damage: 34, armor: 0.15, range: 187 },
+                { cost: 430, spawnTime: 3.0, hp: 232, damage: 36, armor: 0.16, range: 190 },
+                { cost: 470, spawnTime: 2.9, hp: 260, damage: 39, armor: 0.17, range: 193 },
+                { cost: 510, spawnTime: 2.8, hp: 291, damage: 42, armor: 0.18, range: 197 },
+                { cost: 560, spawnTime: 2.7, hp: 326, damage: 44, armor: 0.19, range: 200 } ] },
     knight:  { facility: '기사단', pop: 4, desc: '말을 탄 기사 · 빠르고 튼튼함 · 적을 여럿 붙잡음',
       skill: { id: 'charge', name: '돌격', cooldown: 14, range: 230, speed: 440, damageMul: 2.5, knock: 70, desc: '14초마다 적에게 돌진해 길 위의 적을 밀쳐냄' },
       passive: { id: 'valor', name: '용맹', damage: 0.3, desc: '공격력 +30%' },
       levels: [ { cost: 0, spawnTime: 9, hp: 360, damage: 22, armor: 0.35 },
-                { cost: 200, spawnTime: 8, hp: 450, damage: 30, armor: 0.40 },
-                { cost: 280, spawnTime: 7, hp: 560, damage: 39, armor: 0.45 },
-                { cost: 400, spawnTime: 6.2, hp: 690, damage: 49, armor: 0.48 },
-                { cost: 560, spawnTime: 5.5, hp: 850, damage: 61, armor: 0.50 },
-                { cost: 460, spawnTime: 5.2, hp: 950, damage: 68, armor: 0.51 },
-                { cost: 520, spawnTime: 4.9, hp: 1060, damage: 76, armor: 0.52 },
-                { cost: 580, spawnTime: 4.6, hp: 1180, damage: 85, armor: 0.53 },
-                { cost: 640, spawnTime: 4.4, hp: 1310, damage: 94, armor: 0.54 },
-                { cost: 700, spawnTime: 4.2, hp: 1450, damage: 104, armor: 0.55 } ] },
+                { cost: 200, spawnTime: 8, hp: 450, damage: 29, armor: 0.40 },
+                { cost: 280, spawnTime: 7, hp: 560, damage: 36, armor: 0.45 },
+                { cost: 400, spawnTime: 6.2, hp: 690, damage: 44, armor: 0.48 },
+                { cost: 560, spawnTime: 5.5, hp: 850, damage: 52, armor: 0.50 },
+                { cost: 460, spawnTime: 5.2, hp: 950, damage: 55, armor: 0.51 },
+                { cost: 520, spawnTime: 4.9, hp: 1060, damage: 59, armor: 0.52 },
+                { cost: 580, spawnTime: 4.6, hp: 1180, damage: 63, armor: 0.53 },
+                { cost: 640, spawnTime: 4.4, hp: 1310, damage: 67, armor: 0.54 },
+                { cost: 700, spawnTime: 4.2, hp: 1450, damage: 71, armor: 0.55 } ] },
     mage:    { facility: '마법학교', pop: 3, desc: '마법 공격(방어력 무시) · 범위 피해 · 공중 공격 가능 · 3레벨부터 둔화',
       skill: { id: 'fireball', name: '화염구', cooldown: 15, radius: 50, damageMul: 1.3, splash: 0.6, desc: '15초마다 적이 많은 곳에 작은 화염구 (영웅 화염구보다 약함)' },
       passive: { id: 'overload', name: '마력 폭주', splash: 0.5, ratio: 0.9, desc: '범위 피해 반경 +50% · 주변 적에게도 90% 피해' },
       levels: [ { cost: 0, spawnTime: 9, hp: 85, damage: 24, armor: 0.05, range: 165 },
-                { cost: 220, spawnTime: 8.2, hp: 105, damage: 34, armor: 0.07, range: 168 },
-                { cost: 300, spawnTime: 7.4, hp: 130, damage: 46, armor: 0.10, range: 172, slow: 0.35, slowTime: 1.2 },
-                { cost: 420, spawnTime: 6.6, hp: 160, damage: 60, armor: 0.12, range: 175, slow: 0.40, slowTime: 1.4 },
-                { cost: 580, spawnTime: 6.0, hp: 195, damage: 76, armor: 0.14, range: 178, slow: 0.45, slowTime: 1.6 },
-                { cost: 480, spawnTime: 5.7, hp: 218, damage: 84, armor: 0.15, range: 182, slow: 0.47, slowTime: 1.7 },
-                { cost: 540, spawnTime: 5.4, hp: 244, damage: 93, armor: 0.16, range: 185, slow: 0.49, slowTime: 1.8 },
-                { cost: 600, spawnTime: 5.1, hp: 273, damage: 103, armor: 0.17, range: 188, slow: 0.50, slowTime: 1.9 },
-                { cost: 660, spawnTime: 4.9, hp: 305, damage: 114, armor: 0.18, range: 192, slow: 0.50, slowTime: 2.0 },
-                { cost: 720, spawnTime: 4.7, hp: 340, damage: 126, armor: 0.19, range: 195, slow: 0.50, slowTime: 2.0 } ] },
+                { cost: 220, spawnTime: 8.2, hp: 105, damage: 33, armor: 0.07, range: 168 },
+                { cost: 300, spawnTime: 7.4, hp: 130, damage: 43, armor: 0.10, range: 172, slow: 0.35, slowTime: 1.2 },
+                { cost: 420, spawnTime: 6.6, hp: 160, damage: 54, armor: 0.12, range: 175, slow: 0.40, slowTime: 1.4 },
+                { cost: 580, spawnTime: 6.0, hp: 195, damage: 65, armor: 0.14, range: 178, slow: 0.45, slowTime: 1.6 },
+                { cost: 480, spawnTime: 5.7, hp: 218, damage: 69, armor: 0.15, range: 182, slow: 0.47, slowTime: 1.7 },
+                { cost: 540, spawnTime: 5.4, hp: 244, damage: 73, armor: 0.16, range: 185, slow: 0.49, slowTime: 1.8 },
+                { cost: 600, spawnTime: 5.1, hp: 273, damage: 77, armor: 0.17, range: 188, slow: 0.50, slowTime: 1.9 },
+                { cost: 660, spawnTime: 4.9, hp: 305, damage: 81, armor: 0.18, range: 192, slow: 0.50, slowTime: 2.0 },
+                { cost: 720, spawnTime: 4.7, hp: 340, damage: 86, armor: 0.19, range: 195, slow: 0.50, slowTime: 2.0 } ] },
     // 성직자: 공격하지 않음. interval초마다 주변(radius) 아군과 영웅에게 무작위 강화 1가지 (power: 강화 정도, duration: 지속 시간)
     //   공격 속도 +power / 방어력 +power×0.8 / 공격력 +power
     cleric:  { facility: '신전', pop: 2, support: true, desc: '공격하지 않음 · 주변 아군 최대 3명(10레벨 5명)에게 무작위 강화: 공격 속도 · 방어력 · 공격력',
@@ -244,13 +245,13 @@ const CONFIG = {
       ],
     },
     archer: {
-      name: '궁사', role: '딜러', desc: '가장 빠르고 공격 속도·사거리가 최고인 딜러. 몸은 약해요. 기술은 화살통의 특수 화살 (4초마다 1발).',
+      name: '궁사', role: '딜러', desc: '가장 빠르고 공격 속도·사거리가 최고인 딜러. 몸은 약해요. 기술은 화살통의 특수 화살 (최대 7발, 3초마다 1발).',
       hp: 320, armor: 0.05, speed: 118, radius: 13,
       attack: { damage: 22, interval: 0.5, range: 230, ranged: true, projectileSpeed: 760 },  // range: 중심 사이 거리 (원거리)
       canHitAir: true, baseDamageMul: 1.0,
       aggroRange: 220, leash: 270, maxBlock: 1,
       regenDelay: 4, regenRate: 0.03, respawn: 10,
-      resource: { name: '화살통', short: '화살', unit: '발', max: 6, regen: 0.25, regenIdle: 0, color: '#8fd860', discrete: true },   // 특수 화살 최대 6발, 4초마다 1발
+      resource: { name: '화살통', short: '화살', unit: '발', max: 7, regen: 1 / 3, regenIdle: 0, color: '#8fd860', discrete: true },   // 특수 화살 최대 7발, 3초마다 1발
       perLevel: { hp: 36, damage: 4.8, armor: 0.008 },
       skills: [
         // target: 'point' = 버튼 → 지도에서 위치 탭 (range 밖을 누르면 range 끝으로)
@@ -260,8 +261,8 @@ const CONFIG = {
           range: 330, radius: 95, duration: 3, dps: 45, perLevel: 6, scaleKey: 'dps' },
         { id: 'trap',      name: '덫 설치',  key: 'E', target: 'point', cooldown: 4.5, cost: 1,
           range: 280, radius: 28, root: 2, dps: 18, perLevel: 3, scaleKey: 'dps', maxTraps: 3, life: 40 },
-        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 17.5, cost: 5, minLevel: 10,
-          range: 430, count: 18, damage: 95 },                                      // 사거리 안의 적들에게 화살 18발
+        { id: 'arrowStorm', name: '폭풍 화살', key: 'R', target: 'none', cooldown: 17.5, cost: 3, minLevel: 10,
+          range: 430, count: 24, damage: 55, splash: 40 },                          // 사거리 안의 적들에게 화살 24발, 맞은 자리 주변(splash)도 같은 피해
       ],
     },
     mage: {
@@ -3220,7 +3221,7 @@ class WallSpot {
     this.invested += n.cost; const prev = this.maxHp; this.level++;
     this.maxHp = this.cfg.hp; this.hp = this.level === 1 ? this.maxHp : Math.min(this.maxHp, this.hp + (this.maxHp - prev));
     const bx = this.back.x, by = this.back.y, ax = this.along.x, ay = this.along.y;
-    const spots = [[0.3, 24], [-0.3, 24]];                       // 성벽 바로 뒤 궁수 자리 (성벽 길이의 비율, 뒤로 거리)
+    const spots = [[0.36, 22], [-0.36, 22], [0.12, 26], [-0.12, 26]];   // 성벽 바로 뒤 궁수 자리 (성벽 길이의 비율, 뒤로 거리)
     while (this.archers.length < this.cfg.archers) { const [f, bk] = spots[this.archers.length]; this.archers.push(new WallArcher(this.x + ax * this.len * f + bx * bk, this.y + ay * this.len * f + by * bk)); }
     while (this.catapults.length < (this.cfg.catapults || 0)) this.catapults.push(new Catapult(this.x + bx * 70, this.y + by * 70, { side: bx < 0 ? 'R' : 'L' }));
   }
@@ -3390,6 +3391,10 @@ class Arrow {
     if (d <= step + 2) {
       this.done = true;
       if (this.target && this.target.alive) { this.target.takeDamage(this.damage, this.source, false, this.crit); FX.spark(this.tx, this.ty, '#fff3b0', 4); if (!this.hostile) Sound.play('hit', this.tx, this.ty, 0.7); }
+      if (this.splash) {                                       // 폭풍 화살: 맞은 자리 주변 적도 같은 피해
+        for (const e of G.enemies) if (e !== this.target && e.alive && !(e.air && !e.low) && dist(e.x, e.y, this.tx, this.ty) <= this.splash + e.radius) e.takeDamage(this.damage, this.source);
+        FX.ring(this.tx, this.ty, this.splash, '255,240,180', 0.25);
+      }
       return;
     }
     this.x += (dx / d) * step; this.y += (dy / d) * step; this.traveled += step;
@@ -5125,7 +5130,7 @@ class Hero {
     const dmg = sk.damage + (this.damage - this.cfg.attack.damage);   // 영웅 공격력 성장만큼 더 셈
     for (let i = 0; i < sk.count; i++) {
       const t = base || list[i % list.length], a = rand(0, TAU), d = isBaseTarget(t) ? Math.round(dmg * this.cfg.baseDamageMul) : dmg;
-      const ar = new Arrow(this.x + Math.cos(a) * 14, this.y - 6 + Math.sin(a) * 10, t, d, 620 + rand(0, 260), this); G.projectiles.push(ar);
+      const ar = new Arrow(this.x + Math.cos(a) * 14, this.y - 6 + Math.sin(a) * 10, t, d, 620 + rand(0, 260), this); ar.splash = sk.splash || 0; G.projectiles.push(ar);
     }
     this.attackAnim = 0.4; Sound.play('rain', this.x, this.y); Sound.play('bow', this.x, this.y);
     FX.ring(this.x, this.y, 60, '255,240,180', 0.4); FX.text(this.x, this.y - 60, '폭풍 화살!', '#fff3b0', 22, 1.2);
@@ -6161,7 +6166,7 @@ function drawBossPointer(ctx) {
   const b = G.finalBoss; if (!b || !b.alive || G.state !== 'playing') return;
   const VW = CONFIG.view.width, VH = CONFIG.view.height, k = UI.k;
   const p = worldToScreen(b.x, b.y - (b.air ? AIR_HEIGHT : 30));
-  const top = Camera.topPad + 40 * k, bot = VH - Camera.botPad - 20 * k, m = 40 * k;
+  const top = Camera.topPad + (G.bossBarH || 0) + 40 * k, bot = VH - Camera.botPad - 20 * k, m = 40 * k;   // 보스 체력바 아래로
   if (p.x > m && p.x < VW - m && p.y > top && p.y < bot) return;   // 화면 안에 보이면 표시 안 함
   const cx = VW / 2, cy = (top + bot) / 2, dx = p.x - cx, dy = p.y - cy;
   const t = Math.min((VW / 2 - m) / Math.max(1e-6, Math.abs(dx)), ((bot - top) / 2) / Math.max(1e-6, Math.abs(dy)));
@@ -6373,24 +6378,26 @@ function drawMinimap(ctx) {
 }
 
 // ---------- 보스 체력바 (화면 위 가운데) ----------
-function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.final ? 1 : 0) - (a.final ? 1 : 0)).slice(0, G.wave ? 4 : 2); }
+function bossBars() { return G.enemies.filter(e => e.alive && e.boss).sort((a, b) => (b.final ? 1 : 0) - (a.final ? 1 : 0)); }
 function drawBossBars(ctx) {
   if (G.state !== 'playing') return 0;
-  const bs = bossBars(); if (!bs.length) return 0;
-  const k = UI.k, VW = CONFIG.view.width, w = 470 * k, h = 38 * k, x = VW / 2 - w / 2;
-  let y = (10 + 58 + 8) * UI.kt;
+  const all = bossBars(); if (!all.length) return 0;
+  // 작은 체력바: 최대 3개까지, 더 있으면 「+N」 (이름 · 막대 · 남은 체력 %)
+  const bs = all.slice(0, 3), k = UI.k * (UI.compact ? 0.8 : 1), VW = CONFIG.view.width, w = 270 * k, h = 20 * k, gap = 4 * k, x = VW / 2 - w / 2;   // 휴대폰은 조금 더 작게
+  const y0 = (10 + 58 + 6) * UI.kt; let y = y0;
   for (const e of bs) {
     const fin = e.final;
-    rr(ctx, x, y, w, h, 10 * k); ctx.fillStyle = fin ? 'rgba(60,10,6,0.9)' : 'rgba(40,16,10,0.88)'; ctx.fill();
-    ctx.lineWidth = 2 * k; ctx.strokeStyle = fin ? '#ff6a4a' : '#d08a4a'; ctx.stroke();
-    Icon.skull(ctx, x + 22 * k, y + h / 2, 22 * k);
-    txt(ctx, e.cfg.name, x + 40 * k, y + h / 2 + 1, 15 * k, fin ? '#ffb0a0' : '#ffd8a8', 'left', { weight: 800 });
-    const bx = x + 150 * k, bw = w - 162 * k;
-    bar(ctx, bx, y + 10 * k, bw, h - 20 * k, e.hp / e.maxHp, fin ? '#e0402a' : '#c8642a');
-    txt(ctx, `${Math.ceil(e.hp)} / ${e.maxHp}`, bx + bw / 2, y + h / 2 + 1, 12 * k, '#fff', 'center', { stroke: 'rgba(0,0,0,0.8)' });
-    y += h + 6 * k;
+    rr(ctx, x, y, w, h, 6 * k); ctx.fillStyle = fin ? 'rgba(60,10,6,0.85)' : 'rgba(40,16,10,0.8)'; ctx.fill();
+    ctx.lineWidth = 1.5 * k; ctx.strokeStyle = fin ? '#ff6a4a' : '#d08a4a'; ctx.stroke();
+    Icon.skull(ctx, x + 11 * k, y + h / 2, 13 * k);
+    fitTxt(ctx, e.cfg.name, x + 21 * k, y + h / 2 + 1, 11 * k, 78 * k, fin ? '#ffb0a0' : '#ffd8a8', 'left', { weight: 800 });
+    const bx = x + 102 * k, bw = w - 108 * k;
+    bar(ctx, bx, y + 5 * k, bw, h - 10 * k, e.hp / e.maxHp, fin ? '#e0402a' : '#c8642a');
+    txt(ctx, `${Math.ceil(e.hp / e.maxHp * 100)}%`, bx + bw / 2, y + h / 2 + 1, 9.5 * k, '#fff', 'center', { stroke: 'rgba(0,0,0,0.8)', weight: 700 });
+    y += h + gap;
   }
-  return bs.length * (h + 6 * k);
+  if (all.length > bs.length) { txt(ctx, `+ 보스 ${all.length - bs.length}마리`, x + w / 2, y + 7 * k, 10.5 * k, '#ffd8a8', 'center', { weight: 800, stroke: 'rgba(0,0,0,0.8)' }); y += 16 * k; }
+  return y - y0;
 }
 
 // ---------- 장착 아이템 3칸 (화면 오른쪽) ----------
