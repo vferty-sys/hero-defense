@@ -292,6 +292,8 @@ const CONFIG = {
     xpToNext: [80, 130, 190, 260, 340, 430, 530, 640, 760],   // Lv1→2, Lv2→3, ... Lv9→10 필요 경험치
     sharedXp: 0.35,                   // 영웅이 아닌 성벽 궁수 등이 처치해도 이 비율만큼 경험치 획득
     regenPerLevel: 0.05,              // 레벨마다 체력 회복·기술 자원(마나·스태미너·화살) 회복 속도 +5%
+    stageXpMul: 0.2,                  // 스테이지마다 필요 경험치 +20% (1스테이지 ×1 … 10스테이지 ×2.8) → 어느 판이든 후반에 10레벨
+    bossStageXp: 1.6,                 // 최종보스전 필요 경험치 배율 (웨이브가 10개뿐이라 따로: 최종보스가 나오기 전에 10레벨)
   },
 
   enemies: {
@@ -435,10 +437,16 @@ const CONFIG = {
   // ---------------- 1막: 스테이지 10개 + 최종보스전 (적 기지 없음 · 웨이브 방식) ----------------
   // 웨이브 수 = waveBase + 스테이지 번호 × wavePerStage (1스테이지 10 → 10스테이지 28) / 최종보스전은 waves 지정
   // 웨이브 마리 수 = first + (웨이브-1) × perWave, 최대 cap (넘치는 만큼은 체력이 오르고 정예가 섞임: overHp·overElite)
+  // 웨이브 수 = waveBase + 스테이지 × wavePerStage (1스테이지 7 ~ 10스테이지 16) / 마리 수 = first + 웨이브 × perWave (최대 cap)
+  // 3·6·9…웨이브 중간(midAt)에 중간보스 1마리 (입구를 돌아가며), 스테이지의 마지막 중간보스 웨이브만 2마리
   // 몬스터가 나오는 시간 = spawnBase + 마리 수 × spawnPer초 (지도를 2/3로 줄이면서 20% 늘림: 30→36, 0.15→0.18) / 무리 크기 = groupBase + 웨이브/2 (최대 groupMax)
   // 분대 크기 = squadBase + (웨이브-1)/squadEvery / 3·6·9…웨이브 중간(midAt)에 모든 입구에서 중간보스 + 정예 분대
   // 웨이브가 끝나면(몬스터가 다 나오면) countdown초 뒤 다음 웨이브 ("바로 시작"으로 앞당기면 보너스 골드)
-  waveRules: { waveBase: 8, wavePerStage: 2, first: 50, perWave: 10, cap: 150, overHp: 1 / 400, overElite: 1 / 500, overEliteMax: 0.35,
+  waveRules: { waveBase: 6, wavePerStage: 1, first: 30, perWave: 6, cap: 90, overHp: 1 / 400, overElite: 1 / 500, overEliteMax: 0.35,
+               monsterHpMul: 1.2,              // 일반 몬스터 체력 배율 (마리 수를 줄인 만큼 한 마리를 단단하게, 보스 제외)
+               eliteBase: 0.1,                 // 일반 웨이브에 정예가 섞이는 기본 확률 (상한을 넘친 만큼 더 늘어남, 최대 overEliteMax)
+               specialMul: 1.2,                // 특수 슬라임(기본 슬라임이 아닌 것)·분대가 나올 비중을 지금의 몇 배로
+               midBossHpMul: 1.5,              // 중간보스 체력 배율 (웨이브마다 1마리로 줄인 대신 단단하게)
                spawnBase: 36, spawnPer: 0.18, groupBase: 4, groupMax: 12, groupGap: 0.3, squadBase: 5, squadEvery: 3, midEvery: 3, midAt: 0.5,
                countdown: 10, first0: 10,
                // 중간보스 후보 (minStage 스테이지부터 나옴)
@@ -447,33 +455,33 @@ const CONFIG = {
   // 스테이지: map = 지도 / power = 적 체력·공격력 배율 / mix = 일반 무리 (슬라임 90% · 그 외 10%)
   // squad = 분대 구성 (tank 앞장 40% · ranged 가운데 40% · support 뒤 20%), squadWeight = 무리 대신 분대가 나올 비중
   stages: [
-    { name: '첫 번째 숲길', map: 's1', power: 1.0,  desc: '입구 1곳 · 10웨이브',
+    { name: '첫 번째 숲길', map: 's1', power: 1.0,  desc: '입구 1곳 · 7웨이브',
       mix: [{ type: 'slime', weight: 18 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }] },
-    { name: '갈림 언덕',   map: 's2', power: 1.04, desc: '입구 2곳 · 12웨이브 · 강철 슬라임',
+    { name: '갈림 언덕',   map: 's2', power: 1.04, desc: '입구 3곳 · 8웨이브 · 강철 슬라임',
       mix: [{ type: 'slime', weight: 12 }, { type: 'ironSlime', weight: 6 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['slime'], support: ['slime'] }, squadWeight: 2 },
-    { name: '안개 개울',   map: 's3', power: 1.08, desc: '입구 2곳 · 14웨이브 · 폭탄 슬라임',
+    { name: '안개 개울',   map: 's3', power: 1.08, desc: '입구 2곳 · 9웨이브 · 폭탄 슬라임',
       mix: [{ type: 'slime', weight: 10 }, { type: 'ironSlime', weight: 5 }, { type: 'bombSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['bombSlime'], support: ['slime'] }, squadWeight: 2 },
-    { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 16웨이브 · 성벽 · 산성 슬라임',
+    { name: '세 갈래 들판', map: 's4', power: 1.12, desc: '입구 3곳 · 10웨이브 · 성벽 · 산성 슬라임',
       mix: [{ type: 'slime', weight: 8 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'spider', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['bombSlime', 'acidSlime'], support: ['slime'] }, squadWeight: 3 },
-    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '가운데 굴 · 18웨이브 · 독 슬라임',
+    { name: '슬라임 굴',   map: 's5', power: 1.16, desc: '가운데 굴 · 11웨이브 · 독 슬라임',
       mix: [{ type: 'slime', weight: 6 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['poisonSlime'], support: ['acidSlime'] }, squadWeight: 3 },
-    { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 20웨이브 · 불꽃 슬라임',
+    { name: '늪지 교차로', map: 's6', power: 1.2,  desc: '입구 3곳 · 12웨이브 · 불꽃 슬라임',
       mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'spider', weight: 1 }, { type: 'bat', weight: 1 }],
       squad: { tank: ['ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime', 'bombSlime'] }, squadWeight: 4 },
-    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '굴 + 입구 2곳 · 22웨이브 · 거대 슬라임',
+    { name: '얼음 동굴',   map: 's7', power: 1.24, desc: '굴 + 입구 2곳 · 13웨이브 · 거대 슬라임',
       mix: [{ type: 'slime', weight: 5 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'wolf', weight: 1 }, { type: 'harpy', weight: 1 }],
       squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['poisonSlime', 'fireSlime'], support: ['acidSlime'] }, squadWeight: 4 },
-    { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 24웨이브 · 얼음 슬라임',
+    { name: '네 갈래 협곡', map: 's8', power: 1.28, desc: '입구 4곳 · 14웨이브 · 얼음 슬라임',
       mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 4 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'wolf', weight: 1 }, { type: 'bat', weight: 2 }],
       squad: { tank: ['giantSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['bombSlime'] }, squadWeight: 5 },
-    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '굴 3곳 · 26웨이브 · 치유 슬라임',
+    { name: '세 개의 굴',  map: 's9', power: 1.32, desc: '굴 3곳 · 15웨이브 · 치유 슬라임',
       mix: [{ type: 'slime', weight: 4 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 2 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'spider', weight: 2 }, { type: 'harpy', weight: 1 }],
       squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime'] }, squadWeight: 5 },
-    { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 28웨이브 · 모든 슬라임',
+    { name: '왕좌 앞 평원', map: 's10', power: 1.36, desc: '입구 5곳 · 16웨이브 · 모든 슬라임',
       mix: [{ type: 'slime', weight: 3 }, { type: 'ironSlime', weight: 3 }, { type: 'bombSlime', weight: 3 }, { type: 'acidSlime', weight: 3 }, { type: 'poisonSlime', weight: 3 }, { type: 'fireSlime', weight: 3 }, { type: 'giantSlime', weight: 3 }, { type: 'iceSlime', weight: 3 }, { type: 'healSlime', weight: 3 }, { type: 'wolf', weight: 2 }, { type: 'harpy', weight: 1 }],
       squad: { tank: ['giantSlime', 'ironSlime'], ranged: ['fireSlime', 'iceSlime', 'poisonSlime'], support: ['healSlime', 'bombSlime'] }, squadWeight: 6 },
     // 최종보스전: 10웨이브를 막으면 대왕 슬라임 등장. 쓰러질 때까지 squadEvery초마다 정예 분대, midEvery초마다 중간보스
@@ -544,7 +552,7 @@ const CONFIG = {
   },
 
   // 웨이브가 지날수록 적 강화 (위협 레벨 = 웨이브 번호): 웨이브마다 체력 × hpMul, 공격력 × damageMul (최종보스전도 같음)
-  escalation: { hpMul: 1.03, damageMul: 1.02 },
+  escalation: { hpMul: 1.03, damageMul: 1.02 },   // 웨이브마다 체력 +3% · 공격력 +2% (더하기: 16웨이브면 체력 ×1.45)
 
   // 테스트용: 0보다 크면 적 기지를 탭했을 때 영웅 대신 바로 이만큼 피해 (2단계부터 꺼 둠)
   debug: { tapBaseDamage: 0 },
@@ -3881,7 +3889,7 @@ function waveInfo(w) {
   const R = CONFIG.waveRules, raw = R.first + w * R.perWave, count = Math.min(R.cap, raw), over = Math.max(0, raw - R.cap);
   return { count, raw, duration: R.spawnBase + count * R.spawnPer, group: Math.min(R.groupMax, R.groupBase + Math.floor(w / 2)),
            squad: R.squadBase + Math.floor(w / R.squadEvery), mid: (w + 1) % R.midEvery === 0,
-           hpBoost: 1 + over * R.overHp, eliteChance: Math.min(R.overEliteMax, over * R.overElite) };
+           hpBoost: 1 + over * R.overHp, eliteChance: Math.min(R.overEliteMax, (R.eliteBase || 0) + over * R.overElite) };
 }
 // 분대 구성: 탱커 40% 앞 · 원거리 40% 가운데 · 지원 20% 뒤
 function squadList(sq, size) {
@@ -3902,6 +3910,19 @@ function waveEnts() { return [...new Set(G.portals.map(q => q.key))]; }
 function portalFor(ent) {
   const W = G.wave, list = G.portals.filter(q => q.key === ent); W.pr[ent] = (W.pr[ent] || 0) + 1;
   return list[W.pr[ent] % list.length];
+}
+// 나오는 몬스터 중 특수 슬라임(기본 슬라임 'slime'이 아닌 슬라임) 비율을 mul배로: 특수가 섞인 선택지(특수 슬라임 무리 · 분대)의 비중을 올림
+// 무리 크기(group)·분대 크기와 분대 안 특수 비율까지 따져서 마리 수 기준으로 맞춤
+function boostSpecial(opts, mul, group, squadMem) {
+  if (mul === 1) return opts;
+  const isSp = t => /[Ss]lime/.test(t) && t !== 'slime' && t !== 'slimeling';
+  const sqP = squadMem && squadMem.length ? squadMem.filter(isSp).length / squadMem.length : 0;
+  const size = o => o.squad ? (squadMem ? squadMem.length : group) : group, p = o => o.squad ? sqP : isSp(o.type) ? 1 : 0;
+  let A = 0, Bsp = 0, C = 0;
+  for (const o of opts) { const w = (o.weight || 1) * size(o); if (p(o) > 0) { A += w * p(o); Bsp += w; } else C += w; }
+  if (!A || !C) return opts;
+  const t = Math.min(0.95, A / (Bsp + C) * mul), f = A > t * Bsp ? t * C / (A - t * Bsp) : 50;
+  return opts.map(o => p(o) > 0 ? { ...o, weight: (o.weight || 1) * f } : o);
 }
 function spawnWaveMonster(q) {
   const e = new Enemy(q.type, q.portal, q.lane != null ? q.lane : rand(-28, 28), G.threat);
@@ -3935,7 +3956,7 @@ function updateWaves(dt) {
       W.groupT += info.duration / Math.ceil(info.count / info.group);
       const ents = waveEnts(), pt = portalFor(ents[W.road++ % ents.length]), st = G.stage;
       const opts = (st.mix || []).slice(); if (st.squad) opts.push({ squad: true, weight: st.squadWeight || 1 });
-      const g = weightedPick(opts), left = info.count - W.spawned;
+      const g = weightedPick(boostSpecial(opts, R.specialMul || 1, info.group, st.squad ? squadList(st.squad, info.squad) : null)), left = info.count - W.spawned;
       if (g.squad) {                                          // 분대: 탱커가 앞장, 원거리·지원이 뒤따름
         const sq = { leader: null, n: 0 }, mem = squadList(st.squad, info.squad).slice(0, left);
         mem.forEach((type, j) => W.pending.push({ t: j * R.groupGap * 1.5, type, portal: pt, sq, lane: (j % 2 ? 1 : -1) * rand(4, 18), hpBoost: info.hpBoost, eliteChance: info.eliteChance }));
@@ -3946,11 +3967,12 @@ function updateWaves(dt) {
         W.spawned += n;
       }
     }
-    if (info.mid && !W.midDone && W.spawned >= info.count * R.midAt) {   // 중간보스: 모든 입구에서 정예 분대를 이끌고
+    if (info.mid && !W.midDone && W.spawned >= info.count * R.midAt) {   // 중간보스: 1마리 (입구를 돌아가며), 스테이지의 마지막 중간보스 웨이브만 2마리
       W.midDone = true;
-      const names = [];
-      for (const ent of waveEnts()) { const b = spawnStageBoss(pickMidBoss(), portalFor(ent), false, info.squad); names.push(b.cfg.name); }
-      showBanner(`중간보스 ${names.length}마리가 정예 분대를 이끌고 나타났습니다! (${[...new Set(names)].join(' · ')})`, '#ffae5a', 3.4); G.banner.warn = true;
+      const ents = waveEnts(), lastMid = !(G.stage.final) && !Array.from({ length: total - 1 - W.i }, (_, j) => waveInfo(W.i + 1 + j).mid).some(Boolean);
+      const n = lastMid ? 2 : 1, names = [];
+      for (let j = 0; j < n; j++) { W.midEnt = (W.midEnt || 0) + 1; const b = spawnStageBoss(pickMidBoss(), portalFor(ents[(W.midEnt - 1) % ents.length]), false, info.squad); names.push(b.cfg.name); }
+      showBanner(n > 1 ? `마지막 중간보스! ${names.join(' · ')}이 정예 분대를 이끌고 나타났습니다!` : `중간보스 ${names[0]}이 정예 분대를 이끌고 나타났습니다!`, '#ffae5a', 3.4); G.banner.warn = true;
     }
     if (W.spawned >= info.count && !W.pending.length) {
       if (W.i >= total - 1) {
@@ -3987,7 +4009,7 @@ function updateWaves(dt) {
 function spawnStageBoss(type, portal, final, escortN) {
   const e = new Enemy(type, portal, 0, G.threat), E = CONFIG.economy;
   if (final) { e.final = true; e.gen = 0; e.rootHp = e.maxHp; G.finalBoss = e; e.goldOverride = E.finalBoss; }
-  else e.goldOverride = E.midBoss[0] + (G.stageIdx + 1) * E.midBoss[1];
+  else { e.goldOverride = E.midBoss[0] + (G.stageIdx + 1) * E.midBoss[1]; e.maxHp = e.hp = Math.round(e.maxHp * (CONFIG.waveRules.midBossHpMul || 1)); }
   G.enemies.push(e);
   for (let i = 0; i < 4; i++) FX.dust(e.x + rand(-20, 20), e.y + rand(-10, 10));
   let n = 0;
@@ -4077,13 +4099,20 @@ function pickupDrop(d) {
     FX.text(h.x, h.y - 50, `획득: ${it.name}`, rarityOf(it).color, 18, 1.8);
     return;
   }
+  if (rankOf(it) > rankOf(cur)) {                // 더 높은 등급: 묻지 않고 바로 장착, 쓰던 것은 골드로
+    const gold = rarityOf(cur).sell;
+    h.equip(it); addGold(gold); d.done = true; G.stats.itemsFound++; Sound.play('equip');
+    FX.text(h.x, h.y - 50, `장착: ${it.name}  (${rarityOf(cur).name} ${cur.baseName || cur.name} → +${gold} 골드)`, rarityOf(it).color, 17, 2);
+    return;
+  }
+  if (rankOf(it) === rankOf(cur) && G.wave && G.wave.phase === 'spawn') return;   // 같은 등급: 웨이브 사이에 고르게 (그때까지 바닥에서 반짝임)
   if (rankOf(it) < rankOf(cur)) {                // 지금 장비보다 등급이 낮으면 묻지 않고 골드로
     const gold = rarityOf(it).sell;
     addGold(gold); d.done = true; G.stats.itemsFound++; Sound.play('coin');
     FX.text(h.x, h.y - 50, `${rarityOf(it).name} ${it.baseName || it.name} → +${gold} 골드`, '#ffd84a', 17, 1.8);
     return;
   }
-  G.itemPrompt = { drop: d, item: it, cur };     // 같은 슬롯 · 같거나 높은 등급 → 교체할지 선택 (그동안 게임 일시정지)
+  G.itemPrompt = { drop: d, item: it, cur };     // 같은 칸 · 같은 등급 (종류만 다름) → 웨이브 사이에 교체할지 선택
 }
 function rankOf(item) { return CONFIG.items.rarities.findIndex(r => r.id === item.rarity); }   // 노멀 0 · 고급 1 · 희귀 2 · 영웅 3 · 전설 4
 function resolveItemPrompt(take) {
@@ -4255,8 +4284,9 @@ class Enemy {
     this.id = G.nextId++; this.type = type; this.cfg = cfg; this.base = base; this.route = base.route; this.final = !!cfg.final;
     this.gate = (G.gates && G.gates[(base.route && base.route.gate) || 0]) || null;   // 이 적이 노리는 성문 (길이 끝나는 곳)
     const D = G.diff || CONFIG.difficulty.normal, P = G.stage ? G.stage.power : 1;   // 난이도 · 스테이지 배율
-    this.maxHp = Math.round(cfg.hp * Math.pow(esc.hpMul, lv) * D.enemyHp * P); this.hp = this.maxHp;
-    this.gateDamage = cfg.gateDamage * Math.pow(esc.damageMul, lv) * D.enemyDmg * P;
+    const escHp = 1 + (esc.hpMul - 1) * lv, escDmg = 1 + (esc.damageMul - 1) * lv;   // 웨이브마다 더하기로 강해짐 (곱 아님)
+    this.maxHp = Math.round(cfg.hp * escHp * D.enemyHp * P * (cfg.boss ? 1 : (CONFIG.waveRules.monsterHpMul || 1))); this.hp = this.maxHp;
+    this.gateDamage = cfg.gateDamage * escDmg * D.enemyDmg * P;
     this.speed = cfg.speed * rand(0.92, 1.08);
     this.armor = cfg.armor || 0; this.slowAmt = 0; this.slowTimer = 0;
     this.root = 0; this.dot = null;         // 덫: 속박(이동 불가) 시간 / 지속 피해 {dps, t, src}
@@ -4268,8 +4298,8 @@ class Enemy {
     this.skillCd = (cfg.skills || []).map(k => (k.first != null ? k.first : k.cooldown * 0.5));
     this.casting = 0; this.bossDash = null; this.enraged = false;   // 보스: 스킬 준비 중(멈춤) / 돌격 중 / 분노
     this.radius = cfg.radius; this.air = cfg.air;
-    this.damage = cfg.damage * Math.pow(esc.damageMul, lv) * D.enemyDmg * P;
-    this.skillMul = Math.pow(esc.damageMul, lv) * D.enemyDmg * P;   // 보스 스킬·자폭 피해 배율 (난이도·위협·스테이지)
+    this.damage = cfg.damage * escDmg * D.enemyDmg * P;
+    this.skillMul = escDmg * D.enemyDmg * P;   // 보스 스킬·자폭 피해 배율 (난이도·위협·스테이지)
     this.dmgPop = 0; this.dmgPopT = 0; this.dmgMagic = false;       // 데미지 숫자 모으기
     this.xp = cfg.xp * (1 + 0.1 * lv);
     this.cdMul = 1;
@@ -4986,7 +5016,11 @@ class Hero {
   get ranged() { return !!this.cfg.attack.ranged; }
   get maxBlock() { return this.cfg.maxBlock; }
   get alive() { return !this.dead; }
-  get xpToNext() { return this.level >= CONFIG.heroLevels.max ? 0 : CONFIG.heroLevels.xpToNext[this.level - 1]; }
+  get xpToNext() {
+    const L = CONFIG.heroLevels; if (this.level >= L.max) return 0;
+    const mul = G.stage && G.stage.boss ? (L.bossStageXp || 1) : 1 + (L.stageXpMul || 0) * (G.stageIdx || 0);
+    return Math.round(L.xpToNext[this.level - 1] * mul);
+  }
   // 레벨에 따라 커지는 스킬 수치 (scaleKey 항목에 perLevel × (레벨-1) 추가)
   skillValue(sk, key) {
     let v = sk[key] + (sk.perLevel && key === (sk.scaleKey || 'damage') ? sk.perLevel * (this.level - 1) : 0);
